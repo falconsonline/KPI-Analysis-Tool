@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <title>KPI Graph and Analysis | v1.5.67</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #ffc107; --info: #17a2b8; --dark: #343a40; --bg-body: #f0f2f5; --bg-panel: #ffffff; --text-main: #333333; --border-color: #dddddd; --row-active-bg: #e7f1ff; }
+        [data-theme="dark"] { --bg-body: #121212; --bg-panel: #1e1e1e; --text-main: #e0e0e0; --border-color: #444444; --row-active-bg: #1a3a5a; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 20px; background: var(--bg-body); color: var(--text-main); padding-bottom: 60px; }
+        .container { max-width: 1400px; margin: auto; background: var(--bg-panel); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .header-main { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
+        .panel { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .chart-wrapper { width: 100%; background: var(--bg-panel); padding: 25px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 30px; }
+        .chart-container { position: relative; height: 450px; width: 100%; cursor: crosshair; }
+        .hidden { display: none !important; }
+        button { cursor: pointer; padding: 10px 16px; border-radius: 6px; border: none; font-weight: 600; transition: 0.2s; }
+        .btn-mini { padding: 5px 10px; font-size: 0.75em; }
+        label { font-weight: bold; font-size: 0.85em; display: block; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: inherit; color: inherit; }
+        #selA { height: 160px !important; }
+        .active-row { background-color: var(--row-active-bg) !important; outline: 2px solid var(--primary); outline-offset: -2px; }
+        .meta-bar { background: var(--dark); color: white; padding: 15px; border-radius: 8px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+        #console-panel { position: fixed; bottom: 0; left: 0; right: 0; background: #1e1e1e; color: #00ff00; font-family: 'Courier New', monospace; font-size: 12px; border-top: 2px solid var(--primary); z-index: 1000; transition: 0.3s; }
+        #console-header { background: #333; padding: 5px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        #console-body { height: 150px; overflow-y: auto; padding: 10px; display: block; }
+        #console-panel.collapsed #console-body { display: none; }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #333; white-space: pre-wrap; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-main">
+        <div>
+            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em; opacity:0.5;">v1.5.67</span></h2>
+            <div style="font-size: 0.8em; color: #888; margin-top:5px;"><strong>Author:</strong> Shiju Abraham | <strong>Email:</strong> shiju.abraham@mobileum.com</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button style="background:var(--dark); color:white;" onclick="toggleTheme()">🌓 Theme</button>
+            <button style="background:var(--danger); color:white;" onclick="logAction('Hard Reset Triggered.'); location.reload()">🔄 Reset All</button>
+            <button style="background:var(--primary); color:white;" onclick="exportFullPDF()">📄 Export PDF</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div id="drop-zone" style="border: 2px dashed var(--primary); border-radius: 10px; padding: 30px; text-align: center; cursor: pointer;" onclick="document.getElementById('dataFile').click()">
+            <strong>Drop Files or Click to Upload Logs</strong><br><small id="file-status">Ready (.txt, .log, .csv)</small>
+            <input type="file" id="dataFile" multiple style="display:none">
+        </div>
+
+        <div class="grid" style="margin-top:20px;">
+            <div><label>Parser Mode:</label><select id="formatType" onchange="logAction('Parser mode changed to: ' + this.value); toggleCsvOptions()"><option value="logPipe">Log-Pipe (| Key-Value)</option><option value="flatCsv">Flat CSV</option></select></div>
+            <div>
+                <label>KPI Pattern Filter:</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="kpiPattern" placeholder="e.g. SYSTEM_KPI">
+                    <button class="btn-mini" style="background:var(--info); color:white; white-space:nowrap;" onclick="document.getElementById('patternFile').click()">📁 Load</button>
+                    <input type="file" id="patternFile" style="display:none" onchange="handlePatternUpload(this)">
+                </div>
+            </div>
+        </div>
+        
+        <div id="csvOptions" class="hidden" style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 6px;">
+            <div class="grid">
+                <div style="display:flex; align-items:center; gap:10px;"><input type="checkbox" id="csvHasHeader" style="width:auto;"><label style="margin:0;">First row is Header</label></div>
+                <div><label>Manual Headers</label><input type="text" id="csvManualHeaders" placeholder="Date,Time,V1,V2..."></div>
+            </div>
+        </div>
+        <button style="background:var(--primary); color:white; width:100%; margin-top:15px;" onclick="processFilesFromUI()">Initialize Analysis</button>
+    </div>
+
+    <div id="inventoryPanel" class="panel hidden">
+        <table style="width:100%; border-collapse: collapse;">
+            <thead><tr style="border-bottom:2px solid var(--border-color); text-align:left;"><th>Source</th><th>Rows</th><th>Action</th></tr></thead>
+            <tbody id="fileTableBody"></tbody>
+        </table>
+        <button class="btn-mini" style="margin-top:10px; background:var(--dark); color:white;" onclick="mergeAllAndSelect()">Merge All Data</button>
+    </div>
+
+    <div id="builderPanel" class="panel hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0;">Graph Rule Builder</h3>
+            <div style="display:flex; gap:8px;">
+                <button class="btn-mini" style="background:var(--info); color:white;" onclick="document.getElementById('importFile').click()">Import Rules</button>
+                <button class="btn-mini" style="background:#6f42c1; color:white;" onclick="saveRulesToFile()">Export Rules</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importRules(this)">
+            </div>
+        </div>
+        <div class="grid">
+            <div><label>Chart Title</label><input type="text" id="gHeader"></div>
+            <div><label>Analysis Mode</label><select id="analysisMode" onchange="logAction('Analysis mode set to: ' + this.value)"><option value="direct">Direct Value</option><option value="ratio">Ratio %</option></select></div>
+            <div style="grid-column: span 2;"><label>Metrics</label><select id="selA" multiple></select></div>
+        </div>
+        <button style="background:var(--primary); color:white; width:100%; margin-top:15px;" onclick="addRuleToQueue()">+ Add to Queue</button>
+        <div id="queueList" style="margin-top:10px;"></div>
+        <button style="background:var(--success); color:white; width:100%; margin-top:15px;" onclick="generateDashboard()">GENERATE DASHBOARD</button>
+    </div>
+
+    <div id="dashboard-container">
+        <div id="dashboard-meta" class="hidden meta-bar">
+            <span><strong id="active-file-label"></strong></span>
+            <button class="btn-mini" style="background:var(--danger); color:white;" onclick="resetAllZoom()">RESET VIEW (Full Data)</button>
+        </div>
+        <div id="dashboard"></div>
+    </div>
+</div>
+
+<div id="console-panel" class="collapsed">
+    <div id="console-header" onclick="toggleConsole()">
+        <span>Activity Console</span>
+        <div>
+            <button class="btn-mini" style="background:var(--primary); color:white;" onclick="copyConsole(event)">Copy Log</button>
+            <span id="console-arrow" style="margin-left:10px;">▲</span>
+        </div>
+    </div>
+    <div id="console-body"></div>
+</div>
+
+<script>
+let rawFilesStore = {}, parsedFilesStore = {}, activeLogData = [], activeFileName = "", availableTokens = [], ruleQueue = [], chartInstances = [];
+let isInternalSync = false;
+
+function logAction(msg) {
+    const body = document.getElementById('console-body');
+    const time = new Date().toLocaleTimeString();
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerText = `[${time}] ${msg}`;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight; 
+}
+function toggleConsole() { 
+    const p = document.getElementById('console-panel'); 
+    p.classList.toggle('collapsed');
+    document.getElementById('console-arrow').innerText = p.classList.contains('collapsed') ? '▲' : '▼';
+}
+function copyConsole(e) {
+    e.stopPropagation();
+    const text = Array.from(document.querySelectorAll('.log-entry')).map(el => el.innerText).join('\n');
+    navigator.clipboard.writeText(text);
+    logAction("System: Console history copied to clipboard.");
+}
+
+function getUnix(ts) {
+    if (!ts) return 0;
+    const months = { jan:"01", feb:"02", mar:"03", apr:"04", may:"05", jun:"06", jul:"07", aug:"08", sep:"09", oct:"10", nov:"11", dec:"12" };
+    let clean = ts.toLowerCase().replace(/(mon|tue|wed|thu|fri|sat|sun)/gi, "").trim();
+    if (clean.includes('|')) {
+        let parts = clean.split('|'), dateParts = parts[0].trim().split(/\s+/);
+        let m = months[dateParts[0]] || "01", d = dateParts[1].padStart(2, '0');
+        let t = parts[1].trim().replace(/[:.]/g, "").substring(0, 6);
+        return parseInt(`2026${m}${d}${t}`);
+    } 
+    if (clean.includes(',')) {
+        let parts = clean.split(','), date = parts[0].trim().replace(/-/g, "");
+        let t = parts[1].trim().replace(/[:.]/g, "").substring(0, 6);
+        return parseInt(`${date}${t}`);
+    }
+    return 0;
+}
+
+function formatLabel(ts) {
+    if (!ts) return "";
+    let clean = ts.replace(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/gi, "").trim();
+    if (clean.includes(',')) { 
+        let p = clean.split(','); return `${p[0].trim()} ${p[1].trim().substring(0, 5)}`;
+    }
+    if (clean.includes('|')) { 
+        let p = clean.split('|'), dp = p[0].trim().split(/\s+/);
+        return `${dp[0]} ${dp[1]} ${p[1].trim().substring(0, 5)}`;
+    }
+    return ts;
+}
+
+async function exportFullPDF() {
+    logAction("User: Initiating PDF export.");
+    if(!chartInstances.length) { logAction("Warning: No charts available."); return; }
+    const defaultName = `KPI_Report_${activeFileName || 'Export'}`;
+    let userFilename = prompt("Enter Filename for PDF:", defaultName);
+    if (userFilename === null) { logAction("User: PDF export cancelled."); return; }
+    userFilename = userFilename.trim() || defaultName;
+    if (!userFilename.toLowerCase().endsWith('.pdf')) userFilename += '.pdf';
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p','mm','a4');
+    const items = [...document.querySelectorAll('.chart-wrapper')];
+    let y = 10;
+    for (let el of items) {
+        const canvas = await html2canvas(el);
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', 10, y, 190, 100);
+        y += 110; if (y > 250) { doc.addPage(); y = 10; }
+    }
+    doc.save(userFilename);
+    logAction("Success: PDF complete.");
+}
+
+function saveRulesToFile() {
+    logAction("User: Exporting rule set.");
+    const defaultName = `KPI_Rules_${activeFileName || 'Config'}`;
+    let userFilename = prompt("Enter Filename for Rules (JSON):", defaultName);
+    if (userFilename === null) { logAction("User: Rule export cancelled."); return; }
+    userFilename = userFilename.trim() || defaultName;
+    if (!userFilename.toLowerCase().endsWith('.json')) userFilename += '.json';
+    const payload = { ruleQueue, csvHeaderConfig: { hasHeader: document.getElementById('csvHasHeader').checked, manualHeaders: document.getElementById('csvManualHeaders').value } };
+    const blob = new Blob([JSON.stringify(payload, null, 4)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = userFilename;
+    a.click();
+    logAction(`Success: Rules saved to '${userFilename}'.`);
+}
+
+function importRules(input) {
+    if(!input.files.length) return;
+    logAction(`User: Uploading rule file '${input.files[0].name}'`);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            ruleQueue = data.ruleQueue || (Array.isArray(data) ? data : []);
+            if (data.csvHeaderConfig) {
+                document.getElementById('formatType').value = 'flatCsv';
+                toggleCsvOptions();
+                document.getElementById('csvHasHeader').checked = data.csvHeaderConfig.hasHeader;
+                document.getElementById('csvManualHeaders').value = data.csvHeaderConfig.manualHeaders;
+            }
+            logAction(`Import: ${ruleQueue.length} rules restored.`);
+            renderQueue();
+            const fileKeys = Object.keys(parsedFilesStore);
+            if (fileKeys.length === 1) {
+                logAction("System: Auto-binding single file.");
+                selectFile(fileKeys[0], 0);
+            } else if (activeLogData.length) {
+                generateDashboard();
+            }
+        } catch(err) { logAction("Error: Failed to parse Rule JSON."); alert("Invalid Rule File"); }
+    };
+    reader.readAsText(input.files[0]);
+}
+
+function processFilesFromUI() {
+    let inputVal = document.getElementById('kpiPattern').value.trim();
+    // LOGIC UPDATED: Extract search pattern if App: Pattern format used
+    let pattern = inputVal;
+    if (inputVal.includes(':')) {
+        let parts = inputVal.split(':');
+        pattern = parts.slice(1).join(':').trim(); 
+        logAction(`Filter: Using pattern '${pattern}' (Label: ${parts[0].trim()})`);
+    } else {
+        logAction(`Filter: Using pattern '${pattern || "All"}'`);
+    }
+
+    const mode = document.getElementById('formatType').value;
+    const hasHeader = document.getElementById('csvHasHeader').checked;
+    const manualHeaderRaw = document.getElementById('csvManualHeaders').value.trim();
+    const manualTokens = manualHeaderRaw.split(',').map(t => t.replace(/\s+/g, '').toLowerCase());
+    
+    parsedFilesStore = {}; availableTokens = []; let tokenCheck = new Set();
+    const tbody = document.getElementById('fileTableBody'); tbody.innerHTML = "";
+
+    Object.keys(rawFilesStore).forEach((name, index) => {
+        let lines = rawFilesStore[name].split(/\r?\n/).map(l => l.replace(/[^\x20-\x7E]/g, '').trim()).filter(l => l !== "");
+        let headerKeys = (mode === 'flatCsv' && manualHeaderRaw) ? manualHeaderRaw.split(',').map(h => h.trim()) : [];
+        if (mode === 'flatCsv' && hasHeader && lines.length > 0) { if (!manualHeaderRaw) headerKeys = lines[0].split(',').map(h => h.trim()); lines.shift(); }
+
+        let data = lines.filter(l => !pattern || l.includes(pattern)).map(line => {
+            if (mode === 'flatCsv' && manualHeaderRaw) {
+                const lt = line.split(',').map(t => t.replace(/\s+/g, '').toLowerCase());
+                const limit = Math.min(lt.length, manualTokens.length, 5);
+                let mc = 0; for(let i=0; i<limit; i++) if (lt[i] === manualTokens[i]) mc++;
+                if (mc === limit && limit >= 2) return null;
+            }
+            const tokens = {}; let timestamp = "";
+            if (mode === 'logPipe') {
+                const s = line.split('|'); if(s.length < 5) return null;
+                timestamp = `${s[0].trim()}|${s[1].trim()}`; 
+                const kv = s[4].split(',');
+                for(let i=0; i<kv.length; i+=2) { const k = kv[i]?.trim(); const v = parseFloat(kv[i+1])||0; if(k) { tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k); availableTokens.push(k);}}}
+            } else {
+                const s = line.split(','); if(s.length < 3) return null;
+                timestamp = `${s[0].trim()},${s[1].trim()}`;
+                s.forEach((val, i) => { const k = headerKeys[i]||`Col_${i}`; const v = parseFloat(val)||0; tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k); availableTokens.push(k);}});
+            }
+            return { timestamp, tokens };
+        }).filter(d => d);
+        if (data.length) { 
+            parsedFilesStore[name] = data; 
+            tbody.innerHTML += `<tr id="row-${index}" class="file-row"><td>${name}</td><td>${data.length}</td><td><button class="btn-mini" onclick="selectFile('${name}', ${index})">Analyze</button></td></tr>`; 
+            logAction(`Parser: '${name}' indexed.`);
+        }
+    });
+    if (availableTokens.length) { 
+        document.getElementById('inventoryPanel').classList.remove('hidden'); 
+        populateSelects(); 
+    }
+}
+
+function selectFile(name, index) { 
+    logAction(`User: Selecting '${name}'`);
+    document.querySelectorAll('.file-row').forEach(r => r.classList.remove('active-row'));
+    const tr = document.getElementById(`row-${index}`); if(tr) tr.classList.add('active-row');
+    activeLogData = parsedFilesStore[name]; activeFileName = name;
+    document.getElementById('builderPanel').classList.remove('hidden');
+    if(ruleQueue.length > 0) generateDashboard();
+}
+
+function mergeAllAndSelect() {
+    logAction("User: Aggregating sources.");
+    let all = []; Object.values(parsedFilesStore).forEach(d => all = all.concat(d));
+    all.sort((a,b) => getUnix(a.timestamp)-getUnix(b.timestamp));
+    activeLogData = all; activeFileName = "MERGED_TIMELINE";
+    document.getElementById('builderPanel').classList.remove('hidden');
+    if(ruleQueue.length > 0) generateDashboard();
+}
+
+function syncCharts(sourceChart) {
+    if (isInternalSync) return;
+    isInternalSync = true;
+    const { min, max } = sourceChart.scales.x;
+    chartInstances.forEach(chart => { if (chart !== sourceChart) chart.zoomScale('x', { min, max }, 'original'); });
+    isInternalSync = false;
+}
+function resetAllZoom() { 
+    logAction("View: Zoom reset.");
+    isInternalSync = true; chartInstances.forEach(chart => chart.resetZoom()); isInternalSync = false; 
+}
+
+function generateDashboard() {
+    const fileKeys = Object.keys(parsedFilesStore);
+    if (activeLogData.length === 0 && fileKeys.length === 1) {
+        logAction("System: Auto-binding single file.");
+        selectFile(fileKeys[0], 0);
+        return;
+    }
+
+    logAction("Dashboard: Rebuilding UI.");
+    chartInstances.forEach(c => c.destroy()); chartInstances = [];
+    const container = document.getElementById('dashboard'); container.innerHTML = '';
+    if(!activeLogData.length) { logAction("Error: No data."); return; }
+    document.getElementById('dashboard-meta').classList.remove('hidden');
+    document.getElementById('active-file-label').innerText = activeFileName;
+    const labels = activeLogData.map(d => formatLabel(d.timestamp));
+    ruleQueue.forEach((rule, idx) => {
+        const wrap = document.createElement('div'); wrap.className = 'chart-wrapper';
+        wrap.innerHTML = `<h3>${rule.header}</h3><div class="chart-container"><canvas id="canvas-${idx}"></canvas></div>`;
+        container.appendChild(wrap);
+        const datasets = rule.tokens.map((t, i) => ({
+            label: t,
+            data: activeLogData.map(d => (rule.mode==='ratio')?((d.tokens[rule.tokens[0]]||0)===0?0:(d.tokens[t]||0)/d.tokens[rule.tokens[0]]*100):(d.tokens[t]||0)),
+            borderColor: `hsl(${i * 137}, 70%, 50%)`, borderWidth: 1.5, pointRadius: 0, tension: 0.1
+        }));
+        chartInstances.push(new Chart(document.getElementById(`canvas-${idx}`).getContext('2d'), {
+            type: 'line', data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { zoom: { 
+                    zoom: { drag: { enabled: true, backgroundColor: 'rgba(0,123,255,0.1)' }, mode: 'x', onZoomComplete: ({chart}) => syncCharts(chart) },
+                    pan: { enabled: true, mode: 'x', onPanComplete: ({chart}) => syncCharts(chart) }
+                }}
+            }
+        }));
+    });
+}
+
+function addRuleToQueue() {
+    const tokens = Array.from(document.getElementById('selA').selectedOptions).map(o => o.value);
+    if (!tokens.length) return;
+    const r = { header: document.getElementById('gHeader').value || "KPI", mode: document.getElementById('analysisMode').value, tokens };
+    ruleQueue.push(r);
+    logAction(`Rule: Added '${r.header}'.`);
+    renderQueue();
+}
+function renderQueue() {
+    const q = document.getElementById('queueList'); q.innerHTML = '';
+    ruleQueue.forEach((r, i) => { q.innerHTML += `<div style="padding:5px; border:1px solid var(--border-color); margin-bottom:5px; display:flex; justify-content:space-between; align-items:center;"><span>${r.header}</span> <button class="btn-mini" style="background:var(--danger);color:white;" onclick="ruleQueue.splice(${i},1);renderQueue();logAction('Rule: Removed.')">X</button></div>`; });
+}
+function populateSelects() { const s = document.getElementById('selA'); s.innerHTML = ''; availableTokens.forEach(t => s.add(new Option(t, t))); }
+function toggleTheme() { 
+    const target = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', target);
+    logAction(`Theme: UI set to ${target}.`);
+}
+function toggleCsvOptions() { document.getElementById('csvOptions').classList.toggle('hidden', document.getElementById('formatType').value !== 'flatCsv'); }
+
+document.getElementById('dataFile').addEventListener('change', async (e) => { 
+    logAction(`Filesystem: ${e.target.files.length} data files uploaded.`);
+    for (let f of e.target.files) rawFilesStore[f.name] = await f.text(); 
+    document.getElementById('file-status').innerText = `${Object.keys(rawFilesStore).length} files ready.`;
+    if (Object.keys(rawFilesStore).length > 0) {
+        processFilesFromUI(); 
+        mergeAllAndSelect();   
+    }
+});
+
+// LOGIC UPDATED: Handle App: Pattern format from file upload
+async function handlePatternUpload(input) {
+    if(!input.files.length) return;
+    const content = await input.files[0].text();
+    const fullLine = content.split(/\r?\n/)[0]?.trim();
+    if(fullLine) {
+        document.getElementById('kpiPattern').value = fullLine;
+        if (fullLine.includes(':')) {
+            let p = fullLine.split(':');
+            logAction(`System: Loaded pattern for App '${p[0].trim()}' from file.`);
+        } else {
+            logAction(`System: Loaded pattern '${fullLine}' from file.`);
+        }
+        if(Object.keys(rawFilesStore).length > 0) processFilesFromUI();
+    }
+}
+
+window.onload = () => logAction("System: Tool v1.5.67 loaded.");
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+{
+    "ruleQueue": [
+        {
+            "header": "MSU",
+            "description": "MSU Statistics per min",
+            "mode": "direct",
+            "tokens": [
+                "MSU Received Last Min"
+            ]
+        },
+        {
+            "header": "StateMachines",
+            "description": "DBWriter StateMachine Statistics per min",
+            "mode": "direct",
+            "tokens": [
+                "SM Started Last Min",
+                "SM Completed Last Min",
+                "SM TimedOut Last Min",
+                "SM TCAP Abort Last Min",
+                "SM UDTS Last Min",
+                "SM Other Error Last Min",
+                "SM Ignored Last Min",
+                "SM Failed Last Min",
+                "SM Allocated Count"
+            ]
+        },
+        {
+            "header": "DB Processing Time",
+            "description": "DBWriter DB Processing Time Statistics per min",
+            "mode": "direct",
+            "tokens": [
+                "Average Time Taken to complete SM in Last Min",
+                "Max Time Taken to complete SM in Last Min",
+                "Average Time Taken to process Timedout SM in Last Min",
+                "Max Time Taken to process Timedout SM in Last Min",
+                "Average Time Taken to update database in Last Min",
+                "Max Time Taken to update database in Last Min"
+            ]
+        },
+        {
+            "header": "SM Timeout%",
+            "description": "DBWriter StateMachine(SM) Timeout% Statistics per min",
+            "mode": "ratio",
+            "tokens": [
+                "SM Started Last Min",
+                "SM Completed Last Min",
+                "SM TimedOut Last Min"
+            ]
+        },
+        {
+            "header": "Transactions Publish",
+            "description": "DBWriter Transactions Eligible-Publish Statistics per min",
+            "mode": "direct",
+            "tokens": [
+                "Transactions eligible for publish",
+                "Transactions published"
+            ]
+        }
+    ],
+    "csvHeaderConfig": {
+        "hasHeader": false,
+        "manualHeaders": ""
+    }
+}
