@@ -2,112 +2,269 @@
 <html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <title>KPI Graph and Analysis | v1.5.67</title>
-    
+    <title>KPI Graph and Analysis | v1.9.0</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
     <style>
-        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #ffc107; --info: #17a2b8; --dark: #343a40; --bg-body: #f0f2f5; --bg-panel: #ffffff; --text-main: #333333; --border-color: #dddddd; --row-active-bg: #e7f1ff; }
-        [data-theme="dark"] { --bg-body: #121212; --bg-panel: #1e1e1e; --text-main: #e0e0e0; --border-color: #444444; --row-active-bg: #1a3a5a; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 20px; background: var(--bg-body); color: var(--text-main); padding-bottom: 60px; }
-        .container { max-width: 1400px; margin: auto; background: var(--bg-panel); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .header-main { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
-        .panel { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
-        .chart-wrapper { width: 100%; background: var(--bg-panel); padding: 25px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 30px; }
-        .chart-container { position: relative; height: 450px; width: 100%; cursor: crosshair; }
-        .hidden { display: none !important; }
-        button { cursor: pointer; padding: 10px 16px; border-radius: 6px; border: none; font-weight: 600; transition: 0.2s; }
-        .btn-mini { padding: 5px 10px; font-size: 0.75em; }
-        label { font-weight: bold; font-size: 0.85em; display: block; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: inherit; color: inherit; }
-        #selA { height: 160px !important; }
-        .active-row { background-color: var(--row-active-bg) !important; outline: 2px solid var(--primary); outline-offset: -2px; }
-        .meta-bar { background: var(--dark); color: white; padding: 15px; border-radius: 8px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
-        #console-panel { position: fixed; bottom: 0; left: 0; right: 0; background: #1e1e1e; color: #00ff00; font-family: 'Courier New', monospace; font-size: 12px; border-top: 2px solid var(--primary); z-index: 1000; transition: 0.3s; }
-        #console-header { background: #333; padding: 5px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        #console-body { height: 150px; overflow-y: auto; padding: 10px; display: block; }
-        #console-panel.collapsed #console-body { display: none; }
-        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #333; white-space: pre-wrap; word-break: break-all; }
+        :root { --primary:#007bff;--success:#28a745;--danger:#dc3545;--warning:#ffc107;--info:#17a2b8;--dark:#343a40;--bg-body:#f0f2f5;--bg-panel:#ffffff;--text-main:#333333;--border-color:#dddddd;--row-active-bg:#e7f1ff; }
+        [data-theme="dark"] { --bg-body:#121212;--bg-panel:#1e1e1e;--text-main:#e0e0e0;--border-color:#444444;--row-active-bg:#1a3a5a; }
+        body { font-family:'Segoe UI',sans-serif; margin:20px; background:var(--bg-body); color:var(--text-main); padding-bottom:60px; }
+        .container { max-width:1400px; margin:auto; background:var(--bg-panel); padding:25px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.1); }
+        .header-main { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; border-bottom:2px solid var(--border-color); padding-bottom:15px; }
+        .panel { background:var(--bg-panel); border:1px solid var(--border-color); padding:20px; border-radius:8px; margin-bottom:20px; }
+        .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:15px; }
+        .chart-wrapper { width:100%; background:var(--bg-panel); padding:25px; border-radius:10px; border:1px solid var(--border-color); margin-bottom:30px; }
+        .chart-container { position:relative; height:450px; width:100%; cursor:crosshair; }
+        .hidden { display:none !important; }
+        button { cursor:pointer; padding:10px 16px; border-radius:6px; border:none; font-weight:600; transition:0.2s; }
+        .btn-mini { padding:5px 10px; font-size:0.75em; }
+        label { font-weight:bold; font-size:0.85em; display:block; margin-bottom:5px; }
+        input, select { width:100%; padding:8px; border:1px solid var(--border-color); border-radius:4px; background:inherit; color:inherit; box-sizing:border-box; }
+        #selA { height:160px !important; }
+        .active-row { background-color:var(--row-active-bg) !important; outline:2px solid var(--primary); outline-offset:-2px; }
+        .meta-bar { background:var(--dark); color:white; padding:15px; border-radius:8px; margin-top:10px; display:flex; justify-content:space-between; align-items:center; }
+        #console-panel { position:fixed; bottom:0; left:0; right:0; background:#1e1e1e; color:#00ff00; font-family:'Courier New',monospace; font-size:12px; border-top:2px solid var(--primary); z-index:1000; }
+        #console-header { background:#333; padding:5px 15px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+        #console-body { height:150px; overflow-y:auto; padding:10px; display:block; }
+        #console-panel.collapsed #console-body { display:none; }
+        .log-entry { margin-bottom:4px; border-bottom:1px solid #333; white-space:pre-wrap; word-break:break-all; }
+        /* Queue */
+        .queue-item { padding:6px 8px; border:1px solid var(--border-color); margin-bottom:5px; border-radius:4px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+        .queue-item.editing { border-color:var(--warning); background:rgba(255,193,7,0.08); }
+        .queue-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        /* Chart header */
+        .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+        .chart-header h3 { margin:0; }
+        .chart-copy-btn { background:var(--info); color:white; font-size:0.75em; padding:4px 10px; }
+        .chart-copy-btn.copied { background:var(--success); }
+        body.pdf-exporting .chart-copy-btn { display:none !important; }
+        /* Edit banners */
+        #editBanner { display:none; padding:6px 10px; margin-top:8px; border-radius:4px; background:rgba(255,193,7,0.15); border-left:3px solid var(--warning); font-size:0.82em; justify-content:space-between; align-items:center; }
+        #editBanner.active { display:flex !important; }
+        #addRuleBtn.edit-mode { background:var(--warning) !important; color:#333 !important; }
+        .mc-edit-banner { display:none; padding:6px 10px; margin-top:10px; border-radius:4px; background:rgba(255,193,7,0.15); border-left:3px solid var(--warning); font-size:0.82em; justify-content:space-between; align-items:center; }
+        .mc-edit-banner.active { display:flex !important; }
+        #mcAddBtn.edit-mode { background:var(--warning) !important; color:#333 !important; }
+        /* Stats */
+        .stats-table { width:100%; border-collapse:collapse; margin-top:14px; font-size:0.82em; }
+        .stats-table th { background:var(--dark); color:white; padding:5px 8px; text-align:left; }
+        .stats-table td { padding:4px 8px; border-bottom:1px solid var(--border-color); }
+        .stats-table tr:nth-child(even) td { background:rgba(0,0,0,0.03); }
+        /* Overlay */
+        #busy-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; color:#fff; font-size:1.3em; font-weight:600; }
+        #busy-overlay.active { display:flex; }
+        /* PDF export modal */
+        #pdf-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; justify-content:center; align-items:center; }
+        #pdf-modal.active { display:flex; }
+        #pdf-modal-box { background:var(--bg-panel); color:var(--text-main); border-radius:10px; padding:28px 32px; min-width:340px; max-width:420px; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+        #pdf-modal-box h3 { margin:0 0 10px; font-size:1.05em; }
+        #pdf-modal-box p  { margin:0 0 20px; font-size:0.88em; color:#888; line-height:1.5; }
+        #pdf-modal-fname  { width:100%; padding:7px 9px; border:1px solid var(--border-color); border-radius:4px; background:inherit; color:inherit; font-size:0.9em; margin-bottom:18px; box-sizing:border-box; }
+        #pdf-modal-btns   { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+        #pdf-modal-btns button { padding:8px 18px; border-radius:6px; border:none; font-weight:600; cursor:pointer; font-size:0.88em; }
+        /* Rules badge */
+        .rules-badge { display:none; font-size:0.78em; color:#888; margin-bottom:12px; padding:4px 8px; background:rgba(0,0,0,0.04); border-radius:4px; border-left:3px solid var(--info); }
+        /* MC selects */
+        #selComp, #selMcKpi { height:140px !important; }
     </style>
 </head>
 <body>
 
+<div id="busy-overlay">&#9203; Generating PDF&#8230;</div>
+
+<div id="pdf-modal">
+  <div id="pdf-modal-box">
+    <h3>&#128196; Export PDF</h3>
+    <p>Choose what to export, then confirm the filename.</p>
+    <input id="pdf-modal-fname" type="text" placeholder="Filename">
+    <div id="pdf-modal-btns">
+      <button id="pdf-btn-full"    style="background:var(--primary);color:white;">Full Data</button>
+      <button id="pdf-btn-current" style="background:var(--success);color:white;">Current View</button>
+      <button id="pdf-btn-cancel"  style="background:var(--dark);color:white;">Esc / Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="container">
     <div class="header-main">
         <div>
-            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em; opacity:0.5;">v1.5.67</span></h2>
-            <div style="font-size: 0.8em; color: #888; margin-top:5px;"><strong>Author:</strong> Shiju Abraham | <strong>Email:</strong> shiju.abraham@mobileum.com</div>
+            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em;opacity:0.5;">v1.9.0</span></h2>
+            <div style="font-size:0.8em;color:#888;margin-top:5px;"><strong>Author:</strong> Shiju Abraham | <strong>Email:</strong> shiju.abraham&#64;mobileum.com</div>
         </div>
-        <div style="display:flex; gap:10px;">
-            <button style="background:var(--dark); color:white;" onclick="toggleTheme()">🌓 Theme</button>
-            <button style="background:var(--danger); color:white;" onclick="logAction('Hard Reset Triggered.'); location.reload()">🔄 Reset All</button>
-            <button style="background:var(--primary); color:white;" onclick="exportFullPDF()">📄 Export PDF</button>
+        <div style="display:flex;gap:10px;">
+            <button style="background:var(--dark);color:white;" onclick="toggleTheme()">&#127763; Theme</button>
+            <button style="background:var(--danger);color:white;" onclick="logAction('Hard Reset.'); location.reload()">&#128260; Reset All</button>
+            <button style="background:var(--primary);color:white;" onclick="exportFullPDF()">&#128196; Export PDF</button>
         </div>
     </div>
 
     <div class="panel">
-        <div id="drop-zone" style="border: 2px dashed var(--primary); border-radius: 10px; padding: 30px; text-align: center; cursor: pointer;" onclick="document.getElementById('dataFile').click()">
-            <strong>Drop Files or Click to Upload Logs</strong><br><small id="file-status">Ready (.txt, .log, .csv)</small>
+        <div id="drop-zone" style="border:2px dashed var(--primary);border-radius:10px;padding:30px;text-align:center;cursor:pointer;"
+             onclick="document.getElementById('dataFile').click()"
+             ondragover="event.preventDefault();this.style.borderColor='var(--success)';this.style.background='rgba(0,123,255,0.05)';"
+             ondragleave="this.style.borderColor='var(--primary)';this.style.background='';"
+             ondrop="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='';handleDroppedFiles(event.dataTransfer.files);">
+            <strong>Drop Files or Click to Upload Logs</strong><br>
+            <small id="file-status">Ready (.txt, .log, .csv)</small>
             <input type="file" id="dataFile" multiple style="display:none">
         </div>
-
         <div class="grid" style="margin-top:20px;">
-            <div><label>Parser Mode:</label><select id="formatType" onchange="logAction('Parser mode changed to: ' + this.value); toggleCsvOptions()"><option value="logPipe">Log-Pipe (| Key-Value)</option><option value="flatCsv">Flat CSV</option></select></div>
+            <div>
+                <label>Parser Mode:</label>
+                <select id="formatType" onchange="logAction('Parser mode: '+this.value); toggleCsvOptions()">
+                    <option value="logPipe">Log-Pipe (| Key-Value)</option>
+                    <option value="flatCsv">Flat CSV</option>
+                    <option value="multiComp">Multi-Component CSV (Date,Time,Seq,Type,CompId,KPI&#8230;)</option>
+                </select>
+            </div>
             <div>
                 <label>KPI Pattern Filter:</label>
-                <div style="display:flex; gap:5px;">
+                <div style="display:flex;gap:5px;">
                     <input type="text" id="kpiPattern" placeholder="e.g. SYSTEM_KPI">
-                    <button class="btn-mini" style="background:var(--info); color:white; white-space:nowrap;" onclick="document.getElementById('patternFile').click()">📁 Load</button>
+                    <button class="btn-mini" style="background:var(--info);color:white;white-space:nowrap;" onclick="document.getElementById('patternFile').click()">&#128193; Load</button>
                     <input type="file" id="patternFile" style="display:none" onchange="handlePatternUpload(this)">
                 </div>
             </div>
         </div>
-        
-        <div id="csvOptions" class="hidden" style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 6px;">
+        <div id="csvOptions" class="hidden" style="margin-top:15px;padding:15px;background:rgba(0,0,0,0.03);border-radius:6px;">
             <div class="grid">
-                <div style="display:flex; align-items:center; gap:10px;"><input type="checkbox" id="csvHasHeader" style="width:auto;"><label style="margin:0;">First row is Header</label></div>
-                <div><label>Manual Headers</label><input type="text" id="csvManualHeaders" placeholder="Date,Time,V1,V2..."></div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input type="checkbox" id="csvHasHeader" style="width:auto;">
+                    <label style="margin:0;">First row is Header</label>
+                </div>
+                <div>
+                    <label>Manual Headers</label>
+                    <input type="text" id="csvManualHeaders" placeholder="Date,Time,V1,V2...">
+                </div>
+                <div>
+                    <label>Timestamp Format</label>
+                    <select id="csvTsFormat">
+                        <option value="auto" selected>Auto-detect timestamp format</option>
+                        <option value="dateTime">Col 1 = Date, Col 2 = Time</option>
+                        <option value="singleTs">Col 1 = Timestamp (YYMMDD HH:MI or YYYYMMDD HH:MI:SS)</option>
+                    </select>
+                </div>
             </div>
         </div>
-        <button style="background:var(--primary); color:white; width:100%; margin-top:15px;" onclick="processFilesFromUI()">Initialize Analysis</button>
+        <button style="background:var(--primary);color:white;width:100%;margin-top:15px;" onclick="processFilesFromUI()">Initialize Analysis</button>
     </div>
 
     <div id="inventoryPanel" class="panel hidden">
-        <table style="width:100%; border-collapse: collapse;">
-            <thead><tr style="border-bottom:2px solid var(--border-color); text-align:left;"><th>Source</th><th>Rows</th><th>Action</th></tr></thead>
+        <table style="width:100%;border-collapse:collapse;">
+            <thead><tr style="border-bottom:2px solid var(--border-color);text-align:left;"><th>Source</th><th>Rows</th><th>Action</th></tr></thead>
             <tbody id="fileTableBody"></tbody>
         </table>
-        <button class="btn-mini" style="margin-top:10px; background:var(--dark); color:white;" onclick="mergeAllAndSelect()">Merge All Data</button>
+        <button class="btn-mini" style="margin-top:10px;background:var(--dark);color:white;" onclick="mergeAllAndSelect()">Merge All Data</button>
     </div>
 
+    <!-- STANDARD BUILDER PANEL -->
     <div id="builderPanel" class="panel hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
             <h3 style="margin:0;">Graph Rule Builder</h3>
-            <div style="display:flex; gap:8px;">
-                <button class="btn-mini" style="background:var(--info); color:white;" onclick="document.getElementById('importFile').click()">Import Rules</button>
-                <button class="btn-mini" style="background:#6f42c1; color:white;" onclick="saveRulesToFile()">Export Rules</button>
+            <div style="display:flex;gap:8px;">
+                <button class="btn-mini" style="background:var(--info);color:white;" onclick="document.getElementById('importFile').click()">Import Rules</button>
+                <button class="btn-mini" style="background:#6f42c1;color:white;" onclick="saveRulesToFile()">Export Rules</button>
                 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importRules(this)">
             </div>
         </div>
+        <div id="rulesFileInfo" class="rules-badge">&#128196; Rules: <span id="rulesFileName"></span></div>
         <div class="grid">
             <div><label>Chart Title</label><input type="text" id="gHeader"></div>
-            <div><label>Analysis Mode</label><select id="analysisMode" onchange="logAction('Analysis mode set to: ' + this.value)"><option value="direct">Direct Value</option><option value="ratio">Ratio %</option></select></div>
-            <div style="grid-column: span 2;"><label>Metrics</label><select id="selA" multiple></select></div>
+            <div>
+                <label>Analysis Mode</label>
+                <select id="analysisMode">
+                    <option value="direct">Direct Value</option>
+                    <option value="ratio">Ratio %</option>
+                </select>
+            </div>
+            <div style="grid-column:span 2;"><label>Metrics</label><select id="selA" multiple></select></div>
         </div>
-        <button style="background:var(--primary); color:white; width:100%; margin-top:15px;" onclick="addRuleToQueue()">+ Add to Queue</button>
+        <div id="editBanner">
+            <span>&#9999;&#65039; Editing rule: <strong id="editBannerName"></strong></span>
+            <button class="btn-mini" style="background:var(--dark);color:white;" onclick="cancelEditRule()">&#x2715; Cancel Edit</button>
+        </div>
+        <button id="addRuleBtn" style="background:var(--primary);color:white;width:100%;margin-top:15px;" onclick="addRuleToQueue()">+ Add to Queue</button>
         <div id="queueList" style="margin-top:10px;"></div>
-        <button style="background:var(--success); color:white; width:100%; margin-top:15px;" onclick="generateDashboard()">GENERATE DASHBOARD</button>
+        <button style="background:var(--success);color:white;width:100%;margin-top:15px;" onclick="generateDashboard()">GENERATE DASHBOARD</button>
+    </div>
+
+    <!-- MULTI-COMPONENT BUILDER PANEL -->
+    <div id="mcBuilderPanel" class="panel hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+            <h3 style="margin:0;">Multi-Component Rule Builder</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn-mini" style="background:var(--info);color:white;" onclick="document.getElementById('mcImportFile').click()">Import Rules</button>
+                <button class="btn-mini" style="background:#6f42c1;color:white;" onclick="saveRulesToFile()">Export Rules</button>
+                <input type="file" id="mcImportFile" accept=".json" style="display:none" onchange="importRules(this)">
+                <button class="btn-mini" style="background:var(--success);color:white;" onclick="document.getElementById('mcHdrFile').click()">&#128196; Header File</button>
+                <input type="file" id="mcHdrFile" accept=".csv,.txt" style="display:none" onchange="loadMcHeaderFile(this)">
+                <button class="btn-mini" style="background:var(--danger);color:white;" id="mcHdrClearBtn" onclick="clearMcHeaderFile()" style="display:none">&#x2715; Clear Headers</button>
+            </div>
+        </div>
+        <div id="mcRulesFileInfo" class="rules-badge">&#128196; Rules: <span id="mcRulesFileName"></span></div>
+        <div id="mcHdrFileInfo" class="rules-badge" style="border-left-color:var(--success);">&#128196; Header: <span id="mcHdrFileName"></span> <span id="mcHdrFileSummary" style="opacity:0.75;"></span> <button class="btn-mini" style="margin-left:8px;background:var(--danger);color:white;padding:2px 7px;" onclick="clearMcHeaderFile()">&#x2715;</button></div>
+        <div class="grid">
+            <div><label>Chart Title (base name)</label><input type="text" id="mcHeader" placeholder="e.g. Component KPIs"></div>
+            <div>
+                <label>Analysis Mode</label>
+                <select id="mcMode">
+                    <option value="direct">Direct Value</option>
+                    <option value="ratio">Ratio %</option>
+                </select>
+            </div>
+            <div style="grid-column:span 2;">
+                <div id="mcColLabelBar" style="display:none;padding:6px 10px;margin-bottom:6px;background:rgba(0,0,0,0.04);border-radius:4px;font-size:0.8em;color:#888;border-left:3px solid var(--info);">&#128278; <span id="mcColLabelText"></span></div>
+                <label>Type &amp; Component ID <small style="font-weight:normal;color:#888;">(multi-select &#8212; one chart per component, or overlay per KPI)</small></label>
+                <select id="selComp" multiple onchange="refreshMcKpiSelector()"></select>
+            </div>
+            <div style="grid-column:span 2;">
+                <label>Display Name Override <small style="font-weight:normal;color:#888;">(optional &#8212; replaces &#8220;Type-CompId&#8221; in chart title for selected items)</small></label>
+                <input type="text" id="mcDisplayName" placeholder="e.g. Primary Gateway">
+            </div>
+            <div style="grid-column:span 2;">
+                <label>KPI Metrics
+                    <small style="font-weight:normal;color:#888;">(multi-select)</small>
+                    <span id="mcKpiSourceLabel" style="font-size:0.78em;font-weight:normal;color:var(--info);margin-left:6px;"></span>
+                </label>
+                <select id="selMcKpi" multiple></select>
+            </div>
+            <div style="grid-column:span 2;">
+                <div style="padding:10px 12px;background:rgba(0,123,255,0.05);border-radius:6px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <input type="checkbox" id="mcOverlay" style="width:auto;cursor:pointer;" onchange="toggleOverlayKey()">
+                        <div>
+                            <label style="margin:0;cursor:pointer;" for="mcOverlay">&#128257; Overlay Mode</label>
+                            <div style="font-size:0.78em;color:#888;font-weight:normal;">
+                                Split rows by a chosen KPI column (the Overlay Key).
+                                Each distinct value becomes a line group on the primary axis;
+                                the key column is also plotted on the secondary Y axis for reference.
+                            </div>
+                        </div>
+                    </div>
+                    <div id="overlayKeyRow" style="display:none;margin-top:10px;">
+                        <label style="margin-bottom:4px;">Overlay Key Column <small style="font-weight:normal;color:#888;">(column whose distinct values split rows into groups)</small></label>
+                        <select id="selOverlayKey" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:inherit;color:inherit;"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="mcEditBanner" class="mc-edit-banner">
+            <span>&#9999;&#65039; Editing: <strong id="mcEditBannerName"></strong></span>
+            <button class="btn-mini" style="background:var(--dark);color:white;" onclick="cancelMcEdit()">&#x2715; Cancel</button>
+        </div>
+        <button id="mcAddBtn" style="background:var(--primary);color:white;width:100%;margin-top:15px;" onclick="addMcRule()">+ Add to Queue</button>
+        <div id="mcQueueList" style="margin-top:10px;"></div>
+        <button style="background:var(--success);color:white;width:100%;margin-top:15px;" onclick="generateDashboard()">GENERATE DASHBOARD</button>
     </div>
 
     <div id="dashboard-container">
         <div id="dashboard-meta" class="hidden meta-bar">
             <span><strong id="active-file-label"></strong></span>
-            <button class="btn-mini" style="background:var(--danger); color:white;" onclick="resetAllZoom()">RESET VIEW (Full Data)</button>
+            <button class="btn-mini" style="background:var(--danger);color:white;" onclick="resetAllZoom()">RESET VIEW (Full Data)</button>
+            <small style="color:#aaa;font-size:0.75em;">Drag to zoom · Ctrl+Drag to pan</small>
         </div>
         <div id="dashboard"></div>
     </div>
@@ -117,306 +274,1329 @@
     <div id="console-header" onclick="toggleConsole()">
         <span>Activity Console</span>
         <div>
-            <button class="btn-mini" style="background:var(--primary); color:white;" onclick="copyConsole(event)">Copy Log</button>
-            <span id="console-arrow" style="margin-left:10px;">▲</span>
+            <button class="btn-mini" style="background:var(--primary);color:white;" onclick="copyConsole(event)">Copy Log</button>
+            <span id="console-arrow" style="margin-left:10px;">&#9650;</span>
         </div>
     </div>
     <div id="console-body"></div>
 </div>
 
 <script>
-let rawFilesStore = {}, parsedFilesStore = {}, activeLogData = [], activeFileName = "", availableTokens = [], ruleQueue = [], chartInstances = [];
-let isInternalSync = false;
+// =============================================================================
+// STATE
+// =============================================================================
+let rawFilesStore    = {};
+let parsedFilesStore = {};
+let fileIndexMap     = {};
+let activeLogData    = [];
+let activeFileName   = '';
+let availableTokens  = [];
+let ruleQueue        = [];
+let chartInstances   = [];
+let isInternalSync   = false;
+let editingRuleIndex = -1;
+let compIndexStore   = {};
+let mcEditingIndex   = -1;
+let mcHeaderStore    = {};  // {compKey: {typeLabel,typeVal,compLabel,compVal,kpiNames:[]}}
+let mcKpiNames       = [];  // ordered friendly KPI names from header file
+let mcColLabels      = {typeLabel:'Type', compLabel:'CompId'};  // column header labels
 
+// =============================================================================
+// CONSOLE
+// =============================================================================
 function logAction(msg) {
     const body = document.getElementById('console-body');
-    const time = new Date().toLocaleTimeString();
-    const div = document.createElement('div');
-    div.className = 'log-entry';
-    div.innerText = `[${time}] ${msg}`;
+    const div  = document.createElement('div');
+    div.className   = 'log-entry';
+    div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
     body.appendChild(div);
-    body.scrollTop = body.scrollHeight; 
+    body.scrollTop = body.scrollHeight;
 }
-function toggleConsole() { 
-    const p = document.getElementById('console-panel'); 
+function toggleConsole() {
+    const p = document.getElementById('console-panel');
     p.classList.toggle('collapsed');
-    document.getElementById('console-arrow').innerText = p.classList.contains('collapsed') ? '▲' : '▼';
+    document.getElementById('console-arrow').textContent = p.classList.contains('collapsed') ? '\u25b2' : '\u25bc';
 }
 function copyConsole(e) {
     e.stopPropagation();
-    const text = Array.from(document.querySelectorAll('.log-entry')).map(el => el.innerText).join('\n');
-    navigator.clipboard.writeText(text);
-    logAction("System: Console history copied to clipboard.");
+    const text = Array.from(document.querySelectorAll('.log-entry')).map(el => el.textContent).join('\n');
+    navigator.clipboard.writeText(text).catch(() => {});
+    logAction('System: Console log copied.');
 }
 
+// =============================================================================
+// TIMESTAMP HELPERS
+// =============================================================================
 function getUnix(ts) {
     if (!ts) return 0;
-    const months = { jan:"01", feb:"02", mar:"03", apr:"04", may:"05", jun:"06", jul:"07", aug:"08", sep:"09", oct:"10", nov:"11", dec:"12" };
-    let clean = ts.toLowerCase().replace(/(mon|tue|wed|thu|fri|sat|sun)/gi, "").trim();
+    const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+    const clean = ts.toLowerCase().replace(/(mon|tue|wed|thu|fri|sat|sun)/gi,'').trim();
     if (clean.includes('|')) {
-        let parts = clean.split('|'), dateParts = parts[0].trim().split(/\s+/);
-        let m = months[dateParts[0]] || "01", d = dateParts[1].padStart(2, '0');
-        let t = parts[1].trim().replace(/[:.]/g, "").substring(0, 6);
-        return parseInt(`2026${m}${d}${t}`);
-    } 
+        const parts = clean.split('|'), dp = parts[0].trim().split(/\s+/);
+        const m = months[dp[0]]||'01', d = (dp[1]||'01').padStart(2,'0');
+        const yr = (dp[2]&&dp[2].length===4) ? dp[2] : String(new Date().getFullYear());
+        const t = parts[1].trim().replace(/[:.]/g,'').substring(0,6);
+        return parseInt(yr+m+d+t);
+    }
     if (clean.includes(',')) {
-        let parts = clean.split(','), date = parts[0].trim().replace(/-/g, "");
-        let t = parts[1].trim().replace(/[:.]/g, "").substring(0, 6);
-        return parseInt(`${date}${t}`);
+        const parts = clean.split(',');
+        let ds = parts[0].trim().replace(/-/g,'');
+        if (ds.length<=4) ds = String(new Date().getFullYear()) + ds.padStart(4,'0');
+        const t = parts[1].trim().replace(/[:.]/g,'').substring(0,6);
+        return parseInt(ds+t);
+    }
+    if (clean.includes(' ')) {
+        const parts = clean.split(' ');
+        let ds = parts[0].trim().replace(/-/g,'');
+        if (ds.length===6) ds = String(new Date().getFullYear()).substring(0,2) + ds;
+        const t = (parts[1]||'').replace(/[:.]/g,'').substring(0,6);
+        return parseInt(ds+(t||'000000'));
     }
     return 0;
 }
-
 function formatLabel(ts) {
-    if (!ts) return "";
-    let clean = ts.replace(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/gi, "").trim();
-    if (clean.includes(',')) { 
-        let p = clean.split(','); return `${p[0].trim()} ${p[1].trim().substring(0, 5)}`;
-    }
-    if (clean.includes('|')) { 
-        let p = clean.split('|'), dp = p[0].trim().split(/\s+/);
-        return `${dp[0]} ${dp[1]} ${p[1].trim().substring(0, 5)}`;
-    }
+    if (!ts) return '';
+    const c = ts.replace(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/gi,'').trim();
+    if (c.includes(',')) { const p=c.split(','); return p[0].trim()+' '+p[1].trim().substring(0,5); }
+    if (c.includes('|')) { const p=c.split('|'),dp=p[0].trim().split(/\s+/); return dp[0]+' '+dp[1]+' '+p[1].trim().substring(0,5); }
+    if (c.includes(' ')) { const p=c.split(' '); return p[0]+' '+(p[1]||'').substring(0,5); }
     return ts;
 }
+// Convert any supported timestamp string to Unix milliseconds (for time scale).
+function getMs(ts) {
+    if (!ts || ts==='__gap__') return 0;
+    const months={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+    const clean = ts.replace(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/gi,'').trim();
+    try {
+        if (clean.includes('|')) {
+            const p=clean.split('|'), dp=p[0].trim().split(/\s+/);
+            const m=months[dp[0].toLowerCase()]||'01', d=(dp[1]||'01').padStart(2,'0');
+            const yr=(dp[2]&&dp[2].length===4)?dp[2]:String(new Date().getFullYear());
+            return new Date(yr+'-'+m+'-'+d+'T'+p[1].trim()).getTime()||0;
+        }
+        if (clean.includes(',')) {
+            const p=clean.split(',');
+            let ds=p[0].trim();
+            if (ds.replace(/-/g,'').length<=4) ds=String(new Date().getFullYear())+ds.replace(/-/g,'').padStart(4,'0');
+            return new Date(ds+'T'+p[1].trim()).getTime()||0;
+        }
+        if (clean.includes(' ')) {
+            const p=clean.split(' ');
+            let ds=p[0].replace(/-/g,'');
+            if (ds.length===6) ds=String(new Date().getFullYear()).substring(0,2)+ds;
+            return new Date(ds.substring(0,4)+'-'+ds.substring(4,6)+'-'+ds.substring(6,8)+'T'+(p[1]||'00:00:00')).getTime()||0;
+        }
+    } catch(e) {}
+    return 0;
+}
 
-async function exportFullPDF() {
-    logAction("User: Initiating PDF export.");
-    if(!chartInstances.length) { logAction("Warning: No charts available."); return; }
-    const defaultName = `KPI_Report_${activeFileName || 'Export'}`;
-    let userFilename = prompt("Enter Filename for PDF:", defaultName);
-    if (userFilename === null) { logAction("User: PDF export cancelled."); return; }
-    userFilename = userFilename.trim() || defaultName;
-    if (!userFilename.toLowerCase().endsWith('.pdf')) userFilename += '.pdf';
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p','mm','a4');
-    const items = [...document.querySelectorAll('.chart-wrapper')];
-    let y = 10;
-    for (let el of items) {
-        const canvas = await html2canvas(el);
-        doc.addImage(canvas.toDataURL('image/png'), 'PNG', 10, y, 190, 100);
-        y += 110; if (y > 250) { doc.addPage(); y = 10; }
+// =============================================================================
+// TIMELINE GAP DETECTION
+// =============================================================================
+// Sorts rows by time, finds the base interval (smallest non-zero step), then
+// inserts null-sentinel rows wherever a gap > 1.5× base interval exists.
+// Chart.js spanGaps:false leaves those segments visually empty.
+function buildTimelineWithGaps(rows) {
+    // Sorts rows, inserts null-sentinel rows at gaps, returns labels + gapIndices
+    // for category-scale charts.  gapIndices used by gap shader plugin.
+    if (rows.length < 2) return { labels:rows.map(r=>formatLabel(r.timestamp)), rows, gapIndices:[] };
+    const sorted = [...rows].sort((a,b)=>getMs(a.timestamp)-getMs(b.timestamp));
+    const tsList = [], seen = new Set();
+    sorted.forEach(r=>{ if(!seen.has(r.timestamp)){seen.add(r.timestamp);tsList.push(r.timestamp);} });
+    if (tsList.length < 2) return { labels:sorted.map(r=>formatLabel(r.timestamp)), rows:sorted, gapIndices:[] };
+    let minGap = Infinity;
+    for (let i=1;i<tsList.length;i++){const d=getMs(tsList[i])-getMs(tsList[i-1]); if(d>0&&d<minGap) minGap=d;}
+    if (!isFinite(minGap)||minGap===0) return { labels:sorted.map(r=>formatLabel(r.timestamp)), rows:sorted, gapIndices:[] };
+    const result = [];
+    for (let i=0;i<sorted.length;i++){
+        result.push(sorted[i]);
+        if (i<sorted.length-1){
+            const gap=getMs(sorted[i+1].timestamp)-getMs(sorted[i].timestamp);
+            if (gap>minGap*1.5) result.push({timestamp:'__gap__',tokens:null});
+        }
     }
-    doc.save(userFilename);
-    logAction("Success: PDF complete.");
+    const gapIndices = result.reduce((acc,r,i)=>{ if(r.timestamp==='__gap__') acc.push(i); return acc; },[]);
+    return { labels:result.map(r=>r.timestamp==='__gap__'?'':formatLabel(r.timestamp)), rows:result, gapIndices };
+}
+// Same logic for the overlay path, which works on a plain timestamp array.
+function insertGapsIntoTsOrder(tsOrder) {
+    // Sort, insert '__gap__' sentinels, return {tsOrderGapped, gapIndices}.
+    const sorted = [...tsOrder].sort((a,b)=>getMs(a)-getMs(b));
+    if (sorted.length < 2) return { tsOrderGapped:sorted, gapIndices:[] };
+    let minGap = Infinity;
+    for (let i=1;i<sorted.length;i++){const d=getMs(sorted[i])-getMs(sorted[i-1]); if(d>0&&d<minGap) minGap=d;}
+    if (!isFinite(minGap)||minGap===0) return { tsOrderGapped:sorted, gapIndices:[] };
+    const result = [];
+    for (let i=0;i<sorted.length;i++){
+        result.push(sorted[i]);
+        if (i<sorted.length-1){
+            const gap=getMs(sorted[i+1])-getMs(sorted[i]);
+            if (gap>minGap*1.5) result.push('__gap__');
+        }
+    }
+    const gapIndices = result.reduce((acc,v,i)=>{ if(v==='__gap__') acc.push(i); return acc; },[]);
+    return { tsOrderGapped:result, gapIndices };
 }
 
+// Global gap-shader plugin — registered once, reads ranges from per-chart options.
+// Storing config in options.plugins.gapShader avoids shadowing chartjs-plugin-zoom,
+// which breaks when a root-level plugins:[] array is passed to the Chart constructor.
+const _gapShaderPlugin = {
+    id: 'gapShader',
+    beforeDraw(chart) {
+        const cfg = chart.options.plugins?.gapShader;
+        if (!cfg || !cfg.indices || !cfg.indices.length) return;
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales.x) return;
+        ctx.save();
+        ctx.fillStyle = 'rgba(220,53,69,0.07)';
+        cfg.indices.forEach(gi => {
+            const x0 = scales.x.getPixelForValue(gi - 0.5);
+            const x1 = scales.x.getPixelForValue(gi + 0.5);
+            const lx=Math.min(x0,x1), rx=Math.max(x0,x1);
+            const cx=Math.max(lx,chartArea.left), cw=Math.min(rx,chartArea.right)-cx;
+            if (cw>0) ctx.fillRect(cx, chartArea.top, cw, chartArea.bottom-chartArea.top);
+        });
+        ctx.restore();
+    }
+};
+Chart.register(_gapShaderPlugin);
+// Returns plugin options object (or empty object if no gaps) for use in options.plugins.gapShader.
+function makeGapPlugin(gapIndices) {
+    return (gapIndices && gapIndices.length) ? { indices: gapIndices } : null;
+}
+
+
+// =============================================================================
+// FILE INGEST
+// =============================================================================
+async function ingestFiles(fileList) {
+    for (const f of fileList) rawFilesStore[f.name] = await f.text();
+    document.getElementById('file-status').textContent = Object.keys(rawFilesStore).length + ' file(s) ready.';
+    logAction('Filesystem: ' + fileList.length + ' file(s) loaded.');
+    processFilesFromUI();
+}
+document.getElementById('dataFile').addEventListener('change', async (e) => {
+    if (!e.target.files.length) return;
+    await ingestFiles(e.target.files);
+    e.target.value = '';
+});
+function handleDroppedFiles(fileList) { if (fileList&&fileList.length) ingestFiles(fileList); }
+
+// =============================================================================
+// CSV TIMESTAMP AUTO-DETECTION
+// =============================================================================
+function detectCsvTsFormat(dataLines) {
+    const reSingle = /^\d{6,8}\s+\d{1,2}[:.]\d{2}([:.]\d{2})?$/;
+    const reDate   = /^[\d\-\/]+$/;
+    let vs=0, vd=0;
+    dataLines.filter(l=>l.trim()).slice(0,10).forEach(line => {
+        const c0 = line.split(',')[0].trim();
+        if (reSingle.test(c0)) vs++; else vd++;
+    });
+    return vs > vd ? 'singleTs' : 'dateTime';
+}
+
+// =============================================================================
+// PARSER
+// =============================================================================
+function processFilesFromUI() {
+    document.getElementById('inventoryPanel').classList.add('hidden');
+    document.getElementById('builderPanel').classList.add('hidden');
+    document.getElementById('mcBuilderPanel').classList.add('hidden');
+    document.getElementById('dashboard-meta').classList.add('hidden');
+    document.getElementById('dashboard').innerHTML = '';
+    chartInstances.forEach(c=>c.destroy()); chartInstances=[];
+    activeLogData=[]; activeFileName='';
+    parsedFilesStore={}; availableTokens=[]; fileIndexMap={};
+    compIndexStore={}; editingRuleIndex=-1; mcEditingIndex=-1;
+    mcHeaderStore={}; mcKpiNames=[]; mcColLabels={typeLabel:'Type',compLabel:'CompId'};
+    let tokenCheck=new Set(), invIdx=0;
+
+    const tbody = document.getElementById('fileTableBody'); tbody.innerHTML='';
+
+    const inputVal = document.getElementById('kpiPattern').value.trim();
+    let pattern = inputVal;
+    if (inputVal.includes(':')) {
+        const parts=inputVal.split(':'); pattern=parts.slice(1).join(':').trim();
+        logAction("Filter: '"+pattern+"' (Label: "+parts[0].trim()+')');
+    } else { logAction("Filter: '"+(pattern||'All')+"'"); }
+
+    const mode            = document.getElementById('formatType').value;
+    const hasHeader       = document.getElementById('csvHasHeader').checked;
+    const manualHeaderRaw = document.getElementById('csvManualHeaders').value.trim();
+    const manualTokens    = manualHeaderRaw.split(',').map(t=>t.replace(/\s+/g,'').toLowerCase());
+    const csvTsFormatPref = document.getElementById('csvTsFormat').value;
+
+    let headerKeys = [];   // hoisted so MC summary block can read it after the forEach
+    Object.keys(rawFilesStore).forEach((name) => {
+        let lines = rawFilesStore[name].split(/\r?\n/).map(l=>l.replace(/[^\x20-\x7E]/g,'').trim()).filter(l=>l!=='');
+        headerKeys = (mode==='flatCsv'&&manualHeaderRaw) ? manualHeaderRaw.split(',').map(h=>h.trim()) : [];
+        if ((mode==='flatCsv'||mode==='multiComp') && hasHeader && lines.length>0) {
+            if (!manualHeaderRaw) headerKeys = lines[0].split(',').map(h=>h.trim());
+            lines.shift();
+        }
+        let csvTsFormat = csvTsFormatPref;
+        if (mode==='flatCsv' && csvTsFormatPref==='auto') {
+            const filtered = lines.filter(l=>!pattern||l.includes(pattern));
+            csvTsFormat = detectCsvTsFormat(filtered);
+            logAction("Auto-detect '"+name+"': "+(csvTsFormat==='singleTs'?'Single Timestamp':'Date+Time'));
+        }
+
+        const data = lines.filter(l=>!pattern||l.includes(pattern)).map(line=>{
+            if ((mode==='flatCsv'||mode==='multiComp') && manualHeaderRaw) {
+                const lt=line.split(',').map(t=>t.replace(/\s+/g,'').toLowerCase());
+                const limit=Math.min(lt.length,manualTokens.length,5);
+                let mc=0; for(let i=0;i<limit;i++) if(lt[i]===manualTokens[i]) mc++;
+                if (mc===limit&&limit>=2) return null;
+            }
+            const tokens={}; let timestamp='';
+            if (mode==='logPipe') {
+                const s=line.split('|'); if(s.length<5) return null;
+                timestamp=s[0].trim()+'|'+s[1].trim();
+                const kv=s[4].split(',');
+                for(let i=0;i<kv.length;i+=2){
+                    const k=(kv[i]||'').trim().replace(/<[^>]*>/g,'').trim();
+                    const v=parseFloat(kv[i+1])||0;
+                    if(k){tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k);availableTokens.push(k);}}
+                }
+            } else if (mode==='multiComp') {
+                const s=line.split(','); if(s.length<6) return null;
+                // Auto-detect header rows in multiComp mode.
+                // A header row is identified by EITHER:
+                //   (a) type AND compId columns still hold label-format strings
+                //       like "Type(1)" / "TestCompId(Test)" (contain parentheses)
+                //   (b) every KPI-column value is a non-empty, non-numeric string
+                //       (i.e., the row is a list of column name strings)
+                // When found: capture as headerKeys so KPI names are available;
+                // then skip — do not add to compIndexStore or data array.
+                const _kpiSample = s.slice(5);
+                const _typeLabel = /\(.+\)/.test(s[3].trim());
+                const _compLabel = /\(.+\)/.test(s[4].trim());
+                const _allStr    = _kpiSample.length > 0 &&
+                    _kpiSample.every(v => { const t=v.trim(); return t!=='' && isNaN(parseFloat(t)); });
+                if ((_typeLabel && _compLabel) || _allStr) {
+                    if (!headerKeys.length) {
+                        headerKeys = s.map(h => h.trim());
+                        logAction('MC Parser: auto-detected header row \u2014 ' + _kpiSample.length + ' KPI column name(s) captured.');
+                    }
+                    return null;  // skip this line as a data row
+                }
+                timestamp=s[0].trim()+','+s[1].trim();
+                const type=s[3].trim(), compId=s[4].trim();
+                if(!type&&!compId) return null;
+                const compKey=type+'|'+compId;
+                s.slice(5).forEach((val,i)=>{
+                    const k=(headerKeys[i+5])||('KPI_'+(i+1));
+                    // Preserve raw string for alphanumeric/special-char values
+                    // (e.g. overlay key column). Pure numeric values stored as float.
+                    const trimmed=val.trim();
+                    const num=parseFloat(trimmed);
+                    const v=(!isNaN(num)&&trimmed!=='')?num:trimmed;
+                    tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k);availableTokens.push(k);}
+                });
+                if(!compIndexStore[compKey]) compIndexStore[compKey]=[];
+                compIndexStore[compKey].push({timestamp,tokens});
+                // Diagnostic: log first row per compKey so user can verify keys+values
+                if(compIndexStore[compKey].length===1){
+                    const sampleKeys=Object.keys(tokens);
+                    logAction("MC Parser ['"+compKey+"']: keys=["+sampleKeys.slice(0,4).join(',')+"] sample="+sampleKeys.slice(0,2).map(k=>k+'='+tokens[k]).join(','));
+                }
+            } else {
+                const s=line.split(',');
+                if (csvTsFormat==='singleTs') {
+                    if(s.length<2) return null;
+                    timestamp=s[0].trim();
+                    s.slice(1).forEach((val,i)=>{
+                        const k=headerKeys[i+1]||('Col_'+(i+1));
+                        const v=parseFloat(val)||0;
+                        tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k);availableTokens.push(k);}
+                    });
+                } else {
+                    if(s.length<3) return null;
+                    timestamp=s[0].trim()+','+s[1].trim();
+                    s.forEach((val,i)=>{
+                        const k=headerKeys[i]||('Col_'+i);
+                        const v=parseFloat(val)||0;
+                        tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k);availableTokens.push(k);}
+                    });
+                }
+            }
+            return {timestamp,tokens};
+        }).filter(Boolean);
+
+        if (data.length) {
+            parsedFilesStore[name]=data; fileIndexMap[invIdx]=name;
+            renderInventoryRow(tbody,name,data.length,invIdx);
+            logAction("Parser: '"+name+"' \u2192 "+data.length+' rows.'); invIdx++;
+        } else { logAction("Parser: '"+name+"' \u2192 0 rows."); }
+    });
+
+    // ── MC DEBUG: full parser summary ───────────────────────────────────────
+    if (mode==='multiComp') {
+        logAction('── MC PARSER SUMMARY ──────────────────────────────');
+        logAction('  headerKeys captured: ' + (headerKeys.length
+            ? '[' + headerKeys.slice(0,3).join(',') + '...' + headerKeys[headerKeys.length-1] + '] (' + headerKeys.length + ' cols)'
+            : '(none — no header row detected)'));
+        Object.keys(compIndexStore).forEach(ck => {
+            const rows = compIndexStore[ck];
+            const maxR = rows.reduce((a,b)=>Object.keys(a.tokens).length>=Object.keys(b.tokens).length?a:b,{tokens:{}});
+            const ckeys = Object.keys(maxR.tokens);
+            logAction('  Component [' + ck + ']: ' + rows.length + ' rows, '
+                + ckeys.length + ' KPI cols → keys: ['
+                + ckeys.slice(0,4).join(',') + (ckeys.length>4?',...,'+ckeys[ckeys.length-1]:'') + ']');
+        });
+        logAction('────────────────────────────────────────────────────');
+    }
+    if (availableTokens.length) {
+        document.getElementById('inventoryPanel').classList.remove('hidden');
+        if (Object.keys(parsedFilesStore).length>0) {
+            if (mode==='multiComp') {
+                document.getElementById('builderPanel').classList.add('hidden');
+                document.getElementById('mcBuilderPanel').classList.remove('hidden');
+                populateMcSelects();
+            } else {
+                document.getElementById('mcBuilderPanel').classList.add('hidden');
+                document.getElementById('builderPanel').classList.remove('hidden');
+                populateSelects();
+            }
+        }
+    } else { logAction('Warning: No tokens found. Check pattern/mode.'); }
+}
+
+// =============================================================================
+// INVENTORY
+// =============================================================================
+function renderInventoryRow(tbody,name,count,index) {
+    const tr=document.createElement('tr'); tr.id='row-'+index; tr.className='file-row';
+    const tdN=document.createElement('td'),tdC=document.createElement('td'),tdA=document.createElement('td');
+    const btn=document.createElement('button');
+    tdN.textContent=name; tdC.textContent=count; btn.className='btn-mini'; btn.textContent='Analyze'; btn.dataset.index=index;
+    tdA.appendChild(btn); tr.appendChild(tdN); tr.appendChild(tdC); tr.appendChild(tdA); tbody.appendChild(tr);
+}
+document.getElementById('fileTableBody').addEventListener('click',(e)=>{
+    const btn=e.target.closest('button[data-index]'); if(!btn) return;
+    const nm=fileIndexMap[parseInt(btn.dataset.index,10)];
+    if(nm&&parsedFilesStore[nm]) selectFile(nm,parseInt(btn.dataset.index,10));
+});
+function selectFile(name,index) {
+    logAction("User: Selecting '"+name+"'");
+    document.querySelectorAll('.file-row').forEach(r=>r.classList.remove('active-row'));
+    const tr=document.getElementById('row-'+index); if(tr) tr.classList.add('active-row');
+    const mr=document.getElementById('row-merged'); if(mr) mr.classList.remove('active-row');
+    activeLogData=parsedFilesStore[name]; activeFileName=name;
+    const mode=document.getElementById('formatType').value;
+    if (mode==='multiComp') document.getElementById('mcBuilderPanel').classList.remove('hidden');
+    else document.getElementById('builderPanel').classList.remove('hidden');
+    if(ruleQueue.length>0) generateDashboard();
+}
+function mergeAllAndSelect() {
+    const fk=Object.keys(parsedFilesStore); if(!fk.length){logAction('Merge: No data.'); return;}
+    logAction('User: Merging all sources.');
+    let all=[]; fk.forEach(k=>{all=all.concat(parsedFilesStore[k]);});
+    all.sort((a,b)=>getUnix(a.timestamp)-getUnix(b.timestamp));
+    activeLogData=all; activeFileName='MERGED_TIMELINE';
+    document.querySelectorAll('.file-row').forEach(r=>r.classList.add('active-row'));
+    let mr=document.getElementById('row-merged');
+    if(!mr){mr=document.createElement('tr');mr.id='row-merged';mr.style.cssText='font-weight:bold;border-top:2px solid var(--primary);';document.getElementById('fileTableBody').appendChild(mr);}
+    mr.innerHTML='';
+    const tl=document.createElement('td'),tc=document.createElement('td'),te=document.createElement('td');
+    tl.textContent='\u2b1b MERGED (all files)'; tc.textContent=all.length;
+    mr.appendChild(tl); mr.appendChild(tc); mr.appendChild(te); mr.classList.add('active-row');
+    const mode=document.getElementById('formatType').value;
+    if(mode==='multiComp') document.getElementById('mcBuilderPanel').classList.remove('hidden');
+    else document.getElementById('builderPanel').classList.remove('hidden');
+    if(ruleQueue.length>0) generateDashboard();
+}
+
+// =============================================================================
+// CHART SYNC + ZOOM
+// =============================================================================
+function syncCharts(sourceChart) {
+    if(isInternalSync) return; isInternalSync=true;
+    const{min,max}=sourceChart.scales.x;
+    chartInstances.forEach(c=>{if(c!==sourceChart) c.zoomScale('x',{min,max},'original');});
+    isInternalSync=false;
+}
+function resetAllZoom() { logAction('View: Zoom reset.'); isInternalSync=true; chartInstances.forEach(c=>c.resetZoom()); isInternalSync=false; }
+
+// =============================================================================
+// STATS
+// =============================================================================
+function computeStats(values) {
+    // Handle both plain numbers and {x,y} time-scale objects
+    const nums=values.map(v=>(v!==null&&v!==undefined&&typeof v==='object'&&'y' in v)?v.y:v)
+                     .filter(x=>x!==null&&x!==undefined&&isFinite(x)&&!isNaN(x));
+    if(!nums.length) return{min:'N/A',max:'N/A',avg:'N/A',count:0};
+    const mn=nums.reduce((a,b)=>b<a?b:a,nums[0]), mx=nums.reduce((a,b)=>b>a?b:a,nums[0]);
+    return{min:mn.toLocaleString(),max:mx.toLocaleString(),avg:(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(2),count:nums.length};
+}
+function buildStatsTable(datasets,isRatio) {
+    const tbl=document.createElement('table'); tbl.className='stats-table';
+    const hr=tbl.createTHead().insertRow();
+    ['Metric','Min','Max','Avg','Points'].concat(isRatio?['Unit']:[]).forEach(h=>{const th=document.createElement('th');th.textContent=h;hr.appendChild(th);});
+    const tb=tbl.createTBody();
+    datasets.forEach(ds=>{
+        const s=computeStats(ds.data),row=tb.insertRow();
+        [ds.label,s.min,s.max,s.avg,s.count.toLocaleString()].concat(isRatio?['%']:[]).forEach(val=>{const td=row.insertCell();td.textContent=val;});
+    });
+    return tbl;
+}
+
+// =============================================================================
+// DASHBOARD HELPERS
+// =============================================================================
+function makeChartOptions() {
+    // Drag-to-zoom: plain left-click drag draws a blue selection box and zooms in.
+    // Pan: Ctrl+drag (or Ctrl+scroll) pans the zoomed view without triggering zoom.
+    // modifierKey on pan ensures the two mouse gestures never conflict.
+    return {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{zoom:{
+            zoom:{
+                drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},
+                mode:'x',
+                onZoomComplete:({chart})=>syncCharts(chart)
+            },
+            pan:{
+                enabled:true, mode:'x',
+                modifierKey:'ctrl',
+                onPanComplete:({chart})=>syncCharts(chart)
+            }
+        }},
+        scales:{x:{ticks:{maxTicksLimit:14, maxRotation:45, autoSkip:true}}}
+    };
+}
+function makeOverlayChartOptions(ovKeyLabel, kpiLabel) {
+    return {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{zoom:{
+            zoom:{drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},mode:'x',onZoomComplete:({chart})=>syncCharts(chart)},
+            pan:{enabled:true,mode:'x',modifierKey:'ctrl',onPanComplete:({chart})=>syncCharts(chart)}
+        }},
+        scales:{
+            x:{},
+            y:{ type:'linear', position:'left',
+                title:{display:true, text: kpiLabel || 'KPI Values'},
+                grid:{drawOnChartArea:true} },
+            y2:{ type:'linear', position:'right',
+                title:{display:true, text: ovKeyLabel || 'Overlay Key'},
+                grid:{drawOnChartArea:false} }
+        }
+    };
+}
+function makeChartWrap(title,canvasId,container) {
+    const wrap=document.createElement('div'); wrap.className='chart-wrapper';
+    const hRow=document.createElement('div'); hRow.className='chart-header';
+    const h3=document.createElement('h3'); h3.textContent=title;
+    const cb=document.createElement('button'); cb.className='btn-mini chart-copy-btn'; cb.textContent='\ud83d\udccb Copy';
+    cb.addEventListener('click',()=>copyChartToClipboard(cb,wrap));
+    hRow.appendChild(h3); hRow.appendChild(cb); wrap.appendChild(hRow);
+    const cd=document.createElement('div'); cd.className='chart-container';
+    const cv=document.createElement('canvas'); cv.id=canvasId;
+    cd.appendChild(cv); wrap.appendChild(cd); container.appendChild(wrap);
+    return{wrap,canvas:cv};
+}
+
+// =============================================================================
+// DASHBOARD
+// =============================================================================
+function generateDashboard() {
+    if (!activeLogData.length && document.getElementById('formatType').value!=='multiComp') {
+        const fk=Object.keys(parsedFilesStore);
+        if(fk.length===1){logAction('System: Auto-binding.'); selectFile(fk[0],0); return;}
+        logAction('Error: No data loaded.'); return;
+    }
+    if(!ruleQueue.length){logAction('Warning: Rule queue empty.'); return;}
+    logAction('Dashboard: Rebuilding.');
+    chartInstances.forEach(c=>c.destroy()); chartInstances=[];
+    const container=document.getElementById('dashboard'); container.innerHTML='';
+    document.getElementById('dashboard-meta').classList.remove('hidden');
+    document.getElementById('active-file-label').textContent=activeFileName;
+    // Build gap-aware timeline for standard rules (shared across all non-MC rules)
+    const { labels, rows: gappedStdData, gapIndices: stdGapIndices } = buildTimelineWithGaps(activeLogData);
+
+    ruleQueue.forEach((rule,idx)=>{
+        if (rule._mc) {
+            const isRatio=rule.mode==='ratio', bt=rule.tokens[0];
+            const plotT=isRatio?rule.tokens.slice(1):rule.tokens; if(!plotT.length) return;
+
+            if (rule._overlay && rule._overlayKey) {
+                // ── OVERLAY MODE ──────────────────────────────────────────────────
+                // One chart per selected Type|CompId.
+                // Rows are split by distinct values of the Overlay Key column
+                // (e.g. KPIHeader1 = 116 / 117 / 118).
+                // Primary Y (left) : one line per selected KPI, per group value
+                //                    same colour per group, different dash per KPI
+                // Secondary Y (right): overlay key column itself, dotted reference
+                const dashPatterns = [[], [6,3], [2,3], [10,4,2,4], [15,4]];
+
+                (rule.compKeys||[]).forEach((compKey, ci) => {
+                    const rows = compIndexStore[compKey];
+                    if (!rows||!rows.length) { logAction("Warning: No data for '"+compKey+"'"); return; }
+
+                    const hdr   = mcHeaderStore[compKey];
+                    const parts = compKey.split('|');
+                    const dn    = (rule.displayNames&&rule.displayNames[compKey])
+                        || (hdr ? hdr.typeLabel+': '+hdr.typeVal+' '+hdr.compLabel+': '+hdr.compVal
+                                : parts[0]+'-'+parts[1]);
+
+                    // Per-component column list for overlay (max-column row)
+                    const ovMaxRow = rows.reduce(
+                        (a,b) => Object.keys(a.tokens).length >= Object.keys(b.tokens).length ? a : b,
+                        { tokens:{} }
+                    );
+                    const ovCompKeys = Object.keys(ovMaxRow.tokens);
+                    // Friendly name helper: index by position in THIS component's column list
+                    const fname = t => {
+                        const ki = ovCompKeys.indexOf(t);
+                        return (hdr && hdr.kpiNames && ki >= 0 && hdr.kpiNames[ki]) ? hdr.kpiNames[ki] : t;
+                    };
+
+                    const ovKey      = rule._overlayKey;
+                    const ovKeyLabel = fname(ovKey);
+                    const kpiLabel   = plotT.map(fname).join(' / ');
+                    // Diagnostic
+                    if(rows.length){
+                        const sk=Object.keys(rows[0].tokens);
+                        const miss=[...plotT, ovKey].filter(t=>!sk.includes(t));
+                        if(miss.length) logAction("MC Overlay WARN ['"+compKey+"']: keys=["+sk.slice(0,6).join(',')+"] MISSING: "+miss.join(','));
+                        else logAction("MC Overlay ['"+compKey+"']: "+rows.length+" rows, ovKey="+ovKey+", plotT=["+plotT.join(',')+"] ✓");
+                    }
+
+                    // Distinct timestamps in original order
+                    const tsOrder = [], tsSet = new Set();
+                    rows.forEach(row => {
+                        if (!tsSet.has(row.timestamp)) { tsSet.add(row.timestamp); tsOrder.push(row.timestamp); }
+                    });
+                    // Insert gap sentinels where time lapses occur
+                    const { tsOrderGapped, gapIndices: ovGapIndices } = insertGapsIntoTsOrder(tsOrder);
+
+                    // Group rows by overlay-key value; last writer wins per timestamp
+                    const ovGroups = {};
+                    rows.forEach(row => {
+                        const val = String(row.tokens[ovKey] !== undefined ? row.tokens[ovKey] : '?');
+                        if (!ovGroups[val]) ovGroups[val] = {};
+                        ovGroups[val][row.timestamp] = row;
+                    });
+                    const ovValues = Object.keys(ovGroups).sort((a,b) => {
+                        const na=parseFloat(a), nb=parseFloat(b);
+                        if(!isNaN(na)&&!isNaN(nb)) return na-nb;
+                        return a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'});
+                    });
+
+                    const datasets = [];
+                    ovValues.forEach((ovVal, gi) => {
+                        const color   = 'hsl('+(gi*137)+',70%,50%)';
+                        const rowByTs = ovGroups[ovVal];
+                        // One line per selected KPI metric for this overlay-key group
+                        plotT.forEach((token, ti) => {
+                            datasets.push({
+                                label      : fname(token)+' ('+ovKeyLabel+': '+ovVal+')',
+                                data       : tsOrderGapped.map(ts => {
+                                    if (ts==='__gap__') return null;
+                                    const row = rowByTs[ts]; if (!row) return null;
+                                    if (isRatio) { const b=row.tokens[bt]||0; return b===0?null:((row.tokens[token]||0)/b)*100; }
+                                    return row.tokens[token] !== undefined ? row.tokens[token] : null;
+                                }),
+                                borderColor: color, borderDash: dashPatterns[ti % dashPatterns.length],
+                                borderWidth: 1.8, pointRadius: 0, tension: 0.1,
+                                spanGaps: false
+                            });
+                        });
+                    });
+
+                    const cl = tsOrderGapped.map(ts => ts==='__gap__' ? '' : formatLabel(ts));
+                    const title = rule.header+' ('+dn+')';
+                    const {wrap, canvas} = makeChartWrap(title, 'canvas-ov-'+idx+'-'+ci, container);
+
+                    // ── Static color key: "KPIHeader1: ● 116  ● 117  ● 118" ──────────
+                    const keyBar = document.createElement('div');
+                    keyBar.style.cssText = 'font-size:0.82em;margin:-4px 0 10px 0;display:flex;flex-wrap:wrap;gap:12px;align-items:center;';
+                    const keyTitle = document.createElement('span');
+                    keyTitle.style.cssText = 'font-weight:600;color:var(--text-main);';
+                    keyTitle.textContent = ovKeyLabel + ':';
+                    keyBar.appendChild(keyTitle);
+                    ovValues.forEach((ovVal, gi) => {
+                        const chip = document.createElement('span');
+                        chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;font-weight:600;'
+                                           + 'color:hsl('+(gi*137)+',70%,50%);';
+                        const dot=document.createElement('span'); dot.textContent='● ';
+                        chip.appendChild(dot);
+                        chip.appendChild(document.createTextNode(ovVal));
+                        keyBar.appendChild(chip);
+                    });
+                    // Insert after chart-header row, before chart-container
+                    const chartContainer = wrap.querySelector('.chart-container');
+                    wrap.insertBefore(keyBar, chartContainer);
+
+                    const _ovGapCfg=makeGapPlugin(ovGapIndices);
+                    const _ovOpts=makeChartOptions(); if(_ovGapCfg) _ovOpts.plugins.gapShader=_ovGapCfg;
+                    chartInstances.push(new Chart(canvas.getContext('2d'), {
+                        type:'line', data:{labels:cl, datasets},
+                        options: _ovOpts
+                    }));
+                    wrap.appendChild(buildStatsTable(datasets, isRatio));
+                });
+            } else {
+                // ── PER-COMPONENT MODE: one chart per component, all KPIs on it ─────
+                (rule.compKeys||[]).forEach((compKey,ci)=>{
+                    const rows=compIndexStore[compKey];
+                    if(!rows||!rows.length){logAction("Warning: No data for '"+compKey+"'"); return;}
+                    const parts=compKey.split('|');
+                    const hdrTitle=mcHeaderStore[compKey];
+                    const dn=(rule.displayNames&&rule.displayNames[compKey])
+                        ||(hdrTitle ? hdrTitle.typeLabel+': '+hdrTitle.typeVal+' '+hdrTitle.compLabel+': '+hdrTitle.compVal
+                                    : parts[0]+'-'+parts[1]);
+                    const title=rule.header+' ('+dn+')';
+                    // Build gap-aware timeline for this component
+                    const { labels: cl, rows: gappedRows, gapIndices: pcGapIndices } = buildTimelineWithGaps(rows);
+                    // Per-component column list — use max-column row (original rows, not gapped)
+                    const pcMaxRow = rows.reduce(
+                        (a,b) => Object.keys(a.tokens).length >= Object.keys(b.tokens).length ? a : b,
+                        { tokens:{} }
+                    );
+                    const pcKeys = Object.keys(pcMaxRow.tokens);
+                    // Friendly name helper: index by position in THIS component's column list
+                    const pcName = t => {
+                        const ki = pcKeys.indexOf(t);
+                        return (hdrTitle && hdrTitle.kpiNames && ki >= 0 && hdrTitle.kpiNames[ki])
+                            ? hdrTitle.kpiNames[ki] : t;
+                    };
+                    // Diagnostic
+                    if(rows.length){
+                        const missing=plotT.filter(t=>!pcKeys.includes(t));
+                        if(missing.length) logAction("MC Chart WARN ['"+compKey+"']: plotting ["+plotT.join(',')+"] but data keys are ["+pcKeys.slice(0,6).join(',')+"] — MISSING: "+missing.join(','));
+                        else logAction("MC Chart ['"+compKey+"']: "+rows.length+" rows, plotting ["+plotT.join(',')+"] ✓");
+                    }
+                    const cd=plotT.map((t,i)=>({
+                        label: pcName(t),
+                        data:gappedRows.map(d=>{
+                            if(d.tokens===null) return null;
+                            if(isRatio){const b=d.tokens[bt]||0;return b===0?null:((d.tokens[t]||0)/b)*100;}
+                            return d.tokens[t]!==undefined?d.tokens[t]:null;
+                        }),
+                        borderColor:'hsl('+(i*137)+',70%,50%)',borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:false
+                    }));
+                    const{wrap,canvas}=makeChartWrap(title,'canvas-mc-'+idx+'-'+ci,container);
+                    const _pcGapCfg=makeGapPlugin(pcGapIndices);
+                    const _pcOpts=makeChartOptions(); if(_pcGapCfg) _pcOpts.plugins.gapShader=_pcGapCfg;
+                    chartInstances.push(new Chart(canvas.getContext('2d'),{type:'line',data:{labels:cl,datasets:cd},options:_pcOpts}));
+                    wrap.appendChild(buildStatsTable(cd,isRatio));
+                });
+            }
+            return;
+        }
+        // Standard rule
+        const isRatio=rule.mode==='ratio', bt=rule.tokens[0];
+        const plotT=isRatio?rule.tokens.slice(1):rule.tokens; if(!plotT.length) return;
+        const{wrap,canvas}=makeChartWrap(rule.header,'canvas-'+idx,container);
+        const ds=plotT.map((t,i)=>({
+            label:t,
+            data:gappedStdData.map(d=>{
+                if(d.tokens===null) return null;
+                if(isRatio){const b=d.tokens[bt]||0;return b===0?null:((d.tokens[t]||0)/b)*100;}
+                return d.tokens[t]!==undefined?d.tokens[t]:null;
+            }),
+            borderColor:'hsl('+(i*137)+',70%,50%)',borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:false
+        }));
+        const _stdGapCfg=makeGapPlugin(stdGapIndices);
+        const _stdOpts=makeChartOptions(); if(_stdGapCfg) _stdOpts.plugins.gapShader=_stdGapCfg;
+        chartInstances.push(new Chart(canvas.getContext('2d'),{type:'line',data:{labels,datasets:ds},options:_stdOpts}));
+        wrap.appendChild(buildStatsTable(ds,isRatio));
+    });
+}
+
+// =============================================================================
+// STANDARD RULE QUEUE
+// =============================================================================
+function addRuleToQueue() {
+    const tokens=Array.from(document.getElementById('selA').selectedOptions).map(o=>o.value);
+    if(!tokens.length){logAction('Warning: No metrics selected.'); return;}
+    const r={header:document.getElementById('gHeader').value.trim()||'KPI',mode:document.getElementById('analysisMode').value,tokens};
+    if(editingRuleIndex>=0){
+        const old=ruleQueue[editingRuleIndex].header; ruleQueue[editingRuleIndex]=r;
+        logAction("Rule: Updated '"+old+"' \u2192 '"+r.header+"'."); cancelEditRule();
+    } else {
+        ruleQueue.push(r); document.getElementById('gHeader').value='';
+        logAction("Rule: Added '"+r.header+"'."); renderQueue();
+    }
+}
+function editRule(index) {
+    const r=ruleQueue[index]; if(!r||r._mc) return;
+    editingRuleIndex=index;
+    document.getElementById('gHeader').value=r.header;
+    document.getElementById('analysisMode').value=r.mode;
+    Array.from(document.getElementById('selA').options).forEach(o=>{o.selected=r.tokens.includes(o.value);});
+    document.getElementById('editBannerName').textContent=r.header;
+    document.getElementById('editBanner').classList.add('active');
+    const btn=document.getElementById('addRuleBtn'); btn.textContent='\ud83d\udcbe Save Rule Changes'; btn.classList.add('edit-mode');
+    renderQueue(); document.getElementById('gHeader').scrollIntoView({behavior:'smooth',block:'center'});
+    logAction("Rule: Editing '"+r.header+"'.");
+}
+function cancelEditRule() {
+    editingRuleIndex=-1; document.getElementById('gHeader').value=''; document.getElementById('analysisMode').value='direct';
+    Array.from(document.getElementById('selA').options).forEach(o=>o.selected=false);
+    document.getElementById('editBanner').classList.remove('active');
+    const btn=document.getElementById('addRuleBtn'); btn.textContent='+ Add to Queue'; btn.classList.remove('edit-mode');
+    renderQueue();
+}
+function renderQueue() {
+    const q=document.getElementById('queueList'); q.innerHTML='';
+    const std=ruleQueue.filter(r=>!r._mc);
+    if(!std.length){const e=document.createElement('div');e.style.cssText='padding:8px;color:#888;font-style:italic;font-size:0.85em;';e.textContent='No rules in queue.';q.appendChild(e);return;}
+    ruleQueue.forEach((r,i)=>{
+        if(r._mc) return;
+        const div=document.createElement('div'); div.className='queue-item'+(i===editingRuleIndex?' editing':'');
+        const span=document.createElement('span'); span.className='queue-label';
+        span.textContent=r.header+'  ('+(r.mode==='ratio'?'%':'#')+'  '+r.tokens.length+' metric'+(r.tokens.length!==1?'s':'')+')';
+        const bg=document.createElement('div'); bg.style.cssText='display:flex;gap:4px;flex-shrink:0;';
+        const eb=document.createElement('button'); eb.className='btn-mini'; eb.style.cssText='background:var(--warning);color:#333;'; eb.textContent='\u270f\ufe0f Edit'; eb.addEventListener('click',()=>editRule(i));
+        const db=document.createElement('button'); db.className='btn-mini'; db.style.cssText='background:var(--danger);color:white;'; db.textContent='\u2715';
+        db.addEventListener('click',()=>{const n=ruleQueue[i].header;ruleQueue.splice(i,1);if(editingRuleIndex===i)cancelEditRule();else if(editingRuleIndex>i)editingRuleIndex--;logAction("Rule: Removed '"+n+"'.");renderQueue();});
+        bg.appendChild(eb);bg.appendChild(db);div.appendChild(span);div.appendChild(bg);q.appendChild(div);
+    });
+}
+function populateSelects() {
+    const s=document.getElementById('selA'); s.innerHTML='';
+    availableTokens.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;s.appendChild(o);});
+}
+
+// =============================================================================
+// MULTI-COMPONENT RULE QUEUE
+// =============================================================================
+
+// ── Header-file loader ────────────────────────────────────────────────────────
+// Each row of the header file describes one Type|CompId combination.
+// Columns mirror the data file structure:
+//   col0: Date label  (ignored, just "Date")
+//   col1: Time label  (ignored)
+//   col2: Inst/Seq    (ignored)
+//   col3: Type column — one of:
+//           "Type(1)"    → column label = "Type",   raw value in data = "1"
+//           "1"          → column label = "Type",   raw value = "1"  (bare value)
+//   col4: CompId column — one of:
+//           "CompId(ABCD)" → label = "CompId",  raw value = "ABCD"
+//           "ABCD"         → label = "CompId",  raw value = "ABCD"
+//   col5+: KPI friendly names  (e.g. "MSU Received/min", "SM Started/min", ...)
+//
+// Example header file rows:
+//   Date,Time,Inst,Type(1),CompId(ABCD),KPIHeader1,KPIHeader2
+//   Date,Time,Inst,1,ABCD,KPIHeader1,KPIHeader2
+//   Date,Time,Inst,Type(1),CompId(10),KPIHeader1,KPIHeader2
+//   Date,Time,Inst,Type(1),Test,KPIHeader1,KPIHeader2
+function parseMcHeaderCol(raw) {
+    // Parses "Label(value)" → {label, val}
+    // or bare "value"        → {label: null, val: raw}
+    const m = raw.match(/^([^(]+)\((.+)\)$/);
+    if (m) return { label: m[1].trim(), val: m[2].trim() };
+    return { label: null, val: raw.trim() };
+}
+
+function loadMcHeaderFile(input) {
+    if (!input.files.length) return;
+    const file  = input.files[0];   // save reference BEFORE clearing input
+    const fname = file.name;
+    input.value = '';               // reset so same file can be re-selected
+    file.text().then(raw => {
+        const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l && !l.startsWith('#'));
+        if (!lines.length) { logAction('Header file: empty — ignored.'); return; }
+
+        mcHeaderStore = {}; mcKpiNames = []; mcColLabels = {typeLabel:'Type', compLabel:'CompId'};
+        const kpiNameSet = [];
+        let matched = 0;
+
+        lines.forEach((line, li) => {
+            const cols = line.split(',').map(c=>c.trim());
+            // Minimum: Date,Time,Inst,TypeCol,CompIdCol,KPI1 → 6 cols
+            if (cols.length < 6) return;
+
+            // cols[3] = Type descriptor, cols[4] = CompId descriptor, cols[5+] = KPI names
+            const typeInfo  = parseMcHeaderCol(cols[3]);
+            const compInfo  = parseMcHeaderCol(cols[4]);
+            const kpiCols   = cols.slice(5).filter(n => n !== '');
+
+            // Extract column labels from first row
+            if (li === 0) {
+                if (typeInfo.label) mcColLabels.typeLabel = typeInfo.label;
+                if (compInfo.label) mcColLabels.compLabel = compInfo.label;
+            }
+
+            // KPI names — use union from all rows (typically identical)
+            if (!kpiNameSet.length) kpiCols.forEach(n => { if (n) kpiNameSet.push(n); });
+
+            // Match to data: build key from raw type + compId values
+            const compKey = typeInfo.val + '|' + compInfo.val;
+            if (compIndexStore[compKey] !== undefined) {
+                mcHeaderStore[compKey] = {
+                    typeLabel : typeInfo.label || mcColLabels.typeLabel,
+                    typeVal   : typeInfo.val,
+                    compLabel : compInfo.label || mcColLabels.compLabel,
+                    compVal   : compInfo.val,
+                    kpiNames  : kpiCols
+                };
+                matched++;
+            } else {
+                logAction("Header row " + (li+1) + ": key '" + compKey + "' not found in data — skipped.");
+            }
+        });
+
+        // Build canonical KPI name list from first header row
+        kpiNameSet.forEach(n => { if (!mcKpiNames.includes(n)) mcKpiNames.push(n); });
+
+        // ── HEADER FILE DEBUG: dump what was loaded ───────────────────────────
+        logAction('── MC HEADER FILE: ' + fname + ' ─────────────────────────');
+        logAction('  Parsed ' + lines.length + ' row(s), matched ' + matched + ' component(s)');
+        Object.keys(mcHeaderStore).forEach(ck => {
+            const h = mcHeaderStore[ck];
+            const kn = h.kpiNames;
+            logAction('  [' + ck + '] → ' + kn.length + ' KPI name(s): ['
+                + kn.slice(0,4).join(',') + (kn.length>4?',...,'+kn[kn.length-1]:'') + ']');
+        });
+        if (matched < lines.length) {
+            logAction('  UNMATCHED rows: ' + (lines.length - matched)
+                + ' — these compKey values were not found in parsed data:');
+            lines.forEach((line,li)=>{
+                const cols=line.split(',').map(c=>c.trim()); if(cols.length<6) return;
+                const ti=parseMcHeaderCol(cols[3]), ci2=parseMcHeaderCol(cols[4]);
+                const ck2=ti.val+'|'+ci2.val;
+                if(compIndexStore[ck2]===undefined) logAction('    row '+(li+1)+': key "'+ck2+'" not in data');
+            });
+        }
+        logAction('────────────────────────────────────────────────────');
+
+        // Show badge
+        document.getElementById('mcHdrFileName').textContent = fname;
+        document.getElementById('mcHdrFileSummary').textContent =
+            '(' + matched + ' component(s) \u00b7 ' + mcKpiNames.length + ' KPI column(s))';
+        document.getElementById('mcHdrFileInfo').style.display = 'block';
+
+        logAction("Header file '" + fname + "': " + matched + " component(s) mapped, "
+                  + mcKpiNames.length + " KPI name(s). Type col=\"" + mcColLabels.typeLabel
+                  + "\" CompId col=\"" + mcColLabels.compLabel + "\".");
+        populateMcSelects();
+    }).catch(err => logAction('Header file error: ' + err.message));
+}
+
+function clearMcHeaderFile() {
+    mcHeaderStore = {}; mcKpiNames = []; mcColLabels = {typeLabel:'Type',compLabel:'CompId'};
+    document.getElementById('mcHdrFileInfo').style.display = 'none';
+    document.getElementById('mcHdrFileName').textContent   = '';
+    document.getElementById('mcHdrFileSummary').textContent = '';
+    document.getElementById('mcHdrFile').value = '';
+    document.getElementById('mcColLabelBar').style.display = 'none';
+    populateMcSelects();
+    logAction('Header file cleared.');
+}
+
+function populateMcSelects() {
+    const hasHdr = Object.keys(mcHeaderStore).length > 0;
+
+    // ── Show/update column label bar ─────────────────────────────────────────
+    const bar = document.getElementById('mcColLabelBar');
+    if (hasHdr) {
+        document.getElementById('mcColLabelText').textContent =
+            'Column labels from header file \u2014 Type: "' + mcColLabels.typeLabel
+            + '"   CompId: "' + mcColLabels.compLabel + '"';
+        bar.style.display = 'block';
+    } else {
+        bar.style.display = 'none';
+    }
+
+    // ── Type-CompId selector ─────────────────────────────────────────────────
+    const sc = document.getElementById('selComp');
+    // Preserve any existing user selection across rebuilds (e.g. after header reload)
+    const prevCompSel = new Set(Array.from(sc.selectedOptions).map(o => o.value));
+    sc.innerHTML = '';
+    const sortedCompKeys = Object.keys(compIndexStore).sort();
+    sortedCompKeys.forEach((key, ki) => {
+        const p   = key.split('|');
+        const hdr = mcHeaderStore[key];
+        const o   = document.createElement('option');
+        o.value   = key;
+        if (hdr) {
+            o.textContent = hdr.typeLabel + ': ' + hdr.typeVal
+                          + ' \u2014 ' + hdr.compLabel + ': ' + hdr.compVal
+                          + '  (' + compIndexStore[key].length + ' rows)';
+        } else {
+            o.textContent = 'Type: ' + p[0] + ' \u2014 CompId: ' + p[1]
+                          + '  (' + compIndexStore[key].length + ' rows)';
+        }
+        // Restore previous selection; if nothing was previously selected,
+        // auto-select the first entry so KPI headers always show immediately
+        o.selected = prevCompSel.size > 0 ? prevCompSel.has(key) : ki === 0;
+        sc.appendChild(o);
+    });
+
+    // ── KPI metric selector — delegated to refreshMcKpiSelector() ────────────
+    refreshMcKpiSelector();
+
+    logAction('MultiComp: ' + Object.keys(compIndexStore).length + ' component(s)'
+              + (hasHdr ? ', ' + Object.keys(mcHeaderStore).length + ' with headers' : '') + '.');
+}
+
+// Rebuild the KPI Metrics selector scoped to the first selected Type-CompId.
+// Rules:
+//   - Option count  = number of KPI columns that component actually has in the data
+//   - Display text  = header kpiNames[i] if present for that position
+//   - Extra columns beyond header coverage shown as KPI_<n> so user can spot gaps
+//   - No extra options are added beyond the component's real column count
+function refreshMcKpiSelector() {
+    const sc = document.getElementById('selComp');
+    // Default to first entry on load (populateMcSelects auto-selects it)
+    const selectedKey = sc.selectedOptions.length > 0 ? sc.selectedOptions[0].value
+                      : sc.options.length > 0 ? sc.options[0].value : null;
+
+    const sk = document.getElementById('selMcKpi');
+    const prevSelected = new Set(Array.from(sk.selectedOptions).map(o => o.value));
+    sk.innerHTML = '';
+
+    if (!selectedKey) {
+        document.getElementById('mcKpiSourceLabel').textContent = '';
+        return;
+    }
+
+    // Get token keys from the row with the most columns for this component.
+    // Using max-column row ensures all possible KPI columns are visible,
+    // even if some rows have fewer columns than others.
+    const compRows  = compIndexStore[selectedKey] || [];
+    const maxRow    = compRows.reduce(
+        (a, b) => Object.keys(a.tokens).length >= Object.keys(b.tokens).length ? a : b,
+        { tokens: {} }
+    );
+    const compKeys  = Object.keys(maxRow.tokens);
+
+    const hdr      = mcHeaderStore[selectedKey] || null;
+    const kpiNames = (hdr && hdr.kpiNames) ? hdr.kpiNames : [];
+    const srcLabel = document.getElementById('mcKpiSourceLabel');
+
+    // Build one option per column this component actually has — no more, no less.
+    compKeys.forEach((rawKey, i) => {
+        const o = document.createElement('option');
+        o.value = rawKey;
+        // Friendly name from header if this position is covered; else KPI_<n>
+        o.textContent = (i < kpiNames.length && kpiNames[i]) ? kpiNames[i] : rawKey;
+        if (prevSelected.has(rawKey)) o.selected = true;
+        sk.appendChild(o);
+    });
+
+    // ── KPI SELECTOR DEBUG ────────────────────────────────────────────────────
+    logAction('── KPI SELECTOR for [' + selectedKey + '] ──────────────────────');
+    logAction('  compRows: ' + compRows.length + ' rows');
+    logAction('  compKeys (' + compKeys.length + '): [' + compKeys.slice(0,5).join(',') + (compKeys.length>5?',...,'+compKeys[compKeys.length-1]:'') + ']');
+    logAction('  kpiNames (' + kpiNames.length + '): [' + kpiNames.slice(0,5).join(',') + (kpiNames.length>5?',...,'+kpiNames[kpiNames.length-1]:'') + ']');
+    // Show first 5 option mappings
+    const _mappings = compKeys.slice(0,5).map((k,i)=>{
+        const label=(i<kpiNames.length&&kpiNames[i])?kpiNames[i]:k;
+        return k+'→"'+label+'"';
+    });
+    logAction('  Mappings (first 5): ' + _mappings.join(', ') + (compKeys.length>5?' ...':''));
+    logAction('  Options shown: ' + compKeys.length + (hdr ? ' (header mapped: '+Math.min(compKeys.length,kpiNames.length)+')' : ' (no header)'));
+    logAction('────────────────────────────────────────────────────');
+
+    if (hdr) {
+        const extra = compKeys.length - kpiNames.length;
+        srcLabel.textContent = '— headers from: ' + hdr.typeLabel + ': ' + hdr.typeVal
+                             + ' / ' + hdr.compLabel + ': ' + hdr.compVal
+                             + (extra > 0 ? '  (+' + extra + ' unnamed column' + (extra > 1 ? 's' : '') + ')' : '');
+    } else {
+        srcLabel.textContent = '(load a header file to name these columns)';
+    }
+    // If overlay mode is active, sync the key dropdown to the updated KPI list
+    if (document.getElementById('mcOverlay').checked) populateOverlayKeySelect();
+}
+function toggleOverlayKey() {
+    const on = document.getElementById('mcOverlay').checked;
+    document.getElementById('overlayKeyRow').style.display = on ? 'block' : 'none';
+    if (on) populateOverlayKeySelect();
+}
+function populateOverlayKeySelect() {
+    const src = document.getElementById('selMcKpi');
+    const dst = document.getElementById('selOverlayKey');
+    const prev = dst.value;
+    dst.innerHTML = '';
+    Array.from(src.options).forEach(o => {
+        const no = document.createElement('option');
+        no.value = o.value; no.textContent = o.textContent;
+        if (o.value === prev) no.selected = true;
+        dst.appendChild(no);
+    });
+    if (!dst.value && dst.options.length) dst.options[0].selected = true;
+}
+function addMcRule() {
+    const ck=Array.from(document.getElementById('selComp').selectedOptions).map(o=>o.value);
+    const kp=Array.from(document.getElementById('selMcKpi').selectedOptions).map(o=>o.value);
+    const hd=document.getElementById('mcHeader').value.trim()||'Component KPIs';
+    const md=document.getElementById('mcMode').value;
+    const rn=document.getElementById('mcDisplayName').value.trim();
+    const ov=document.getElementById('mcOverlay').checked;
+    const ok=ov ? document.getElementById('selOverlayKey').value : '';
+    if(!ck.length){logAction('Warning: Select at least one Type-CompId.'); return;}
+    if(!kp.length){logAction('Warning: Select at least one KPI metric.'); return;}
+    if(ov&&!ok){logAction('Warning: Select an Overlay Key column.'); return;}
+    const dn={}; if(rn) ck.forEach(k=>{dn[k]=rn;});
+    const rule={header:hd,mode:md,tokens:kp,compKeys:ck,displayNames:dn,_mc:true,_overlay:ov,_overlayKey:ok};
+    if(mcEditingIndex>=0){
+        const old=ruleQueue[mcEditingIndex].header; ruleQueue[mcEditingIndex]=rule;
+        logAction("MC Rule: Updated '"+old+"' \u2192 '"+hd+"'."); cancelMcEdit();
+    } else {
+        ruleQueue.push(rule);
+        document.getElementById('mcHeader').value=''; document.getElementById('mcDisplayName').value='';
+        logAction("MC Rule: Added '"+hd+"' for "+ck.length+' component(s).'); renderMcQueue();
+    }
+}
+function cancelMcEdit() {
+    mcEditingIndex=-1;
+    document.getElementById('mcHeader').value=''; document.getElementById('mcDisplayName').value=''; document.getElementById('mcMode').value='direct';
+    Array.from(document.getElementById('selComp').options).forEach(o=>o.selected=false);
+    Array.from(document.getElementById('selMcKpi').options).forEach(o=>o.selected=false);
+    document.getElementById('mcEditBanner').classList.remove('active');
+    document.getElementById('mcOverlay').checked=false;
+    document.getElementById('overlayKeyRow').style.display='none';
+    document.getElementById('selOverlayKey').innerHTML='';
+    const btn=document.getElementById('mcAddBtn'); btn.textContent='+ Add to Queue'; btn.classList.remove('edit-mode');
+    renderMcQueue(); logAction('MC Rule: Edit cancelled.');
+}
+function editMcRule(idx) {
+    const r=ruleQueue[idx]; if(!r||!r._mc) return;
+    mcEditingIndex=idx;
+    document.getElementById('mcHeader').value=r.header; document.getElementById('mcMode').value=r.mode;
+    Array.from(document.getElementById('selComp').options).forEach(o=>{o.selected=r.compKeys.includes(o.value);});
+    Array.from(document.getElementById('selMcKpi').options).forEach(o=>{o.selected=r.tokens.includes(o.value);});
+    const fk=r.compKeys[0];
+    document.getElementById('mcDisplayName').value=(fk&&r.displayNames&&r.displayNames[fk])||'';
+    document.getElementById('mcOverlay').checked=!!r._overlay;
+    if(r._overlay){
+        document.getElementById('overlayKeyRow').style.display='block';
+        populateOverlayKeySelect();
+        document.getElementById('selOverlayKey').value=r._overlayKey||'';
+    } else {
+        document.getElementById('overlayKeyRow').style.display='none';
+    }
+    document.getElementById('mcEditBannerName').textContent=r.header;
+    document.getElementById('mcEditBanner').classList.add('active');
+    const btn=document.getElementById('mcAddBtn'); btn.textContent='\ud83d\udcbe Save Rule Changes'; btn.classList.add('edit-mode');
+    renderMcQueue(); document.getElementById('mcHeader').scrollIntoView({behavior:'smooth',block:'center'});
+    logAction("MC Rule: Editing '"+r.header+"'.");
+}
+function renderMcQueue() {
+    const q=document.getElementById('mcQueueList'); q.innerHTML='';
+    const mc=ruleQueue.filter(r=>r._mc);
+    if(!mc.length){const e=document.createElement('div');e.style.cssText='padding:8px;color:#888;font-style:italic;font-size:0.85em;';e.textContent='No rules in queue.';q.appendChild(e);return;}
+    ruleQueue.forEach((r,i)=>{
+        if(!r._mc) return;
+        const div=document.createElement('div'); div.className='queue-item'+(i===mcEditingIndex?' editing':'');
+        const span=document.createElement('span'); span.className='queue-label';
+        span.textContent=r.header+'  (MC'+(r._overlay?' overlay['+r._overlayKey+']':'')+' · '+r.compKeys.length+' comp · '+r.tokens.length+' KPI)';
+        const bg=document.createElement('div'); bg.style.cssText='display:flex;gap:4px;flex-shrink:0;';
+        const eb=document.createElement('button'); eb.className='btn-mini'; eb.style.cssText='background:var(--warning);color:#333;'; eb.textContent='\u270f\ufe0f Edit'; eb.addEventListener('click',()=>editMcRule(i));
+        const db=document.createElement('button'); db.className='btn-mini'; db.style.cssText='background:var(--danger);color:white;'; db.textContent='\u2715';
+        db.addEventListener('click',()=>{const n=ruleQueue[i].header;ruleQueue.splice(i,1);if(mcEditingIndex===i)cancelMcEdit();else if(mcEditingIndex>i)mcEditingIndex--;logAction("MC Rule: Removed '"+n+"'.");renderMcQueue();});
+        bg.appendChild(eb);bg.appendChild(db);div.appendChild(span);div.appendChild(bg);q.appendChild(div);
+    });
+}
+
+// =============================================================================
+// RULE IMPORT / EXPORT
+// =============================================================================
 function saveRulesToFile() {
-    logAction("User: Exporting rule set.");
-    const defaultName = `KPI_Rules_${activeFileName || 'Config'}`;
-    let userFilename = prompt("Enter Filename for Rules (JSON):", defaultName);
-    if (userFilename === null) { logAction("User: Rule export cancelled."); return; }
-    userFilename = userFilename.trim() || defaultName;
-    if (!userFilename.toLowerCase().endsWith('.json')) userFilename += '.json';
-    const payload = { ruleQueue, csvHeaderConfig: { hasHeader: document.getElementById('csvHasHeader').checked, manualHeaders: document.getElementById('csvManualHeaders').value } };
-    const blob = new Blob([JSON.stringify(payload, null, 4)], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = userFilename;
-    a.click();
-    logAction(`Success: Rules saved to '${userFilename}'.`);
+    logAction('User: Exporting rules.');
+    const def='KPI_Rules_'+(activeFileName||'Config');
+    let fn=prompt('Filename for Rules (JSON):',def); if(fn===null){logAction('Cancelled.'); return;}
+    fn=fn.trim()||def; if(!fn.toLowerCase().endsWith('.json')) fn+='.json';
+    const payload={ruleQueue,csvHeaderConfig:{hasHeader:document.getElementById('csvHasHeader').checked,manualHeaders:document.getElementById('csvManualHeaders').value,tsFormat:document.getElementById('csvTsFormat').value}};
+    const blob=new Blob([JSON.stringify(payload,null,4)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    logAction("Rules saved to '"+fn+"'.");
 }
-
 function importRules(input) {
     if(!input.files.length) return;
-    logAction(`User: Uploading rule file '${input.files[0].name}'`);
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    const rfn=input.files[0].name; logAction("Importing rules: '"+rfn+"'");
+    const reader=new FileReader();
+    reader.onload=(e)=>{
+        input.value='';
+        // Narrow try/catch to JSON parsing ONLY.
+        // Dashboard/selectFile errors must NOT be swallowed as "Invalid Rule File".
+        let data;
         try {
-            const data = JSON.parse(e.target.result);
-            ruleQueue = data.ruleQueue || (Array.isArray(data) ? data : []);
-            if (data.csvHeaderConfig) {
-                document.getElementById('formatType').value = 'flatCsv';
-                toggleCsvOptions();
-                document.getElementById('csvHasHeader').checked = data.csvHeaderConfig.hasHeader;
-                document.getElementById('csvManualHeaders').value = data.csvHeaderConfig.manualHeaders;
-            }
-            logAction(`Import: ${ruleQueue.length} rules restored.`);
-            renderQueue();
-            const fileKeys = Object.keys(parsedFilesStore);
-            if (fileKeys.length === 1) {
-                logAction("System: Auto-binding single file.");
-                selectFile(fileKeys[0], 0);
-            } else if (activeLogData.length) {
-                generateDashboard();
-            }
-        } catch(err) { logAction("Error: Failed to parse Rule JSON."); alert("Invalid Rule File"); }
+            // Lenient parse: strip trailing commas before ] or } so hand-edited
+            // JSON files (common in text editors) load without error.
+            const cleaned = e.target.result
+                .replace(/,(\s*[\]}])/g, '$1');
+            data=JSON.parse(cleaned);
+        } catch(err){
+            logAction('Error: Rules JSON parse failed — '+err.message);
+            alert('Invalid Rule File — JSON syntax error:\n'+err.message);
+            return;
+        }
+        // Apply parsed rules and config
+        ruleQueue=data.ruleQueue||(Array.isArray(data)?data:[]);
+        const cfg=data.csvHeaderConfig;
+        if(cfg&&(cfg.hasHeader===true||(cfg.manualHeaders&&cfg.manualHeaders.trim()!=='')||cfg.tsFormat==='singleTs')){
+            document.getElementById('formatType').value='flatCsv'; toggleCsvOptions();
+            document.getElementById('csvHasHeader').checked=cfg.hasHeader||false;
+            document.getElementById('csvManualHeaders').value=cfg.manualHeaders||'';
+            if(cfg.tsFormat) document.getElementById('csvTsFormat').value=cfg.tsFormat;
+        }
+        logAction('Import: '+ruleQueue.length+" rule(s) from '"+rfn+"'.");
+        const badge=rfn+'  ('+ruleQueue.length+' rule'+(ruleQueue.length!==1?'s':'')+')';
+        document.getElementById('rulesFileName').textContent=badge; document.getElementById('rulesFileInfo').style.display='block';
+        document.getElementById('mcRulesFileName').textContent=badge; document.getElementById('mcRulesFileInfo').style.display='block';
+        renderQueue(); renderMcQueue();
+        // Trigger dashboard — outside try/catch so real errors surface properly
+        const fk=Object.keys(parsedFilesStore);
+        if(fk.length===1){logAction('Auto-binding.'); selectFile(fk[0],0);}
+        else if(activeLogData.length) generateDashboard();
+        else logAction('Rules loaded. Upload a log file to continue.');
     };
     reader.readAsText(input.files[0]);
 }
 
-function processFilesFromUI() {
-    let inputVal = document.getElementById('kpiPattern').value.trim();
-    // LOGIC UPDATED: Extract search pattern if App: Pattern format used
-    let pattern = inputVal;
-    if (inputVal.includes(':')) {
-        let parts = inputVal.split(':');
-        pattern = parts.slice(1).join(':').trim(); 
-        logAction(`Filter: Using pattern '${pattern}' (Label: ${parts[0].trim()})`);
-    } else {
-        logAction(`Filter: Using pattern '${pattern || "All"}'`);
-    }
-
-    const mode = document.getElementById('formatType').value;
-    const hasHeader = document.getElementById('csvHasHeader').checked;
-    const manualHeaderRaw = document.getElementById('csvManualHeaders').value.trim();
-    const manualTokens = manualHeaderRaw.split(',').map(t => t.replace(/\s+/g, '').toLowerCase());
-    
-    parsedFilesStore = {}; availableTokens = []; let tokenCheck = new Set();
-    const tbody = document.getElementById('fileTableBody'); tbody.innerHTML = "";
-
-    Object.keys(rawFilesStore).forEach((name, index) => {
-        let lines = rawFilesStore[name].split(/\r?\n/).map(l => l.replace(/[^\x20-\x7E]/g, '').trim()).filter(l => l !== "");
-        let headerKeys = (mode === 'flatCsv' && manualHeaderRaw) ? manualHeaderRaw.split(',').map(h => h.trim()) : [];
-        if (mode === 'flatCsv' && hasHeader && lines.length > 0) { if (!manualHeaderRaw) headerKeys = lines[0].split(',').map(h => h.trim()); lines.shift(); }
-
-        let data = lines.filter(l => !pattern || l.includes(pattern)).map(line => {
-            if (mode === 'flatCsv' && manualHeaderRaw) {
-                const lt = line.split(',').map(t => t.replace(/\s+/g, '').toLowerCase());
-                const limit = Math.min(lt.length, manualTokens.length, 5);
-                let mc = 0; for(let i=0; i<limit; i++) if (lt[i] === manualTokens[i]) mc++;
-                if (mc === limit && limit >= 2) return null;
-            }
-            const tokens = {}; let timestamp = "";
-            if (mode === 'logPipe') {
-                const s = line.split('|'); if(s.length < 5) return null;
-                timestamp = `${s[0].trim()}|${s[1].trim()}`; 
-                const kv = s[4].split(',');
-                for(let i=0; i<kv.length; i+=2) { const k = kv[i]?.trim(); const v = parseFloat(kv[i+1])||0; if(k) { tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k); availableTokens.push(k);}}}
-            } else {
-                const s = line.split(','); if(s.length < 3) return null;
-                timestamp = `${s[0].trim()},${s[1].trim()}`;
-                s.forEach((val, i) => { const k = headerKeys[i]||`Col_${i}`; const v = parseFloat(val)||0; tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k); availableTokens.push(k);}});
-            }
-            return { timestamp, tokens };
-        }).filter(d => d);
-        if (data.length) { 
-            parsedFilesStore[name] = data; 
-            tbody.innerHTML += `<tr id="row-${index}" class="file-row"><td>${name}</td><td>${data.length}</td><td><button class="btn-mini" onclick="selectFile('${name}', ${index})">Analyze</button></td></tr>`; 
-            logAction(`Parser: '${name}' indexed.`);
+// =============================================================================
+// COPY CHART TO CLIPBOARD
+// =============================================================================
+async function copyChartToClipboard(btn, wrapEl) {
+    logAction('User: Copying chart.');
+    const bg=getComputedStyle(document.documentElement).getPropertyValue('--bg-panel').trim()||'#ffffff';
+    try {
+        const cv=await html2canvas(wrapEl,{scale:2,useCORS:true,backgroundColor:bg});
+        const blob=await new Promise((resolve,reject)=>{cv.toBlob(b=>b?resolve(b):reject(new Error('null')),'image/png');});
+        if(navigator.clipboard&&navigator.clipboard.write){
+            try{
+                await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+                logAction('Success: Copied.'); btn.textContent='\u2713 Copied!'; btn.classList.add('copied');
+                setTimeout(()=>{btn.textContent='\ud83d\udccb Copy';btn.classList.remove('copied');},2000); return;
+            } catch(ce){logAction('Info: Clipboard denied, downloading PNG.');}
         }
-    });
-    if (availableTokens.length) { 
-        document.getElementById('inventoryPanel').classList.remove('hidden'); 
-        populateSelects(); 
-    }
+        const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url;
+        a.download=(wrapEl.querySelector('h3')?wrapEl.querySelector('h3').textContent:'chart')+'.png';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        logAction('Success: PNG downloaded.'); btn.textContent='\u2713 Saved!'; btn.classList.add('copied');
+        setTimeout(()=>{btn.textContent='\ud83d\udccb Copy';btn.classList.remove('copied');},2000);
+    } catch(err){logAction('Error: '+err.message);}
 }
 
-function selectFile(name, index) { 
-    logAction(`User: Selecting '${name}'`);
-    document.querySelectorAll('.file-row').forEach(r => r.classList.remove('active-row'));
-    const tr = document.getElementById(`row-${index}`); if(tr) tr.classList.add('active-row');
-    activeLogData = parsedFilesStore[name]; activeFileName = name;
-    document.getElementById('builderPanel').classList.remove('hidden');
-    if(ruleQueue.length > 0) generateDashboard();
+// =============================================================================
+// PDF EXPORT
+// =============================================================================
+function exportFullPDF() {
+    if(!chartInstances.length){logAction('Warning: No charts to export.'); return;}
+    const def = 'KPI_Report_' + (activeFileName||'Export');
+    const modal = document.getElementById('pdf-modal');
+    const fnInput = document.getElementById('pdf-modal-fname');
+    fnInput.value = def;
+    modal.classList.add('active');
+    fnInput.focus(); fnInput.select();
 }
+async function _runPdfExport(fullData) {
+    const modal   = document.getElementById('pdf-modal');
+    const overlay = document.getElementById('busy-overlay');
+    let fn = document.getElementById('pdf-modal-fname').value.trim()
+             || ('KPI_Report_' + (activeFileName||'Export'));
+    if(!fn.toLowerCase().endsWith('.pdf')) fn += '.pdf';
+    modal.classList.remove('active');
+    overlay.classList.add('active');
+    document.body.classList.add('pdf-exporting');
 
-function mergeAllAndSelect() {
-    logAction("User: Aggregating sources.");
-    let all = []; Object.values(parsedFilesStore).forEach(d => all = all.concat(d));
-    all.sort((a,b) => getUnix(a.timestamp)-getUnix(b.timestamp));
-    activeLogData = all; activeFileName = "MERGED_TIMELINE";
-    document.getElementById('builderPanel').classList.remove('hidden');
-    if(ruleQueue.length > 0) generateDashboard();
-}
-
-function syncCharts(sourceChart) {
-    if (isInternalSync) return;
-    isInternalSync = true;
-    const { min, max } = sourceChart.scales.x;
-    chartInstances.forEach(chart => { if (chart !== sourceChart) chart.zoomScale('x', { min, max }, 'original'); });
-    isInternalSync = false;
-}
-function resetAllZoom() { 
-    logAction("View: Zoom reset.");
-    isInternalSync = true; chartInstances.forEach(chart => chart.resetZoom()); isInternalSync = false; 
-}
-
-function generateDashboard() {
-    const fileKeys = Object.keys(parsedFilesStore);
-    if (activeLogData.length === 0 && fileKeys.length === 1) {
-        logAction("System: Auto-binding single file.");
-        selectFile(fileKeys[0], 0);
-        return;
+    if(fullData) {
+        // stop() cancels any in-flight animation, resetZoom() restores scale,
+        // second stop() kills the new animation frame resetZoom queued,
+        // draw() synchronously paints to the canvas pixel buffer.
+        isInternalSync=true;
+        chartInstances.forEach(c=>{ c.stop(); c.resetZoom(); c.stop(); c.draw(); });
+        isInternalSync=false;
+        logAction('PDF: Charts reset to full data view.');
+    } else {
+        logAction('PDF: Exporting current zoom view.');
     }
 
-    logAction("Dashboard: Rebuilding UI.");
-    chartInstances.forEach(c => c.destroy()); chartInstances = [];
-    const container = document.getElementById('dashboard'); container.innerHTML = '';
-    if(!activeLogData.length) { logAction("Error: No data."); return; }
-    document.getElementById('dashboard-meta').classList.remove('hidden');
-    document.getElementById('active-file-label').innerText = activeFileName;
-    const labels = activeLogData.map(d => formatLabel(d.timestamp));
-    ruleQueue.forEach((rule, idx) => {
-        const wrap = document.createElement('div'); wrap.className = 'chart-wrapper';
-        wrap.innerHTML = `<h3>${rule.header}</h3><div class="chart-container"><canvas id="canvas-${idx}"></canvas></div>`;
-        container.appendChild(wrap);
-        const datasets = rule.tokens.map((t, i) => ({
-            label: t,
-            data: activeLogData.map(d => (rule.mode==='ratio')?((d.tokens[rule.tokens[0]]||0)===0?0:(d.tokens[t]||0)/d.tokens[rule.tokens[0]]*100):(d.tokens[t]||0)),
-            borderColor: `hsl(${i * 137}, 70%, 50%)`, borderWidth: 1.5, pointRadius: 0, tension: 0.1
-        }));
-        chartInstances.push(new Chart(document.getElementById(`canvas-${idx}`).getContext('2d'), {
-            type: 'line', data: { labels, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { zoom: { 
-                    zoom: { drag: { enabled: true, backgroundColor: 'rgba(0,123,255,0.1)' }, mode: 'x', onZoomComplete: ({chart}) => syncCharts(chart) },
-                    pan: { enabled: true, mode: 'x', onPanComplete: ({chart}) => syncCharts(chart) }
-                }}
+    try {
+        const{jsPDF}=window.jspdf; const doc=new jsPDF('p','mm','a4');
+        const PAGE_W=190, MARGIN=10, PAGE_H=277;
+        let y=MARGIN;
+
+        // Read each chart directly from its canvas pixel buffer via toDataURL().
+        // html2canvas re-renders canvases from the DOM and ignores the current pixel
+        // buffer — making it useless after resetZoom(). Direct toDataURL() is
+        // synchronous and reads exactly what draw() just painted.
+        document.querySelectorAll('.chart-wrapper').forEach(wrapper => {
+            const titleEl = wrapper.querySelector('h3');
+            const canvas  = wrapper.querySelector('canvas');
+            if(!canvas) return;
+
+            const title   = titleEl ? titleEl.textContent.trim() : '';
+            const imgData = canvas.toDataURL('image/png');
+            // Preserve canvas aspect ratio, fit to page width
+            const ratio   = canvas.height / canvas.width;
+            const imgH    = PAGE_W * ratio;
+
+            // Title text height (approx 7mm) + image + 6mm gap
+            const blockH = (title ? 7 : 0) + imgH + 6;
+            if(y + blockH > PAGE_H){ doc.addPage(); y=MARGIN; }
+
+            if(title){
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                doc.text(title, MARGIN, y+5);
+                y += 7;
             }
-        }));
-    });
-}
+            doc.addImage(imgData, 'PNG', MARGIN, y, PAGE_W, imgH);
+            y += imgH + 6;
+        });
 
-function addRuleToQueue() {
-    const tokens = Array.from(document.getElementById('selA').selectedOptions).map(o => o.value);
-    if (!tokens.length) return;
-    const r = { header: document.getElementById('gHeader').value || "KPI", mode: document.getElementById('analysisMode').value, tokens };
-    ruleQueue.push(r);
-    logAction(`Rule: Added '${r.header}'.`);
-    renderQueue();
-}
-function renderQueue() {
-    const q = document.getElementById('queueList'); q.innerHTML = '';
-    ruleQueue.forEach((r, i) => { q.innerHTML += `<div style="padding:5px; border:1px solid var(--border-color); margin-bottom:5px; display:flex; justify-content:space-between; align-items:center;"><span>${r.header}</span> <button class="btn-mini" style="background:var(--danger);color:white;" onclick="ruleQueue.splice(${i},1);renderQueue();logAction('Rule: Removed.')">X</button></div>`; });
-}
-function populateSelects() { const s = document.getElementById('selA'); s.innerHTML = ''; availableTokens.forEach(t => s.add(new Option(t, t))); }
-function toggleTheme() { 
-    const target = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', target);
-    logAction(`Theme: UI set to ${target}.`);
-}
-function toggleCsvOptions() { document.getElementById('csvOptions').classList.toggle('hidden', document.getElementById('formatType').value !== 'flatCsv'); }
-
-document.getElementById('dataFile').addEventListener('change', async (e) => { 
-    logAction(`Filesystem: ${e.target.files.length} data files uploaded.`);
-    for (let f of e.target.files) rawFilesStore[f.name] = await f.text(); 
-    document.getElementById('file-status').innerText = `${Object.keys(rawFilesStore).length} files ready.`;
-    if (Object.keys(rawFilesStore).length > 0) {
-        processFilesFromUI(); 
-        mergeAllAndSelect();   
+        doc.save(fn);
+        logAction('PDF: Saved as ' + fn + '.');
+    } catch(err){ logAction('Error: PDF export failed — ' + (err&&err.message)); }
+    finally{
+        overlay.classList.remove('active');
+        document.body.classList.remove('pdf-exporting');
     }
-});
+}
 
-// LOGIC UPDATED: Handle App: Pattern format from file upload
+// =============================================================================
+// PATTERN FILE
+// =============================================================================
 async function handlePatternUpload(input) {
     if(!input.files.length) return;
-    const content = await input.files[0].text();
-    const fullLine = content.split(/\r?\n/)[0]?.trim();
-    if(fullLine) {
-        document.getElementById('kpiPattern').value = fullLine;
-        if (fullLine.includes(':')) {
-            let p = fullLine.split(':');
-            logAction(`System: Loaded pattern for App '${p[0].trim()}' from file.`);
-        } else {
-            logAction(`System: Loaded pattern '${fullLine}' from file.`);
-        }
-        if(Object.keys(rawFilesStore).length > 0) processFilesFromUI();
-    }
+    const content=await input.files[0].text(); input.value='';
+    const line=content.split(/\r?\n/)[0]?.trim();
+    if(!line){logAction('Pattern: empty.'); return;}
+    document.getElementById('kpiPattern').value=line;
+    if(line.includes(':')){ const p=line.split(':'); logAction("Pattern for App '"+p[0].trim()+"' loaded."); }
+    else logAction("Pattern '"+line+"' loaded.");
+    if(Object.keys(rawFilesStore).length>0) processFilesFromUI();
 }
 
-window.onload = () => logAction("System: Tool v1.5.67 loaded.");
+// =============================================================================
+// UI HELPERS
+// =============================================================================
+function toggleTheme() {
+    const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',t); logAction('Theme: '+t+'.');
+}
+function toggleCsvOptions() {
+    const m=document.getElementById('formatType').value;
+    document.getElementById('csvOptions').classList.toggle('hidden', m!=='flatCsv'&&m!=='multiComp');
+    const tf=document.getElementById('csvTsFormat');
+    tf.disabled=(m==='multiComp'); if(m==='multiComp') tf.value='dateTime';
+}
+
+// =============================================================================
+// BOOT
+// =============================================================================
+window.onload = () => {
+    logAction('System: Tool v1.9.0 loaded.');
+    // PDF modal button wiring
+    document.getElementById('pdf-btn-full').addEventListener('click', () => _runPdfExport(true));
+    document.getElementById('pdf-btn-current').addEventListener('click', () => _runPdfExport(false));
+    const _closePdfModal = () => { document.getElementById('pdf-modal').classList.remove('active'); logAction('PDF: Export cancelled.'); };
+    document.getElementById('pdf-btn-cancel').addEventListener('click', _closePdfModal);
+    // Esc key closes modal
+    document.addEventListener('keydown', e => { if(e.key==='Escape' && document.getElementById('pdf-modal').classList.contains('active')) _closePdfModal(); });
+    // Click outside modal box closes it
+    document.getElementById('pdf-modal').addEventListener('click', e => { if(e.target===document.getElementById('pdf-modal')) _closePdfModal(); });
+};
 </script>
 </body>
 </html>
