@@ -2,12 +2,12 @@
 <html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <title>KPI Graph and Analysis | v1.9.0</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>KPI Graph and Analysis | v2.2.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
     <style>
         :root { --primary:#007bff;--success:#28a745;--danger:#dc3545;--warning:#ffc107;--info:#17a2b8;--dark:#343a40;--bg-body:#f0f2f5;--bg-panel:#ffffff;--text-main:#333333;--border-color:#dddddd;--row-active-bg:#e7f1ff; }
         [data-theme="dark"] { --bg-body:#121212;--bg-panel:#1e1e1e;--text-main:#e0e0e0;--border-color:#444444;--row-active-bg:#1a3a5a; }
@@ -38,9 +38,7 @@
         /* Chart header */
         .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
         .chart-header h3 { margin:0; }
-        .chart-copy-btn { background:var(--info); color:white; font-size:0.75em; padding:4px 10px; }
-        .chart-copy-btn.copied { background:var(--success); }
-        body.pdf-exporting .chart-copy-btn { display:none !important; }
+        .chart-copy-btn { display:none !important; }
         /* Edit banners */
         #editBanner { display:none; padding:6px 10px; margin-top:8px; border-radius:4px; background:rgba(255,193,7,0.15); border-left:3px solid var(--warning); font-size:0.82em; justify-content:space-between; align-items:center; }
         #editBanner.active { display:flex !important; }
@@ -69,6 +67,9 @@
         .rules-badge { display:none; font-size:0.78em; color:#888; margin-bottom:12px; padding:4px 8px; background:rgba(0,0,0,0.04); border-radius:4px; border-left:3px solid var(--info); }
         /* MC selects */
         #selComp, #selMcKpi { height:140px !important; }
+        /* Interactive overlay legend chips */
+        span[data-ov-chip]:hover { background:rgba(128,128,128,0.12); border-color:var(--border-color) !important; }
+        span[data-ov-chip]:active { transform:scale(0.95); }
     </style>
 </head>
 <body>
@@ -91,7 +92,7 @@
 <div class="container">
     <div class="header-main">
         <div>
-            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em;opacity:0.5;">v1.9.0</span></h2>
+            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em;opacity:0.5;">v2.2.0</span></h2>
             <div style="font-size:0.8em;color:#888;margin-top:5px;"><strong>Author:</strong> Shiju Abraham | <strong>Email:</strong> shiju.abraham&#64;mobileum.com</div>
         </div>
         <div style="display:flex;gap:10px;">
@@ -102,11 +103,7 @@
     </div>
 
     <div class="panel">
-        <div id="drop-zone" style="border:2px dashed var(--primary);border-radius:10px;padding:30px;text-align:center;cursor:pointer;"
-             onclick="document.getElementById('dataFile').click()"
-             ondragover="event.preventDefault();this.style.borderColor='var(--success)';this.style.background='rgba(0,123,255,0.05)';"
-             ondragleave="this.style.borderColor='var(--primary)';this.style.background='';"
-             ondrop="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='';handleDroppedFiles(event.dataTransfer.files);">
+        <div id="drop-zone" style="border:2px dashed var(--primary);border-radius:10px;padding:30px;text-align:center;cursor:pointer;">
             <strong>Drop Files or Click to Upload Logs</strong><br>
             <small id="file-status">Ready (.txt, .log, .csv)</small>
             <input type="file" id="dataFile" multiple style="display:none">
@@ -150,6 +147,23 @@
             </div>
         </div>
         <button style="background:var(--primary);color:white;width:100%;margin-top:15px;" onclick="processFilesFromUI()">Initialize Analysis</button>
+        <!-- URL Auto-Fetch -->
+        <div style="margin-top:15px;padding:15px;background:rgba(0,0,0,0.03);border-radius:6px;">
+            <label>URL Auto-Fetch <small style="font-weight:normal;color:#888;">(Mode B: fetch log data from a URL at regular intervals)</small></label>
+            <div class="grid" style="margin-top:8px;">
+                <div style="grid-column:span 2;">
+                    <input type="text" id="fetchUrl" placeholder="https://example.com/logs/latest.csv">
+                </div>
+                <div>
+                    <label>Interval (sec)</label>
+                    <input type="number" id="fetchInterval" value="30" min="5" style="width:80px;">
+                </div>
+                <div style="display:flex;gap:8px;align-items:flex-end;">
+                    <button id="btn-fetch-start" class="btn-mini" style="background:var(--success);color:white;" onclick="startAutoFetch()">Start Fetch</button>
+                    <button id="btn-fetch-stop" class="btn-mini hidden" style="background:var(--danger);color:white;" onclick="stopAutoFetch()">Stop Fetch</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="inventoryPanel" class="panel hidden">
@@ -181,6 +195,8 @@
                 </select>
             </div>
             <div style="grid-column:span 2;"><label>Metrics</label><select id="selA" multiple></select></div>
+            <div><label>Warning Threshold</label><input type="number" id="threshWarn" placeholder="e.g. 80"></div>
+            <div><label>Critical Threshold</label><input type="number" id="threshCritical" placeholder="e.g. 95"></div>
         </div>
         <div id="editBanner">
             <span>&#9999;&#65039; Editing rule: <strong id="editBannerName"></strong></span>
@@ -238,15 +254,19 @@
                         <div>
                             <label style="margin:0;cursor:pointer;" for="mcOverlay">&#128257; Overlay Mode</label>
                             <div style="font-size:0.78em;color:#888;font-weight:normal;">
-                                Split rows by a chosen KPI column (the Overlay Key).
-                                Each distinct value becomes a line group on the primary axis;
-                                the key column is also plotted on the secondary Y axis for reference.
+                                Split rows by one or more KPI columns (the Overlay Keys).
+                                Each distinct combination of key values becomes a line group;
+                                for multiple keys, values are joined with " | " (e.g. 116 | A).
                             </div>
                         </div>
                     </div>
                     <div id="overlayKeyRow" style="display:none;margin-top:10px;">
-                        <label style="margin-bottom:4px;">Overlay Key Column <small style="font-weight:normal;color:#888;">(column whose distinct values split rows into groups)</small></label>
-                        <select id="selOverlayKey" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:inherit;color:inherit;"></select>
+                        <label style="margin-bottom:4px;">Overlay Key Column(s) <small style="font-weight:normal;color:#888;">(select one or more columns whose values split rows into groups)</small></label>
+                        <select id="selOverlayKey" multiple size="3" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:inherit;color:inherit;"></select>
+                    </div>
+                    <div id="overlayExcludeRow" style="display:none;margin-top:8px;">
+                        <label style="margin-bottom:4px;">Exclude Values <small style="font-weight:normal;color:#888;">(comma-separated overlay key values to exclude from chart)</small></label>
+                        <input type="text" id="mcOverlayExclude" placeholder="e.g. 116, N/A, Cell (A) — for multi-key: 116 | A" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:inherit;color:inherit;">
                     </div>
                 </div>
             </div>
@@ -300,6 +320,11 @@ let mcEditingIndex   = -1;
 let mcHeaderStore    = {};  // {compKey: {typeLabel,typeVal,compLabel,compVal,kpiNames:[]}}
 let mcKpiNames       = [];  // ordered friendly KPI names from header file
 let mcColLabels      = {typeLabel:'Type', compLabel:'CompId'};  // column header labels
+let isGeneratingDashboard = false;  // [H1] re-entry guard
+let dropJustHappened = false;       // [M4] drop/click debounce
+const MAX_CONSOLE_ENTRIES = 500;    // [H2] cap
+const MAX_FILE_SIZE = 50 * 1024 * 1024;  // [SEC9] 50MB
+const ALLOWED_EXTENSIONS = ['.txt', '.log', '.csv', '.json'];  // [SEC9]
 
 // =============================================================================
 // CONSOLE
@@ -308,8 +333,9 @@ function logAction(msg) {
     const body = document.getElementById('console-body');
     const div  = document.createElement('div');
     div.className   = 'log-entry';
-    div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+    div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + (msg||'').substring(0, 500);
     body.appendChild(div);
+    while (body.children.length > MAX_CONSOLE_ENTRIES) body.removeChild(body.firstChild);
     body.scrollTop = body.scrollHeight;
 }
 function toggleConsole() {
@@ -333,17 +359,18 @@ function getUnix(ts) {
     const clean = ts.toLowerCase().replace(/(mon|tue|wed|thu|fri|sat|sun)/gi,'').trim();
     if (clean.includes('|')) {
         const parts = clean.split('|'), dp = parts[0].trim().split(/\s+/);
+        if (dp.length < 1) return 0;  // [M1]
         const m = months[dp[0]]||'01', d = (dp[1]||'01').padStart(2,'0');
         const yr = (dp[2]&&dp[2].length===4) ? dp[2] : String(new Date().getFullYear());
-        const t = parts[1].trim().replace(/[:.]/g,'').substring(0,6);
-        return parseInt(yr+m+d+t);
+        const t = (parts.length > 1 ? parts[1].trim() : '').replace(/[:.]/g,'').substring(0,6);  // [M1]
+        return parseInt(yr+m+d+t) || 0;
     }
     if (clean.includes(',')) {
         const parts = clean.split(',');
         let ds = parts[0].trim().replace(/-/g,'');
         if (ds.length<=4) ds = String(new Date().getFullYear()) + ds.padStart(4,'0');
-        const t = parts[1].trim().replace(/[:.]/g,'').substring(0,6);
-        return parseInt(ds+t);
+        const t = (parts.length > 1 ? parts[1].trim() : '').replace(/[:.]/g,'').substring(0,6);  // [M1]
+        return parseInt(ds+t) || 0;
     }
     if (clean.includes(' ')) {
         const parts = clean.split(' ');
@@ -357,8 +384,8 @@ function getUnix(ts) {
 function formatLabel(ts) {
     if (!ts) return '';
     const c = ts.replace(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/gi,'').trim();
-    if (c.includes(',')) { const p=c.split(','); return p[0].trim()+' '+p[1].trim().substring(0,5); }
-    if (c.includes('|')) { const p=c.split('|'),dp=p[0].trim().split(/\s+/); return dp[0]+' '+dp[1]+' '+p[1].trim().substring(0,5); }
+    if (c.includes(',')) { const p=c.split(','); if(p.length<2) return p[0]?p[0].trim():ts; return p[0].trim()+' '+p[1].trim().substring(0,5); }  // [M2]
+    if (c.includes('|')) { const p=c.split('|'),dp=p[0].trim().split(/\s+/); if(dp.length<2||p.length<2) return c; return dp[0]+' '+dp[1]+' '+p[1].trim().substring(0,5); }  // [M2]
     if (c.includes(' ')) { const p=c.split(' '); return p[0]+' '+(p[1]||'').substring(0,5); }
     return ts;
 }
@@ -416,6 +443,7 @@ function buildTimelineWithGaps(rows) {
         }
     }
     const gapIndices = result.reduce((acc,r,i)=>{ if(r.timestamp==='__gap__') acc.push(i); return acc; },[]);
+    if (gapIndices.length) logAction('Timeline: ' + gapIndices.length + ' gap(s) detected.');
     return { labels:result.map(r=>r.timestamp==='__gap__'?'':formatLabel(r.timestamp)), rows:result, gapIndices };
 }
 // Same logic for the overlay path, which works on a plain timestamp array.
@@ -470,14 +498,30 @@ function makeGapPlugin(gapIndices) {
 // =============================================================================
 // FILE INGEST
 // =============================================================================
+function validateFile(file) {  // [SEC9]
+    if (file.size > MAX_FILE_SIZE) {
+        logAction("Warning: File '" + file.name + "' exceeds " + (MAX_FILE_SIZE / 1024 / 1024) + "MB limit - skipped.");
+        return false;
+    }
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        logAction("Warning: File '" + file.name + "' has unsupported extension '" + ext + "' - skipped.");
+        return false;
+    }
+    return true;
+}
 async function ingestFiles(fileList) {
-    for (const f of fileList) rawFilesStore[f.name] = await f.text();
+    let loaded = 0;
+    for (const f of fileList) {
+        if (validateFile(f)) { rawFilesStore[f.name] = await f.text(); loaded++; }
+    }
     document.getElementById('file-status').textContent = Object.keys(rawFilesStore).length + ' file(s) ready.';
-    logAction('Filesystem: ' + fileList.length + ' file(s) loaded.');
+    logAction('Filesystem: ' + loaded + ' of ' + fileList.length + ' file(s) loaded.');
     processFilesFromUI();
 }
 document.getElementById('dataFile').addEventListener('change', async (e) => {
     if (!e.target.files.length) return;
+    logAction('Filesystem: ' + e.target.files.length + ' data file(s) uploaded.');
     await ingestFiles(e.target.files);
     e.target.value = '';
 });
@@ -501,6 +545,7 @@ function detectCsvTsFormat(dataLines) {
 // PARSER
 // =============================================================================
 function processFilesFromUI() {
+    if (!Object.keys(rawFilesStore).length) { logAction("Warning: No files loaded. Upload or fetch data first."); return; }  // [M5]
     document.getElementById('inventoryPanel').classList.add('hidden');
     document.getElementById('builderPanel').classList.add('hidden');
     document.getElementById('mcBuilderPanel').classList.add('hidden');
@@ -589,10 +634,12 @@ function processFilesFromUI() {
                 s.slice(5).forEach((val,i)=>{
                     const k=(headerKeys[i+5])||('KPI_'+(i+1));
                     // Preserve raw string for alphanumeric/special-char values
-                    // (e.g. overlay key column). Pure numeric values stored as float.
+                    // (e.g. overlay key: IPv4, IPv6, cell IDs). Only pure numeric → float.
+                    // Number() is strict (entire string must be numeric); parseFloat() is
+                    // too lenient and mangles "192.168.1.1" → 192.168, "2001:db8" → 2001.
                     const trimmed=val.trim();
-                    const num=parseFloat(trimmed);
-                    const v=(!isNaN(num)&&trimmed!=='')?num:trimmed;
+                    const num=Number(trimmed);
+                    const v=(trimmed!==''&&!isNaN(num))?num:trimmed;
                     tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k);availableTokens.push(k);}
                 });
                 if(!compIndexStore[compKey]) compIndexStore[compKey]=[];
@@ -752,18 +799,42 @@ function makeChartOptions() {
     // modifierKey on pan ensures the two mouse gestures never conflict.
     return {
         responsive:true, maintainAspectRatio:false,
-        plugins:{zoom:{
-            zoom:{
-                drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},
-                mode:'x',
-                onZoomComplete:({chart})=>syncCharts(chart)
+        interaction: { mode:'index', intersect:false },
+        plugins:{
+            tooltip:{
+                mode:'index', intersect:false,
+                callbacks:{
+                    afterBody: function(items) {
+                        if (items.length < 2) return '';
+                        var valMap = {};
+                        items.forEach(function(item) {
+                            var v = item.parsed.y;
+                            if (v === null || v === undefined) return;
+                            var key = v.toFixed(4);
+                            if (!valMap[key]) valMap[key] = [];
+                            valMap[key].push(item.dataset.label);
+                        });
+                        var overlaps = Object.entries(valMap).filter(function(e){ return e[1].length > 1; });
+                        if (!overlaps.length) return '';
+                        return '\n\u26a0 Overlapping:\n' + overlaps.map(function(e){
+                            return '  ' + parseFloat(e[0]).toLocaleString() + ': ' + e[1].join(', ');
+                        }).join('\n');
+                    }
+                }
             },
-            pan:{
-                enabled:true, mode:'x',
-                modifierKey:'ctrl',
-                onPanComplete:({chart})=>syncCharts(chart)
+            zoom:{
+                zoom:{
+                    drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},
+                    mode:'x',
+                    onZoomComplete:({chart})=>{syncCharts(chart); logAction('View: Chart zoomed.');}
+                },
+                pan:{
+                    enabled:true, mode:'x',
+                    modifierKey:'ctrl',
+                    onPanComplete:({chart})=>{syncCharts(chart); logAction('View: Chart panned.');}
+                }
             }
-        }},
+        },
         scales:{x:{ticks:{maxTicksLimit:14, maxRotation:45, autoSkip:true}}}
     };
 }
@@ -771,8 +842,8 @@ function makeOverlayChartOptions(ovKeyLabel, kpiLabel) {
     return {
         responsive:true, maintainAspectRatio:false,
         plugins:{zoom:{
-            zoom:{drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},mode:'x',onZoomComplete:({chart})=>syncCharts(chart)},
-            pan:{enabled:true,mode:'x',modifierKey:'ctrl',onPanComplete:({chart})=>syncCharts(chart)}
+            zoom:{drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},mode:'x',onZoomComplete:({chart})=>{syncCharts(chart);logAction('View: Chart zoomed.');}},
+            pan:{enabled:true,mode:'x',modifierKey:'ctrl',onPanComplete:({chart})=>{syncCharts(chart);logAction('View: Chart panned.');}}
         }},
         scales:{
             x:{},
@@ -802,10 +873,13 @@ function makeChartWrap(title,canvasId,container) {
 // DASHBOARD
 // =============================================================================
 function generateDashboard() {
+    if (isGeneratingDashboard) return;  // [H1] prevent re-entry
+    isGeneratingDashboard = true;
+    try {
     if (!activeLogData.length && document.getElementById('formatType').value!=='multiComp') {
         const fk=Object.keys(parsedFilesStore);
-        if(fk.length===1){logAction('System: Auto-binding.'); selectFile(fk[0],0); return;}
-        logAction('Error: No data loaded.'); return;
+        if(fk.length===1){logAction('System: Auto-binding.'); activeLogData=parsedFilesStore[fk[0]]; activeFileName=fk[0];}
+        else { logAction('Error: No data loaded.'); return; }
     }
     if(!ruleQueue.length){logAction('Warning: Rule queue empty.'); return;}
     logAction('Dashboard: Rebuilding.');
@@ -821,15 +895,17 @@ function generateDashboard() {
             const isRatio=rule.mode==='ratio', bt=rule.tokens[0];
             const plotT=isRatio?rule.tokens.slice(1):rule.tokens; if(!plotT.length) return;
 
-            if (rule._overlay && rule._overlayKey) {
+            // Normalize overlay keys: support both _overlayKeys (array) and legacy _overlayKey (string)
+            const ovKeys = rule._overlayKeys || (rule._overlayKey ? [rule._overlayKey] : []);
+            if (rule._overlay && ovKeys.length) {
                 // ── OVERLAY MODE ──────────────────────────────────────────────────
                 // One chart per selected Type|CompId.
-                // Rows are split by distinct values of the Overlay Key column
-                // (e.g. KPIHeader1 = 116 / 117 / 118).
+                // Rows are split by distinct values of one or more Overlay Key columns.
+                // For multiple keys, values are joined with " | " (e.g. "116 | A").
                 // Primary Y (left) : one line per selected KPI, per group value
                 //                    same colour per group, different dash per KPI
-                // Secondary Y (right): overlay key column itself, dotted reference
                 const dashPatterns = [[], [6,3], [2,3], [10,4,2,4], [15,4]];
+                const ptStyles = ['circle','triangle','rect','rectRot','star','cross','crossRot'];
 
                 (rule.compKeys||[]).forEach((compKey, ci) => {
                     const rows = compIndexStore[compKey];
@@ -853,15 +929,14 @@ function generateDashboard() {
                         return (hdr && hdr.kpiNames && ki >= 0 && hdr.kpiNames[ki]) ? hdr.kpiNames[ki] : t;
                     };
 
-                    const ovKey      = rule._overlayKey;
-                    const ovKeyLabel = fname(ovKey);
+                    const ovKeyLabel = ovKeys.map(fname).join(' | ');
                     const kpiLabel   = plotT.map(fname).join(' / ');
                     // Diagnostic
                     if(rows.length){
                         const sk=Object.keys(rows[0].tokens);
-                        const miss=[...plotT, ovKey].filter(t=>!sk.includes(t));
+                        const miss=[...plotT, ...ovKeys].filter(t=>!sk.includes(t));
                         if(miss.length) logAction("MC Overlay WARN ['"+compKey+"']: keys=["+sk.slice(0,6).join(',')+"] MISSING: "+miss.join(','));
-                        else logAction("MC Overlay ['"+compKey+"']: "+rows.length+" rows, ovKey="+ovKey+", plotT=["+plotT.join(',')+"] ✓");
+                        else logAction("MC Overlay ['"+compKey+"']: "+rows.length+" rows, ovKeys=["+ovKeys.join(',')+"], plotT=["+plotT.join(',')+"] ✓");
                     }
 
                     // Distinct timestamps in original order
@@ -872,22 +947,31 @@ function generateDashboard() {
                     // Insert gap sentinels where time lapses occur
                     const { tsOrderGapped, gapIndices: ovGapIndices } = insertGapsIntoTsOrder(tsOrder);
 
-                    // Group rows by overlay-key value; last writer wins per timestamp
+                    // Group rows by overlay-key value(s); last writer wins per timestamp
                     const ovGroups = {};
                     rows.forEach(row => {
-                        const val = String(row.tokens[ovKey] !== undefined ? row.tokens[ovKey] : '?');
+                        const val = ovKeys.map(k => String(row.tokens[k] !== undefined ? row.tokens[k] : '?')).join(' | ');
                         if (!ovGroups[val]) ovGroups[val] = {};
                         ovGroups[val][row.timestamp] = row;
                     });
-                    const ovValues = Object.keys(ovGroups).sort((a,b) => {
-                        const na=parseFloat(a), nb=parseFloat(b);
-                        if(!isNaN(na)&&!isNaN(nb)) return na-nb;
-                        return a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'});
-                    });
+                    const excludeSet = new Set(rule._excludeOverlay || []);
+                    const ovValues = Object.keys(ovGroups)
+                        .filter(v => !excludeSet.has(v))
+                        .sort((a,b) => {
+                            const na=parseFloat(a), nb=parseFloat(b);
+                            if(!isNaN(na)&&!isNaN(nb)) return na-nb;
+                            return a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'});
+                        });
+                    if (excludeSet.size) logAction('MC Overlay: Excluded ' + excludeSet.size + ' value(s): ' + [...excludeSet].join(', '));
 
                     const datasets = [];
+                    // Adaptive point radius: show markers for overlap differentiation,
+                    // smaller when many data points to avoid clutter
+                    const _nPts = tsOrderGapped.filter(t=>t!=='__gap__').length;
+                    const _ptRad = _nPts > 200 ? 0.8 : _nPts > 80 ? 1.2 : _nPts > 40 ? 1.5 : 2;
                     ovValues.forEach((ovVal, gi) => {
-                        const color   = 'hsl('+(gi*137)+',70%,50%)';
+                        // Alpha transparency so overlapping lines show color blending
+                        const color   = 'hsla('+(gi*137)+',70%,50%,0.65)';
                         const rowByTs = ovGroups[ovVal];
                         // One line per selected KPI metric for this overlay-key group
                         plotT.forEach((token, ti) => {
@@ -900,7 +984,12 @@ function generateDashboard() {
                                     return row.tokens[token] !== undefined ? row.tokens[token] : null;
                                 }),
                                 borderColor: color, borderDash: dashPatterns[ti % dashPatterns.length],
-                                borderWidth: 1.8, pointRadius: 0, tension: 0.1,
+                                backgroundColor: color,
+                                borderWidth: Math.max(1.0, 2.5 - (gi * 0.3)),
+                                pointRadius: _ptRad + (gi * 0.15),
+                                pointHoverRadius: 5,
+                                pointStyle: ptStyles[gi % ptStyles.length],
+                                tension: 0.1,
                                 spanGaps: false
                             });
                         });
@@ -910,32 +999,144 @@ function generateDashboard() {
                     const title = rule.header+' ('+dn+')';
                     const {wrap, canvas} = makeChartWrap(title, 'canvas-ov-'+idx+'-'+ci, container);
 
-                    // ── Static color key: "KPIHeader1: ● 116  ● 117  ● 118" ──────────
+                    // ── Interactive color key with point-style markers ───────────────
+                    // Each overlay group gets a unique color + marker shape. Chips are
+                    // clickable: Click = toggle visibility, Shift+Click = solo mode.
                     const keyBar = document.createElement('div');
-                    keyBar.style.cssText = 'font-size:0.82em;margin:-4px 0 10px 0;display:flex;flex-wrap:wrap;gap:12px;align-items:center;';
+                    keyBar.style.cssText = 'font-size:0.82em;margin:-4px 0 10px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;';
                     const keyTitle = document.createElement('span');
                     keyTitle.style.cssText = 'font-weight:600;color:var(--text-main);';
                     keyTitle.textContent = ovKeyLabel + ':';
                     keyBar.appendChild(keyTitle);
+                    // "All" button to restore all groups
+                    const _showAllBtn = document.createElement('button');
+                    _showAllBtn.className = 'btn-mini';
+                    _showAllBtn.textContent = 'All';
+                    _showAllBtn.title = 'Show all overlay groups';
+                    _showAllBtn.style.cssText = 'font-size:0.72em;padding:1px 7px;background:var(--info);color:white;';
+                    _showAllBtn.addEventListener('click', () => {
+                        const chart = wrap._chartRef; if (!chart) return;
+                        keyBar.querySelectorAll('span[data-ov-chip]').forEach(ch => {
+                            ch._visible = true; ch.style.opacity = '1';
+                            ch.style.textDecoration = 'none'; ch.style.borderColor = 'transparent';
+                        });
+                        chart.data.datasets.forEach((_, i) => chart.setDatasetVisibility(i, true));
+                        chart.update('none');
+                        logAction('Overlay: All groups shown.');
+                    });
+                    keyBar.appendChild(_showAllBtn);
+                    // SVG path data for each point style (14x14 viewBox)
+                    const _ptSvgPaths = {
+                        circle:    '<circle cx="7" cy="7" r="5"/>',
+                        triangle:  '<polygon points="7,1 13,13 1,13"/>',
+                        rect:      '<rect x="2" y="2" width="10" height="10"/>',
+                        rectRot:   '<rect x="2" y="2" width="10" height="10" transform="rotate(45 7 7)"/>',
+                        star:      '<polygon points="7,1 8.8,5.5 13.5,5.8 9.8,9 11,13.5 7,11 3,13.5 4.2,9 0.5,5.8 5.2,5.5"/>',
+                        cross:     '<line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>',
+                        crossRot:  '<line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/>'
+                    };
+                    const _kpiCountForToggle = plotT.length;
                     ovValues.forEach((ovVal, gi) => {
+                        const chipColor = 'hsla('+(gi*137)+',70%,50%,0.65)';
                         const chip = document.createElement('span');
+                        chip.setAttribute('data-ov-chip', gi);
+                        chip._visible = true;
+                        chip._groupIndex = gi;
                         chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;font-weight:600;'
-                                           + 'color:hsl('+(gi*137)+',70%,50%);';
-                        const dot=document.createElement('span'); dot.textContent='● ';
-                        chip.appendChild(dot);
+                                           + 'color:' + chipColor + ';'
+                                           + 'cursor:pointer;padding:2px 6px;border-radius:4px;'
+                                           + 'border:1px solid transparent;transition:all 0.15s;user-select:none;';
+                        chip.title = 'Click to toggle \u00b7 Shift+Click to solo';
+                        const ps = ptStyles[gi % ptStyles.length];
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+                        svg.setAttribute('width','14'); svg.setAttribute('height','14');
+                        svg.setAttribute('viewBox','0 0 14 14');
+                        svg.style.verticalAlign = 'middle';
+                        svg.innerHTML = '<g fill="'+chipColor+'" stroke="'+chipColor+'" stroke-width="1.5">'
+                                      + (_ptSvgPaths[ps] || _ptSvgPaths.circle)
+                                      + '</g>';
+                        chip.appendChild(svg);
                         chip.appendChild(document.createTextNode(ovVal));
+                        // Click handler: toggle or solo
+                        chip.addEventListener('click', (evt) => {
+                            const chart = wrap._chartRef; if (!chart) return;
+                            if (evt.shiftKey) {
+                                // SOLO MODE: show only this group, hide all others
+                                keyBar.querySelectorAll('span[data-ov-chip]').forEach(ch => {
+                                    const cgi = parseInt(ch.getAttribute('data-ov-chip'));
+                                    const show = (cgi === gi);
+                                    ch._visible = show;
+                                    ch.style.opacity = show ? '1' : '0.35';
+                                    ch.style.textDecoration = show ? 'none' : 'line-through';
+                                    ch.style.borderColor = show ? 'transparent' : 'var(--border-color)';
+                                    for (let k = 0; k < _kpiCountForToggle; k++)
+                                        chart.setDatasetVisibility(cgi * _kpiCountForToggle + k, show);
+                                });
+                                chart.update('none');
+                                logAction('Overlay: Solo group ' + ovVal + '.');
+                                return;
+                            }
+                            // TOGGLE MODE
+                            chip._visible = !chip._visible;
+                            for (let k = 0; k < _kpiCountForToggle; k++)
+                                chart.setDatasetVisibility(gi * _kpiCountForToggle + k, chip._visible);
+                            chart.update('none');
+                            chip.style.opacity = chip._visible ? '1' : '0.35';
+                            chip.style.textDecoration = chip._visible ? 'none' : 'line-through';
+                            chip.style.borderColor = chip._visible ? 'transparent' : 'var(--border-color)';
+                            logAction('Overlay: Group ' + ovVal + (chip._visible ? ' shown' : ' hidden') + '.');
+                        });
                         keyBar.appendChild(chip);
                     });
+                    // Hint text at the end
+                    const _keyHint = document.createElement('span');
+                    _keyHint.style.cssText = 'font-size:0.68em;color:#888;margin-left:auto;';
+                    _keyHint.textContent = 'Click to toggle \u00b7 Shift+Click to solo';
+                    keyBar.appendChild(_keyHint);
                     // Insert after chart-header row, before chart-container
                     const chartContainer = wrap.querySelector('.chart-container');
                     wrap.insertBefore(keyBar, chartContainer);
 
+                    // ── KPI dash-pattern legend (only when 2+ KPIs) ──────────────────
+                    if (plotT.length > 1) {
+                        const dashBar = document.createElement('div');
+                        dashBar.style.cssText = 'font-size:0.80em;margin:0 0 8px 0;display:flex;flex-wrap:wrap;gap:14px;align-items:center;';
+                        const dashTitle = document.createElement('span');
+                        dashTitle.style.cssText = 'font-weight:600;color:var(--text-main);';
+                        dashTitle.textContent = 'KPIs:';
+                        dashBar.appendChild(dashTitle);
+                        plotT.forEach((token, ti) => {
+                            const chip = document.createElement('span');
+                            chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;color:var(--text-main);';
+                            const dp = dashPatterns[ti % dashPatterns.length];
+                            const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+                            svg.setAttribute('width','30'); svg.setAttribute('height','10');
+                            svg.style.verticalAlign = 'middle';
+                            const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+                            line.setAttribute('x1','0'); line.setAttribute('y1','5');
+                            line.setAttribute('x2','30'); line.setAttribute('y2','5');
+                            line.setAttribute('stroke','#555'); line.setAttribute('stroke-width','2');
+                            if (dp.length) line.setAttribute('stroke-dasharray', dp.join(','));
+                            svg.appendChild(line);
+                            chip.appendChild(svg);
+                            chip.appendChild(document.createTextNode(fname(token)));
+                            dashBar.appendChild(chip);
+                        });
+                        wrap.insertBefore(dashBar, chartContainer);
+                    }
+
                     const _ovGapCfg=makeGapPlugin(ovGapIndices);
-                    const _ovOpts=makeChartOptions(); if(_ovGapCfg) _ovOpts.plugins.gapShader=_ovGapCfg;
+                    const _ovOpts=makeChartOptions();
+                    _ovOpts.plugins.legend = { display: false };
+                    if(_ovGapCfg) _ovOpts.plugins.gapShader=_ovGapCfg;
                     chartInstances.push(new Chart(canvas.getContext('2d'), {
                         type:'line', data:{labels:cl, datasets},
                         options: _ovOpts
                     }));
+                    // Store chart ref for interactive legend toggle
+                    wrap._chartRef = chartInstances[chartInstances.length - 1];
+                    wrap._ovGroupCount = ovValues.length;
+                    wrap._kpiCount = plotT.length;
                     wrap.appendChild(buildStatsTable(datasets, isRatio));
                 });
             } else {
@@ -1005,6 +1206,7 @@ function generateDashboard() {
         chartInstances.push(new Chart(canvas.getContext('2d'),{type:'line',data:{labels,datasets:ds},options:_stdOpts}));
         wrap.appendChild(buildStatsTable(ds,isRatio));
     });
+    } finally { isGeneratingDashboard = false; }  // [H1]
 }
 
 // =============================================================================
@@ -1014,6 +1216,12 @@ function addRuleToQueue() {
     const tokens=Array.from(document.getElementById('selA').selectedOptions).map(o=>o.value);
     if(!tokens.length){logAction('Warning: No metrics selected.'); return;}
     const r={header:document.getElementById('gHeader').value.trim()||'KPI',mode:document.getElementById('analysisMode').value,tokens};
+    // Capture threshold values
+    const tw=document.getElementById('threshWarn'), tc=document.getElementById('threshCritical');
+    const thresholds={};
+    if(tw&&tw.value.trim()!=='') thresholds.warn=parseFloat(tw.value);
+    if(tc&&tc.value.trim()!=='') thresholds.critical=parseFloat(tc.value);
+    if(Object.keys(thresholds).length) r.thresholds=thresholds;
     if(editingRuleIndex>=0){
         const old=ruleQueue[editingRuleIndex].header; ruleQueue[editingRuleIndex]=r;
         logAction("Rule: Updated '"+old+"' \u2192 '"+r.header+"'."); cancelEditRule();
@@ -1028,6 +1236,9 @@ function editRule(index) {
     document.getElementById('gHeader').value=r.header;
     document.getElementById('analysisMode').value=r.mode;
     Array.from(document.getElementById('selA').options).forEach(o=>{o.selected=r.tokens.includes(o.value);});
+    const tw=document.getElementById('threshWarn'), tc=document.getElementById('threshCritical');
+    if(tw) tw.value=(r.thresholds&&r.thresholds.warn!=null)?r.thresholds.warn:'';
+    if(tc) tc.value=(r.thresholds&&r.thresholds.critical!=null)?r.thresholds.critical:'';
     document.getElementById('editBannerName').textContent=r.header;
     document.getElementById('editBanner').classList.add('active');
     const btn=document.getElementById('addRuleBtn'); btn.textContent='\ud83d\udcbe Save Rule Changes'; btn.classList.add('edit-mode');
@@ -1308,20 +1519,22 @@ function refreshMcKpiSelector() {
 function toggleOverlayKey() {
     const on = document.getElementById('mcOverlay').checked;
     document.getElementById('overlayKeyRow').style.display = on ? 'block' : 'none';
+    document.getElementById('overlayExcludeRow').style.display = on ? 'block' : 'none';
+    if (!on) document.getElementById('mcOverlayExclude').value = '';
     if (on) populateOverlayKeySelect();
 }
 function populateOverlayKeySelect() {
     const src = document.getElementById('selMcKpi');
     const dst = document.getElementById('selOverlayKey');
-    const prev = dst.value;
+    const prevSet = new Set(Array.from(dst.selectedOptions).map(o => o.value));
     dst.innerHTML = '';
     Array.from(src.options).forEach(o => {
         const no = document.createElement('option');
         no.value = o.value; no.textContent = o.textContent;
-        if (o.value === prev) no.selected = true;
+        if (prevSet.has(o.value)) no.selected = true;
         dst.appendChild(no);
     });
-    if (!dst.value && dst.options.length) dst.options[0].selected = true;
+    if (!dst.selectedOptions.length && dst.options.length) dst.options[0].selected = true;
 }
 function addMcRule() {
     const ck=Array.from(document.getElementById('selComp').selectedOptions).map(o=>o.value);
@@ -1330,12 +1543,14 @@ function addMcRule() {
     const md=document.getElementById('mcMode').value;
     const rn=document.getElementById('mcDisplayName').value.trim();
     const ov=document.getElementById('mcOverlay').checked;
-    const ok=ov ? document.getElementById('selOverlayKey').value : '';
+    const okArr=ov ? Array.from(document.getElementById('selOverlayKey').selectedOptions).map(o=>o.value) : [];
     if(!ck.length){logAction('Warning: Select at least one Type-CompId.'); return;}
     if(!kp.length){logAction('Warning: Select at least one KPI metric.'); return;}
-    if(ov&&!ok){logAction('Warning: Select an Overlay Key column.'); return;}
+    if(ov&&!okArr.length){logAction('Warning: Select at least one Overlay Key column.'); return;}
+    const exRaw = ov ? (document.getElementById('mcOverlayExclude').value || '') : '';
+    const excludeVals = exRaw.split(',').map(s => s.trim()).filter(Boolean);
     const dn={}; if(rn) ck.forEach(k=>{dn[k]=rn;});
-    const rule={header:hd,mode:md,tokens:kp,compKeys:ck,displayNames:dn,_mc:true,_overlay:ov,_overlayKey:ok};
+    const rule={header:hd,mode:md,tokens:kp,compKeys:ck,displayNames:dn,_mc:true,_overlay:ov,_overlayKey:okArr[0]||'',_overlayKeys:okArr,_excludeOverlay:excludeVals};
     if(mcEditingIndex>=0){
         const old=ruleQueue[mcEditingIndex].header; ruleQueue[mcEditingIndex]=rule;
         logAction("MC Rule: Updated '"+old+"' \u2192 '"+hd+"'."); cancelMcEdit();
@@ -1353,6 +1568,8 @@ function cancelMcEdit() {
     document.getElementById('mcEditBanner').classList.remove('active');
     document.getElementById('mcOverlay').checked=false;
     document.getElementById('overlayKeyRow').style.display='none';
+    document.getElementById('overlayExcludeRow').style.display='none';
+    document.getElementById('mcOverlayExclude').value='';
     document.getElementById('selOverlayKey').innerHTML='';
     const btn=document.getElementById('mcAddBtn'); btn.textContent='+ Add to Queue'; btn.classList.remove('edit-mode');
     renderMcQueue(); logAction('MC Rule: Edit cancelled.');
@@ -1368,10 +1585,18 @@ function editMcRule(idx) {
     document.getElementById('mcOverlay').checked=!!r._overlay;
     if(r._overlay){
         document.getElementById('overlayKeyRow').style.display='block';
+        document.getElementById('overlayExcludeRow').style.display='block';
         populateOverlayKeySelect();
-        document.getElementById('selOverlayKey').value=r._overlayKey||'';
+        const editKeys = r._overlayKeys || (r._overlayKey ? [r._overlayKey] : []);
+        Array.from(document.getElementById('selOverlayKey').options).forEach(o => {
+            o.selected = editKeys.includes(o.value);
+        });
+        document.getElementById('mcOverlayExclude').value=
+            (r._excludeOverlay && r._excludeOverlay.length) ? r._excludeOverlay.join(', ') : '';
     } else {
         document.getElementById('overlayKeyRow').style.display='none';
+        document.getElementById('overlayExcludeRow').style.display='none';
+        document.getElementById('mcOverlayExclude').value='';
     }
     document.getElementById('mcEditBannerName').textContent=r.header;
     document.getElementById('mcEditBanner').classList.add('active');
@@ -1387,7 +1612,9 @@ function renderMcQueue() {
         if(!r._mc) return;
         const div=document.createElement('div'); div.className='queue-item'+(i===mcEditingIndex?' editing':'');
         const span=document.createElement('span'); span.className='queue-label';
-        span.textContent=r.header+'  (MC'+(r._overlay?' overlay['+r._overlayKey+']':'')+' · '+r.compKeys.length+' comp · '+r.tokens.length+' KPI)';
+        const exCount = (r._excludeOverlay && r._excludeOverlay.length) ? ' excl:'+r._excludeOverlay.length : '';
+        const keyDisplay = (r._overlayKeys && r._overlayKeys.length) ? r._overlayKeys.join(',') : (r._overlayKey || '');
+        span.textContent=r.header+'  (MC'+(r._overlay?' overlay['+keyDisplay+']'+exCount:'')+' · '+r.compKeys.length+' comp · '+r.tokens.length+' KPI)';
         const bg=document.createElement('div'); bg.style.cssText='display:flex;gap:4px;flex-shrink:0;';
         const eb=document.createElement('button'); eb.className='btn-mini'; eb.style.cssText='background:var(--warning);color:#333;'; eb.textContent='\u270f\ufe0f Edit'; eb.addEventListener('click',()=>editMcRule(i));
         const db=document.createElement('button'); db.className='btn-mini'; db.style.cssText='background:var(--danger);color:white;'; db.textContent='\u2715';
@@ -1399,13 +1626,28 @@ function renderMcQueue() {
 // =============================================================================
 // RULE IMPORT / EXPORT
 // =============================================================================
-function saveRulesToFile() {
+async function saveRulesToFile() {
     logAction('User: Exporting rules.');
-    const def='KPI_Rules_'+(activeFileName||'Config');
-    let fn=prompt('Filename for Rules (JSON):',def); if(fn===null){logAction('Cancelled.'); return;}
-    fn=fn.trim()||def; if(!fn.toLowerCase().endsWith('.json')) fn+='.json';
+    const def='KPI_Rules_'+(activeFileName||'Config')+'.json';
     const payload={ruleQueue,csvHeaderConfig:{hasHeader:document.getElementById('csvHasHeader').checked,manualHeaders:document.getElementById('csvManualHeaders').value,tsFormat:document.getElementById('csvTsFormat').value}};
     const blob=new Blob([JSON.stringify(payload,null,4)],{type:'application/json'});
+    // [Feedback 6a] Directory selection via File System Access API
+    if (window.showSaveFilePicker) {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: def,
+                types: [{description:'JSON Files', accept:{'application/json':['.json']}}]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            logAction("Rules saved to '"+handle.name+"'.");
+            return;
+        } catch(e) { if(e.name==='AbortError'){logAction('Cancelled.'); return;} }
+    }
+    // Fallback for browsers without File System Access API
+    let fn=prompt('Filename for Rules (JSON):',def); if(fn===null){logAction('Cancelled.'); return;}
+    fn=fn.trim()||def; if(!fn.toLowerCase().endsWith('.json')) fn+='.json';
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     logAction("Rules saved to '"+fn+"'.");
@@ -1495,18 +1737,45 @@ async function _runPdfExport(fullData) {
     let fn = document.getElementById('pdf-modal-fname').value.trim()
              || ('KPI_Report_' + (activeFileName||'Export'));
     if(!fn.toLowerCase().endsWith('.pdf')) fn += '.pdf';
+
+    // [F101] Acquire file handle FIRST while user gesture is still active.
+    // showSaveFilePicker() requires a transient user activation that expires
+    // after ~5 seconds — calling it after chart reset + PDF build would fail.
+    let fileHandle = null;
+    if (window.showSaveFilePicker) {
+        try {
+            fileHandle = await window.showSaveFilePicker({
+                suggestedName: fn,
+                types: [{description: 'PDF Files', accept: {'application/pdf': ['.pdf']}}]
+            });
+        } catch(e) {
+            if (e.name === 'AbortError') {
+                logAction('PDF: Export cancelled.');
+                return;   // User cancelled the picker — abort entirely
+            }
+            // Other error (e.g. SecurityError) — fall through to doc.save() later
+        }
+    }
+
     modal.classList.remove('active');
     overlay.classList.add('active');
     document.body.classList.add('pdf-exporting');
 
     if(fullData) {
-        // stop() cancels any in-flight animation, resetZoom() restores scale,
-        // second stop() kills the new animation frame resetZoom queued,
-        // draw() synchronously paints to the canvas pixel buffer.
+        // [F100] Reset zoom/pan on every chart so the PDF captures full data.
+        // resetZoom() restores original scale limits but may schedule internal
+        // animation frames inside the zoom plugin. We must wait long enough
+        // for ALL internal Chart.js + plugin callbacks, microtasks, and
+        // animation frames to settle before reading the canvas via toDataURL().
         isInternalSync=true;
-        chartInstances.forEach(c=>{ c.stop(); c.resetZoom(); c.stop(); c.draw(); });
+        chartInstances.forEach(c=>{ c.stop(); c.resetZoom(); });
         isInternalSync=false;
         logAction('PDF: Charts reset to full data view.');
+        // Allow zoom plugin internals and any queued animation frames to settle
+        await new Promise(r => setTimeout(r, 500));
+        // Force a final synchronous redraw with zero animation to guarantee
+        // every canvas backing-store pixel reflects the reset state
+        chartInstances.forEach(c=>{ c.update('none'); });
     } else {
         logAction('PDF: Exporting current zoom view.');
     }
@@ -1516,10 +1785,21 @@ async function _runPdfExport(fullData) {
         const PAGE_W=190, MARGIN=10, PAGE_H=277;
         let y=MARGIN;
 
+        // [Feedback 5] PDF source filename header
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('KPI Analysis Report', MARGIN, y + 5);
+        y += 8;
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        doc.text('Source: ' + (activeFileName || 'N/A'), MARGIN, y + 4);
+        doc.text('Generated: ' + new Date().toLocaleString(), MARGIN + 100, y + 4);
+        y += 12;
+
         // Read each chart directly from its canvas pixel buffer via toDataURL().
         // html2canvas re-renders canvases from the DOM and ignores the current pixel
         // buffer — making it useless after resetZoom(). Direct toDataURL() is
-        // synchronous and reads exactly what draw() just painted.
+        // synchronous and reads exactly what update('none') just painted.
         document.querySelectorAll('.chart-wrapper').forEach(wrapper => {
             const titleEl = wrapper.querySelector('h3');
             const canvas  = wrapper.querySelector('canvas');
@@ -1545,8 +1825,16 @@ async function _runPdfExport(fullData) {
             y += imgH + 6;
         });
 
-        doc.save(fn);
-        logAction('PDF: Saved as ' + fn + '.');
+        // [F101] Save using pre-acquired file handle or fallback
+        if (fileHandle) {
+            const writable = await fileHandle.createWritable();
+            await writable.write(doc.output('blob'));
+            await writable.close();
+            logAction('PDF: Saved as ' + fileHandle.name + '.');
+        } else {
+            doc.save(fn);
+            logAction('PDF: Saved as ' + fn + '.');
+        }
     } catch(err){ logAction('Error: PDF export failed — ' + (err&&err.message)); }
     finally{
         overlay.classList.remove('active');
@@ -1569,6 +1857,102 @@ async function handlePatternUpload(input) {
 }
 
 // =============================================================================
+// WEBSOCKET CLIENT [H4, M7, SEC2]
+// =============================================================================
+let ws = null, wsDelay = 1000, wsReconnectAttempts = 0;
+const WS_MAX_RECONNECTS = 10;
+function connectWebSocket(url) {
+    if (wsReconnectAttempts >= WS_MAX_RECONNECTS) {
+        logAction('WS: Max reconnect attempts reached. Stopped.'); return;
+    }
+    if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+    wsReconnectAttempts++;
+    logAction('WS: Connecting to ' + url + ' (attempt ' + wsReconnectAttempts + '/' + WS_MAX_RECONNECTS + ')');
+    ws = new WebSocket(url);
+    ws.onopen = () => {
+        logAction('WS: Connected - receiving live data.');
+        wsDelay = 1000; wsReconnectAttempts = 0;
+        const badge = document.getElementById('live-badge');
+        if (badge) badge.style.display = 'inline-flex';
+    };
+    ws.onmessage = (e) => {
+        let msg;
+        try { msg = JSON.parse(e.data); } catch(err) { logAction('WS: Received non-JSON message.'); return; }
+        if (typeof msg !== 'object' || msg === null) return;  // [M7]
+        if (msg.type === 'data' && Array.isArray(msg.rows)) {
+            msg.rows.forEach(r => {
+                if (!r || typeof r.tokens !== 'object') return;  // [M7]
+                activeLogData.push(r);
+                Object.keys(r.tokens).forEach(k => {
+                    if (!availableTokens.includes(k)) availableTokens.push(k);
+                });
+            });
+            if (ruleQueue.length) generateDashboard();
+        } else if (msg.type === 'alert') {
+            logAction('WS Alert: ' + (msg.message || JSON.stringify(msg)));
+        }
+    };
+    ws.onclose = () => {
+        const badge = document.getElementById('live-badge');
+        if (badge) badge.style.display = 'none';
+        if (wsReconnectAttempts >= WS_MAX_RECONNECTS) {
+            logAction('WS: Max reconnect attempts reached. Stopped.'); return;
+        }
+        wsDelay = Math.min(wsDelay * 2, 30000);
+        logAction('WS: Disconnected - reconnecting in ' + (wsDelay/1000) + 's...');
+        setTimeout(() => connectWebSocket(url), wsDelay);
+    };
+    ws.onerror = () => logAction('WS: Connection error.');
+}
+
+// =============================================================================
+// URL AUTO-FETCH [SEC4, H5]
+// =============================================================================
+let fetchTimer = null, isFetchRunning = false;
+function startAutoFetch() {
+    const url = (document.getElementById('fetchUrl') || {}).value?.trim();
+    if (!url) { logAction('Fetch: No URL provided.'); return; }
+    try {
+        const parsed = new URL(url);
+        if (!['http:', 'https:'].includes(parsed.protocol)) { logAction('Fetch Error: Only http/https allowed.'); return; }
+        // Block private IPs [SEC4]
+        const h = parsed.hostname;
+        if (/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.|localhost$)/i.test(h)) {
+            logAction('Fetch Error: Private/internal URLs not allowed.'); return;
+        }
+    } catch(e) { logAction('Fetch Error: Invalid URL format.'); return; }
+    if (isFetchRunning) { logAction('Fetch: Already running.'); return; }
+    isFetchRunning = true;
+    const interval = Math.max(5, parseInt((document.getElementById('fetchInterval') || {}).value) || 30);
+    logAction("Fetch: Starting auto-refresh from '" + url + "' every " + interval + 's');
+    const doFetch = async () => {
+        try {
+            const resp = await fetch(url, { credentials: 'omit' });
+            const text = await resp.text();
+            rawFilesStore[url] = text;
+            document.getElementById('file-status').textContent = Object.keys(rawFilesStore).length + ' file(s) ready.';
+            processFilesFromUI();
+            logAction("Fetch: Refreshed '" + url + "'.");
+        } catch(err) { logAction('Fetch Error: ' + err.message + '.'); }
+    };
+    doFetch();
+    fetchTimer = setInterval(doFetch, interval * 1000);
+    const startBtn = document.getElementById('btn-fetch-start');
+    const stopBtn = document.getElementById('btn-fetch-stop');
+    if (startBtn) startBtn.classList.add('hidden');
+    if (stopBtn) stopBtn.classList.remove('hidden');
+}
+function stopAutoFetch() {
+    if (fetchTimer) { clearInterval(fetchTimer); fetchTimer = null; }
+    isFetchRunning = false;
+    logAction('Fetch: Auto-refresh stopped.');
+    const startBtn = document.getElementById('btn-fetch-start');
+    const stopBtn = document.getElementById('btn-fetch-stop');
+    if (startBtn) startBtn.classList.remove('hidden');
+    if (stopBtn) stopBtn.classList.add('hidden');
+}
+
+// =============================================================================
 // UI HELPERS
 // =============================================================================
 function toggleTheme() {
@@ -1586,7 +1970,7 @@ function toggleCsvOptions() {
 // BOOT
 // =============================================================================
 window.onload = () => {
-    logAction('System: Tool v1.9.0 loaded.');
+    logAction('System: Tool v2.2.0 loaded.');
     // PDF modal button wiring
     document.getElementById('pdf-btn-full').addEventListener('click', () => _runPdfExport(true));
     document.getElementById('pdf-btn-current').addEventListener('click', () => _runPdfExport(false));
@@ -1596,6 +1980,75 @@ window.onload = () => {
     document.addEventListener('keydown', e => { if(e.key==='Escape' && document.getElementById('pdf-modal').classList.contains('active')) _closePdfModal(); });
     // Click outside modal box closes it
     document.getElementById('pdf-modal').addEventListener('click', e => { if(e.target===document.getElementById('pdf-modal')) _closePdfModal(); });
+
+    // [M4] Drop zone event listeners (replaces inline handlers)
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='var(--success)'; dropZone.style.background='rgba(0,123,255,0.05)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor='var(--primary)'; dropZone.style.background=''; });
+    dropZone.addEventListener('drop', async e => {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.style.borderColor='var(--primary)'; dropZone.style.background='';
+        dropJustHappened = true;
+        setTimeout(() => { dropJustHappened = false; }, 300);
+        const files = e.dataTransfer.files;
+        logAction('Filesystem: ' + files.length + ' file(s) dropped.');
+        handleDroppedFiles(files);
+    });
+    dropZone.addEventListener('click', e => {
+        if (dropJustHappened) { e.preventDefault(); e.stopPropagation(); return; }
+        document.getElementById('dataFile').click();
+    }, true);
+
+    // [Feedback 2] Detailed action logging — onchange handlers
+    const _selA = document.getElementById('selA');
+    if (_selA) _selA.addEventListener('change', () => {
+        const sel = Array.from(_selA.selectedOptions).map(o => o.value).join(', ');
+        logAction('Metrics: ' + sel);
+    });
+    const _mode = document.getElementById('analysisMode');
+    if (_mode) _mode.addEventListener('change', () => logAction('Config: Analysis mode set to ' + _mode.value));
+    const _csvHdr = document.getElementById('csvHasHeader');
+    if (_csvHdr) _csvHdr.addEventListener('change', () => logAction('Config: CSV header row ' + (_csvHdr.checked ? 'enabled' : 'disabled')));
+    const _csvMan = document.getElementById('csvManualHeaders');
+    if (_csvMan) _csvMan.addEventListener('change', () => logAction('Config: Manual headers updated.'));
+    const _csvTs = document.getElementById('csvTsFormat');
+    if (_csvTs) _csvTs.addEventListener('change', () => logAction('Config: Timestamp format set to ' + _csvTs.value));
+    const _tw = document.getElementById('threshWarn');
+    const _tc = document.getElementById('threshCritical');
+    const _logThresh = () => logAction('Config: Threshold updated - warn=' + (_tw?_tw.value:'') + ', critical=' + (_tc?_tc.value:''));
+    if (_tw) _tw.addEventListener('change', _logThresh);
+    if (_tc) _tc.addEventListener('change', _logThresh);
+    const _selComp = document.getElementById('selComp');
+    if (_selComp) _selComp.addEventListener('change', () => {
+        const sel = Array.from(_selComp.selectedOptions).map(o => o.value).join(', ');
+        logAction('MC: Components selected: ' + sel);
+    });
+    const _selMcKpi = document.getElementById('selMcKpi');
+    if (_selMcKpi) _selMcKpi.addEventListener('change', () => {
+        const sel = Array.from(_selMcKpi.selectedOptions).map(o => o.value).join(', ');
+        logAction('MC Metrics: ' + sel);
+    });
+    const _mcOverlay = document.getElementById('mcOverlay');
+    if (_mcOverlay) _mcOverlay.addEventListener('change', () => logAction('MC: Overlay mode ' + (_mcOverlay.checked ? 'enabled' : 'disabled') + '.'));
+    const _mcDN = document.getElementById('mcDisplayName');
+    if (_mcDN) _mcDN.addEventListener('change', () => logAction('MC: Display name set to ' + (_mcDN.value || '(none)')));
+    const _mcExclude = document.getElementById('mcOverlayExclude');
+    if (_mcExclude) _mcExclude.addEventListener('change', () => logAction('MC: Overlay exclude set to: ' + (_mcExclude.value || '(none)')));
+
+    // [SEC2] WebSocket URL validation from query params
+    const params = new URLSearchParams(window.location.search);
+    const wsUrl = params.get('ws');
+    if (wsUrl) {
+        try {
+            const parsed = new URL(wsUrl);
+            if (!['ws:', 'wss:'].includes(parsed.protocol)) {
+                logAction('WS: Invalid protocol - only ws/wss allowed.');
+            } else {
+                logAction('WS: Live mode detected - connecting to ' + wsUrl);
+                connectWebSocket(wsUrl);
+            }
+        } catch(e) { logAction('WS: Invalid URL format.'); }
+    }
 };
 </script>
 </body>
