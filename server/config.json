@@ -1,0 +1,40 @@
+{
+    "http_port": 3000,
+    "websocket_port": 8765,
+    "parser": {
+        "mode": "logPipe",
+        "pattern": ""
+    },
+    "log_sources": {
+        "local": [
+            "/var/log/app/kpi.log"
+        ],
+        "remote": [
+            {
+                "host": "app-server-1",
+                "user": "admin",
+                "path": "/var/log/app/kpi.log"
+            }
+        ]
+    },
+    "poll_interval_seconds": 10,
+    "remote_sync_interval_seconds": 60,
+    "thresholds": {
+        "SM TimedOut Last Min":  { "warn": 5,  "critical": 10 },
+        "SM Failed Last Min":    { "warn": 3,  "critical": 5  },
+        "SM TCAP Abort Last Min":{ "warn": 5,  "critical": 10 }
+    },
+    "alerts": {
+        "email": {
+            "enabled": false,
+            "smtp_host": "smtp.gmail.com",
+            "smtp_port": 587,
+            "username": "alerts@yourcompany.com",
+            "password": "app_password_here",
+            "recipients": [
+                "team@yourcompany.com"
+            ]
+        },
+        "log_file": "./alerts.log"
+    }
+}

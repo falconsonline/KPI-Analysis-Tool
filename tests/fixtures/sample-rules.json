@@ -1,0 +1,16 @@
+{
+    "ruleQueue": [
+        {
+            "header": "Test MSU",
+            "mode": "direct",
+            "tokens": ["MSU Received Last Min"],
+            "thresholds": {
+                "MSU Received Last Min": { "warn": 90, "critical": 150 }
+            }
+        }
+    ],
+    "csvHeaderConfig": {
+        "hasHeader": false,
+        "manualHeaders": ""
+    }
+}

@@ -1,0 +1,4 @@
+Jan 15 | 08:00:00 | DBWriter | host1 | MSU Received Last Min,100,SM Started Last Min,95,SM Completed Last Min,90,SM TimedOut Last Min,5,SM Failed Last Min,2
+Jan 15 | 08:01:00 | DBWriter | host1 | MSU Received Last Min,120,SM Started Last Min,110,SM Completed Last Min,105,SM TimedOut Last Min,5,SM Failed Last Min,1
+Jan 15 | 08:02:00 | DBWriter | host1 | MSU Received Last Min,80,SM Started Last Min,78,SM Completed Last Min,75,SM TimedOut Last Min,3,SM Failed Last Min,0
+Mon Jan 15 | 08:03:00 | DBWriter | host1 | MSU Received Last Min,200,SM Started Last Min,195,SM Completed Last Min,180,SM TimedOut Last Min,15,SM Failed Last Min,4

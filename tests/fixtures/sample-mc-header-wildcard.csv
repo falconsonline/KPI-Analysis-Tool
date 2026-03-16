@@ -1,0 +1,2 @@
+Date,Time,Type(GSM),CompId(XXX),TCH Available,TCH Used,SD Drops,Handover Success (%)
+Date,Time,Type(LTE),CompId(XXX),PRB Usage DL (%),PRB Usage UL (%),RSRP (dBm),SINR (dB),CQI Index

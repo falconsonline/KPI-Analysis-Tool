@@ -1,0 +1,606 @@
+{
+    "version": "1.0",
+    "profiles": [
+        {
+            "name": "GTPP Session Statistics",
+            "app": "GGSN",
+            "format": "flatCsv",
+            "match": {
+                "columns": {
+                    "0": { "type": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+                    "1": { "type": "time", "pattern": "^\\d{2}:\\d{2}" }
+                },
+                "allNumericFrom": 2
+            },
+            "headers": {
+                "hasHeader": false,
+                "columns": "Date,Time,MSU,SM_Started,SM_Completed,SM_TimedOut,Total_Req,Total_OK,Total_Fail,DNS_Req,DNS_Fail"
+            },
+            "rules": [
+                {
+                    "header": "Session Counts",
+                    "mode": "direct",
+                    "tokens": ["MSU", "SM_Started", "SM_Completed", "SM_TimedOut"],
+                    "thresholds": {}
+                },
+                {
+                    "header": "Request Success Rate (%)",
+                    "mode": "ratio",
+                    "tokens": ["Total_Req", "Total_OK", "Total_Fail"],
+                    "thresholds": {}
+                },
+                {
+                    "header": "Net Active Sessions",
+                    "mode": "formula",
+                    "tokens": ["SM_Started", "SM_Completed", "SM_TimedOut"],
+                    "formula": "SM_Started + SM_Completed - SM_TimedOut * 2",
+                    "formulaLabel": "Net Active Sessions",
+                    "thresholds": {}
+                }
+            ]
+        },
+
+        {
+            "name": "MTP2 Link Stats — Direct Per-Component",
+            "app": "STP",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 10 }, "4": { "maxDistinct": 50 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "Type", "4": "LinkId" },
+                "kpiColumns": ["MSU_Recv", "MSU_Sent", "Errors", "Retransmits"],
+                "mcHeaderFile": [
+                    "Date,Time,Type(SS7),CompId(XXX),MSU Received,MSU Sent,Link Errors,Retransmits"
+                ]
+            },
+            "rules": [
+                {
+                    "header": "Link Traffic — Per Component",
+                    "_mc": true,
+                    "mode": "direct",
+                    "tokens": ["KPI_1", "KPI_2", "KPI_3", "KPI_4"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                }
+            ]
+        },
+
+        {
+            "name": "MTP2 Link Stats — Direct with Overlay",
+            "app": "STP",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 10 }, "4": { "maxDistinct": 50 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "Type", "4": "LinkId" },
+                "kpiColumns": ["OverlayId", "MSU_Recv", "MSU_Sent", "Errors"]
+            },
+            "rules": [
+                {
+                    "header": "Link Traffic — Overlay by Group",
+                    "_mc": true,
+                    "mode": "direct",
+                    "tokens": ["KPI_2", "KPI_3"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": true,
+                    "_overlayKeys": ["KPI_1"],
+                    "_excludeOverlay": ["Inactive"],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                }
+            ]
+        },
+
+        {
+            "name": "MTP2 Link Stats — Direct with Aggregation",
+            "app": "STP",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 10 }, "4": { "maxDistinct": 50 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "Type", "4": "LinkId" },
+                "kpiColumns": ["MSU_Recv", "MSU_Sent", "Errors"]
+            },
+            "rules": [
+                {
+                    "header": "Link Traffic — SUM Aggregated",
+                    "_mc": true,
+                    "mode": "direct",
+                    "tokens": ["KPI_1", "KPI_2"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": true,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                }
+            ]
+        },
+
+        {
+            "name": "Cell KPI — Ratio Per-Component",
+            "app": "RAN",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 5 }, "4": { "maxDistinct": 100 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "RAT", "4": "CellId" },
+                "kpiColumns": ["TCH_Avail", "TCH_Used", "SD_Drops", "HO_Success"],
+                "mcHeaderFile": [
+                    "Date,Time,Type(GSM),CompId(XXX),TCH Available,TCH Used,SD Drops,Handover Success (%)",
+                    "Date,Time,Type(LTE),CompId(XXX),PRB DL (%),PRB UL (%),RSRP (dBm),SINR (dB)"
+                ]
+            },
+            "rules": [
+                {
+                    "header": "Channel Utilization (%) — Per Cell",
+                    "_mc": true,
+                    "mode": "ratio",
+                    "tokens": ["KPI_1", "KPI_2"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                }
+            ]
+        },
+
+        {
+            "name": "Cell KPI — Ratio with Overlay",
+            "app": "RAN",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 5 }, "4": { "maxDistinct": 100 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "RAT", "4": "CellId" },
+                "kpiColumns": ["CellType", "TCH_Avail", "TCH_Used", "SD_Drops"]
+            },
+            "rules": [
+                {
+                    "header": "Utilization % — Overlay by Cell Type",
+                    "_mc": true,
+                    "mode": "ratio",
+                    "tokens": ["KPI_2", "KPI_3"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": true,
+                    "_overlayKeys": ["KPI_1"],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                }
+            ]
+        },
+
+        {
+            "name": "Cell KPI — Ratio with Aggregation + Per-Sec",
+            "app": "RAN",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 5 }, "4": { "maxDistinct": 100 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "RAT", "4": "CellId" },
+                "kpiColumns": ["TCH_Avail", "TCH_Used", "SD_Drops"]
+            },
+            "rules": [
+                {
+                    "header": "Utilization % — AVG Aggregated (per sec)",
+                    "_mc": true,
+                    "mode": "ratio",
+                    "tokens": ["KPI_1", "KPI_2", "KPI_3"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": true,
+                    "_aggMode": "sum",
+                    "_perSec": true
+                }
+            ]
+        },
+
+        {
+            "name": "Cell KPI — Formula Per-Component",
+            "app": "RAN",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 5 }, "4": { "maxDistinct": 100 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "RAT", "4": "CellId" },
+                "kpiColumns": ["PRB_DL", "PRB_UL", "Traffic_Vol"],
+                "mcHeaderFile": [
+                    "Date,Time,Type(LTE),CompId(XXX),PRB DL (%),PRB UL (%),Traffic Volume"
+                ]
+            },
+            "rules": [
+                {
+                    "header": "DL-UL Imbalance — Per Cell",
+                    "_mc": true,
+                    "mode": "formula",
+                    "tokens": ["KPI_1", "KPI_2"],
+                    "formula": "KPI_1 - KPI_2",
+                    "formulaLabel": "DL minus UL",
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                }
+            ]
+        },
+
+        {
+            "name": "Cell KPI — Formula with Overlay",
+            "app": "RAN",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 5 }, "4": { "maxDistinct": 100 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "RAT", "4": "CellId" },
+                "kpiColumns": ["Band", "PRB_DL", "PRB_UL", "Traffic_Vol"]
+            },
+            "rules": [
+                {
+                    "header": "PRB Diff — Overlay by Band",
+                    "_mc": true,
+                    "mode": "formula",
+                    "tokens": ["KPI_2", "KPI_3"],
+                    "formula": "KPI_2 - KPI_3",
+                    "formulaLabel": "DL-UL Gap",
+                    "compKeys": ["__auto__"],
+                    "_overlay": true,
+                    "_overlayKeys": ["KPI_1"],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                }
+            ]
+        },
+
+        {
+            "name": "Cell KPI — Formula with Aggregation + Per-Sec",
+            "app": "RAN",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 5 }, "4": { "maxDistinct": 100 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "RAT", "4": "CellId" },
+                "kpiColumns": ["PRB_DL", "PRB_UL", "Traffic_Vol"],
+                "mcHeaderFile": [
+                    "Date,Time,Type(LTE),CompId(XXX),PRB DL (%),PRB UL (%),Traffic Volume"
+                ]
+            },
+            "rules": [
+                {
+                    "header": "Weighted PRB — AVG Aggregated (per sec)",
+                    "_mc": true,
+                    "mode": "formula",
+                    "tokens": ["KPI_1", "KPI_2", "KPI_3"],
+                    "formula": "(KPI_1 + KPI_2) / 2 - KPI_3 * 0.1",
+                    "formulaLabel": "Adjusted PRB Usage",
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": true,
+                    "_aggMode": "avg",
+                    "_perSec": true
+                }
+            ]
+        },
+
+        {
+            "name": "GTPP with CSV Headers",
+            "app": "GGSN",
+            "format": "flatCsv",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "allNumericFrom": 2
+            },
+            "headers": {
+                "hasHeader": true
+            },
+            "rules": [
+                {
+                    "header": "Auto-Detected KPIs",
+                    "mode": "direct",
+                    "tokens": [],
+                    "thresholds": {}
+                }
+            ]
+        },
+
+        {
+            "name": "GTPP LogPipe — Direct",
+            "app": "GGSN",
+            "format": "logPipe",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                }
+            },
+            "rules": [
+                {
+                    "header": "Session Volume",
+                    "mode": "direct",
+                    "tokens": ["MSU Received Last Min", "SM Started Last Min", "SM Completed Last Min"],
+                    "thresholds": { "warn": 150, "critical": 200 }
+                }
+            ]
+        },
+
+        {
+            "name": "GTPP LogPipe — Ratio",
+            "app": "GGSN",
+            "format": "logPipe",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                }
+            },
+            "rules": [
+                {
+                    "header": "Session Success Rate (%)",
+                    "mode": "ratio",
+                    "tokens": ["SM Started Last Min", "SM Completed Last Min"],
+                    "thresholds": {}
+                }
+            ]
+        },
+
+        {
+            "name": "GTPP LogPipe — Formula",
+            "app": "GGSN",
+            "format": "logPipe",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                }
+            },
+            "rules": [
+                {
+                    "header": "Net Session Health",
+                    "mode": "formula",
+                    "tokens": ["SM Started Last Min", "SM Completed Last Min", "SM TimedOut Last Min", "SM Failed Last Min"],
+                    "formula": "SM Completed Last Min - SM TimedOut Last Min - SM Failed Last Min",
+                    "formulaLabel": "Healthy Sessions",
+                    "thresholds": {}
+                }
+            ]
+        },
+
+        {
+            "name": "GTPP LogPipe — All Modes Combined",
+            "app": "GGSN",
+            "format": "logPipe",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                }
+            },
+            "rules": [
+                {
+                    "header": "MSU & Session Counts",
+                    "mode": "direct",
+                    "tokens": ["MSU Received Last Min", "SM Started Last Min", "SM Completed Last Min", "SM TimedOut Last Min", "SM Failed Last Min"],
+                    "thresholds": { "warn": 150, "critical": 250 }
+                },
+                {
+                    "header": "Completion Rate (%)",
+                    "mode": "ratio",
+                    "tokens": ["SM Started Last Min", "SM Completed Last Min", "SM Failed Last Min"],
+                    "thresholds": {}
+                },
+                {
+                    "header": "Net Healthy Sessions",
+                    "mode": "formula",
+                    "tokens": ["SM Completed Last Min", "SM TimedOut Last Min", "SM Failed Last Min"],
+                    "formula": "SM Completed Last Min - SM TimedOut Last Min - SM Failed Last Min",
+                    "formulaLabel": "Healthy Sessions",
+                    "thresholds": {}
+                },
+                {
+                    "header": "Session Efficiency Index",
+                    "mode": "formula",
+                    "tokens": ["SM Started Last Min", "SM Completed Last Min", "MSU Received Last Min"],
+                    "formula": "(SM Completed Last Min / SM Started Last Min) * MSU Received Last Min",
+                    "formulaLabel": "Efficiency Index",
+                    "thresholds": {}
+                }
+            ]
+        },
+
+        {
+            "name": "Combined MC Dashboard — All Modes",
+            "app": "RAN-Dashboard",
+            "format": "multiComp",
+            "match": {
+                "columns": {
+                    "0": { "type": "date" },
+                    "1": { "type": "time" }
+                },
+                "keyFields": { "3": { "maxDistinct": 10 }, "4": { "maxDistinct": 200 } }
+            },
+            "headers": {
+                "hasHeader": false,
+                "keyLabels": { "3": "RAT", "4": "CellId" },
+                "kpiColumns": ["Band", "PRB_DL", "PRB_UL", "TCH_Avail", "TCH_Used", "SD_Drops", "Traffic_Vol"],
+                "mcHeaderFile": [
+                    "Date,Time,Type(GSM),CompId(XXX),Band,TCH Available,TCH Used,SD Drops,Handover Success (%),Traffic Volume",
+                    "Date,Time,Type(LTE),CompId(XXX),Band,PRB DL (%),PRB UL (%),RSRP (dBm),SINR (dB),CQI Index"
+                ]
+            },
+            "rules": [
+                {
+                    "header": "Raw KPIs — Direct Per-Cell",
+                    "_mc": true,
+                    "mode": "direct",
+                    "tokens": ["KPI_2", "KPI_3", "KPI_4"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                },
+                {
+                    "header": "Total Traffic — SUM Aggregated",
+                    "_mc": true,
+                    "mode": "direct",
+                    "tokens": ["KPI_2", "KPI_3"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": true,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                },
+                {
+                    "header": "Utilization % — Per Cell",
+                    "_mc": true,
+                    "mode": "ratio",
+                    "tokens": ["KPI_4", "KPI_5"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                },
+                {
+                    "header": "Utilization % — Overlay by Band",
+                    "_mc": true,
+                    "mode": "ratio",
+                    "tokens": ["KPI_4", "KPI_5"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": true,
+                    "_overlayKeys": ["KPI_1"],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                },
+                {
+                    "header": "DL-UL Gap — Per Cell",
+                    "_mc": true,
+                    "mode": "formula",
+                    "tokens": ["KPI_2", "KPI_3"],
+                    "formula": "KPI_2 - KPI_3",
+                    "formulaLabel": "DL minus UL",
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": false
+                },
+                {
+                    "header": "Weighted PRB — AVG Aggregated (per sec)",
+                    "_mc": true,
+                    "mode": "formula",
+                    "tokens": ["KPI_2", "KPI_3", "KPI_7"],
+                    "formula": "(KPI_2 + KPI_3) / 2 - KPI_7 * 0.1",
+                    "formulaLabel": "Adjusted PRB",
+                    "compKeys": ["__auto__"],
+                    "_overlay": false,
+                    "_overlayKeys": [],
+                    "_excludeOverlay": [],
+                    "_aggregate": true,
+                    "_aggMode": "avg",
+                    "_perSec": true
+                },
+                {
+                    "header": "Traffic Ratio — Overlay by Band (per sec)",
+                    "_mc": true,
+                    "mode": "ratio",
+                    "tokens": ["KPI_4", "KPI_5", "KPI_6"],
+                    "compKeys": ["__auto__"],
+                    "_overlay": true,
+                    "_overlayKeys": ["KPI_1"],
+                    "_excludeOverlay": ["Unknown"],
+                    "_aggregate": false,
+                    "_aggMode": "sum",
+                    "_perSec": true
+                }
+            ]
+        }
+    ]
+}

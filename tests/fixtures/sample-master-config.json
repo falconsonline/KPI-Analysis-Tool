@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "profiles": [
+    {
+      "name": "GTPP Statistics",
+      "app": "GGSN",
+      "format": "flatCsv",
+      "match": {
+        "columns": {
+          "0": { "type": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "1": { "type": "time", "pattern": "^\\d{2}:\\d{2}" }
+        },
+        "allNumericFrom": 2
+      },
+      "headers": {
+        "hasHeader": false,
+        "columns": "Date,Time,MSU,SM_Started,SM_Completed,SM_TimedOut"
+      },
+      "rules": [
+        { "header": "Session Stats", "mode": "direct", "tokens": ["MSU","SM_Started","SM_Completed","SM_TimedOut"] }
+      ]
+    },
+    {
+      "name": "MTP2 Link Statistics",
+      "app": "STP",
+      "format": "multiComp",
+      "match": {
+        "columns": {
+          "0": { "type": "date" },
+          "1": { "type": "time" },
+          "2": { "type": "sequence" }
+        },
+        "keyFields": { "3": { "maxDistinct": 10 }, "4": { "maxDistinct": 50 } }
+      },
+      "headers": {
+        "hasHeader": false,
+        "keyLabels": { "3": "Type", "4": "CompId" },
+        "kpiColumns": ["OverlayId","KPI_1","KPI_2","KPI_3"]
+      },
+      "rules": [
+        { "header": "Link Activity", "_mc": true, "mode": "direct",
+          "tokens": ["KPI_1","KPI_2","KPI_3"],
+          "_overlay": true, "_overlayKeys": ["OverlayId"],
+          "compKeys": ["__auto__"] }
+      ]
+    }
+  ]
+}
