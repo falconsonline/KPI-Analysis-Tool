@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KPI Tool — Validation Test Suite</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff; --cyan:#79c0ff; --text:#e6edf3; --muted:#8b949e; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',monospace;background:var(--bg);color:var(--text);padding:20px;}
+  h1{font-size:1.4em;color:var(--blue);margin-bottom:4px;}
+  .subtitle{color:var(--muted);font-size:.85em;margin-bottom:20px;}
+  .config-bar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+  .config-bar label{font-size:.78em;color:var(--muted);display:block;margin-bottom:4px;}
+  .config-bar input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;font-size:.85em;width:300px;}
+  .btn{padding:8px 18px;border-radius:6px;border:none;font-weight:700;cursor:pointer;font-size:.85em;transition:.15s;}
+  .btn-primary{background:var(--blue);color:#000;}.btn-primary:hover{background:var(--cyan);}
+  .btn-secondary{background:var(--border);color:var(--text);}.btn-secondary:hover{background:#444c56;}
+  #prog{width:100%;height:4px;background:var(--border);border-radius:2px;margin-bottom:12px;display:none;}
+  #prog-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .3s;}
+  #summary{display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px 20px;margin-bottom:20px;display:flex;gap:30px;align-items:center;flex-wrap:wrap;}
+  .stat{text-align:center;}.stat-num{font-size:1.8em;font-weight:700;}.stat-lbl{font-size:.72em;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+  .stat-num.pass{color:var(--green);}.stat-num.fail{color:var(--red);}.stat-num.warn{color:var(--yellow);}.stat-num.info{color:var(--blue);}
+  #results{display:flex;flex-direction:column;gap:16px;}
+  .rcard{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .rcard.pass{border-left:4px solid var(--green);}.rcard.fail{border-left:4px solid var(--red);}.rcard.warn{border-left:4px solid var(--yellow);}
+  .rcard-hdr{padding:12px 18px;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);cursor:pointer;}
+  .rcard-hdr:hover{background:rgba(255,255,255,.05);}
+  .rcard-title{font-weight:700;font-size:1em;color:var(--cyan);}
+  .rcard-meta{font-size:.75em;color:var(--muted);margin-top:2px;}
+  .badge{padding:3px 10px;border-radius:12px;font-size:.72em;font-weight:700;}
+  .badge.pass{background:rgba(63,185,80,.18);color:var(--green);}.badge.fail{background:rgba(248,81,73,.18);color:var(--red);}.badge.warn{background:rgba(210,153,34,.18);color:var(--yellow);}
+  .rcard-body{display:none;padding:18px;border-top:1px solid var(--border);}
+  .rcard-body.open{display:block;}
+  .section-lbl{font-size:.75em;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+  .scores-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-bottom:14px;}
+  .score-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
+  .score-app{font-size:.74em;color:var(--muted);}.score-pct{font-size:1.5em;font-weight:700;}
+  .score-pct.top{color:var(--green);}.score-pct.mid{color:var(--yellow);}.score-pct.low{color:var(--red);}
+  .score-bar{height:4px;border-radius:2px;background:var(--border);margin-top:6px;}
+  .score-bar-fill{height:100%;border-radius:2px;}
+  .checks{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+  .chk{display:flex;gap:10px;align-items:flex-start;font-size:.82em;padding:6px 10px;border-radius:5px;background:rgba(255,255,255,.02);}
+  .chk-icon{font-size:1em;flex-shrink:0;margin-top:1px;}.chk-name{color:var(--muted);width:210px;flex-shrink:0;}.chk-val{flex:1;font-family:monospace;}
+  .chk.pass .chk-icon{color:var(--green);}.chk.fail .chk-icon{color:var(--red);}.chk.warn .chk-icon{color:var(--yellow);}.chk.info .chk-icon{color:var(--blue);}
+  .comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:14px;}
+  .comp-tile{background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:8px 12px;font-size:.78em;}
+  .comp-key{color:var(--cyan);font-weight:700;margin-bottom:4px;}.comp-info{color:var(--muted);}
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:14px;}
+  .chart-wrap{background:#fff;border-radius:6px;padding:8px;}
+  .chart-wrap canvas{width:100%!important;height:130px!important;}
+  .log-box{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:10px;font-family:monospace;font-size:.72em;max-height:120px;overflow-y:auto;}
+  .le{margin-bottom:3px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+  .le.ok{color:var(--green);}.le.err{color:var(--red);}.le.info{color:var(--blue);}.le.warn{color:var(--yellow);}
+  hr{border:none;border-top:1px solid var(--border);margin:12px 0;}
+  #status{font-size:.82em;color:var(--muted);padding:6px 0;}
+</style>
+</head>
+<body>
+
+<h1>🧪 KPI Tool — Validation Test Suite</h1>
+<p class="subtitle">Automated validation: profile matching · key detection · component grouping · KPI mapping</p>
+
+<div class="config-bar">
+  <div><label>MasterConfig URL</label><input id="cfgUrl" value="/MasterConfig.json"></div>
+  <div><label>Tool URL (for scoring functions)</label><input id="toolUrl" value="/KPI-Analysis-Tool-debug.html"></div>
+  <div style="display:flex;gap:8px;align-items:flex-end;">
+    <button class="btn btn-primary" onclick="runAll()">▶ Run All Tests</button>
+    <button class="btn btn-secondary" onclick="clearAll()">✕ Clear</button>
+    <button class="btn btn-secondary" onclick="exportReport()">⬇ HTML</button>
+    <button class="btn btn-secondary" onclick="exportXLSX()">📊 XLSX Report</button>
+  </div>
+</div>
+
+<div id="prog"><div id="prog-fill" style="width:0%"></div></div>
+<div id="status"></div>
+
+<div id="summary" style="display:none">
+  <div class="stat"><div class="stat-num pass" id="s-pass">0</div><div class="stat-lbl">Passed</div></div>
+  <div class="stat"><div class="stat-num fail" id="s-fail">0</div><div class="stat-lbl">Failed</div></div>
+  <div class="stat"><div class="stat-num warn" id="s-warn">0</div><div class="stat-lbl">Warnings</div></div>
+  <div class="stat"><div class="stat-num info" id="s-files">0</div><div class="stat-lbl">Files</div></div>
+  <div class="stat"><div class="stat-num info" id="s-time">—</div><div class="stat-lbl">Duration</div></div>
+</div>
+<div id="results"></div>
+
+<script>
+// ── Globals ─────────────────────────────────────────────────────────────────
+let _w = null; // iframe window — loaded once, reset between tests
+let _iframe = null;
+
+// ── Load iframe once ─────────────────────────────────────────────────────────
+function loadIframe() {
+  return new Promise((resolve, reject) => {
+    if (_iframe) { _iframe.remove(); _w = null; }
+    _iframe = document.createElement('iframe');
+    _iframe.src = document.getElementById('toolUrl').value;
+    _iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;';
+    document.body.appendChild(_iframe);
+    const timeout = setTimeout(() => reject('Tool iframe timeout (10s)'), 10000);
+    _iframe.onload = () => {
+      clearTimeout(timeout);
+      try {
+        _w = _iframe.contentWindow;
+        const needed = ['detectFileFormat','buildFileFingerprint','scoreProfile',
+                        'autoMatchProfile','_profileMinCols','parseAnnotatedHeaders',
+                        'parseMcHeaderCol','processFilesFromUI','softReset'];
+        const missing = needed.filter(f => typeof _w[f] !== 'function');
+        if (missing.length) { reject('Missing: ' + missing.join(', ')); return; }
+        resolve(_w);
+      } catch(e) { reject('iframe access error: ' + e.message); }
+    };
+    _iframe.onerror = () => reject('iframe load error');
+  });
+}
+
+// ── Patch iframe functions to latest versions ────────────────────────────────
+// Applied after iframe loads — ensures fixes are active even if the served
+// KPI-Analysis-Tool-debug.html is an older version.
+function patchIframe(w) {
+  // ── Fix 1: buildFileFingerprint — use pipe delimiter for logPipe format ──
+  // Without this, DBWriter logPipe files get col0=categorical instead of date
+  // so DBWriter never scores >=90% and always shows the manual confirm modal.
+  const origBFF = w.buildFileFingerprint;
+  w.buildFileFingerprint = function(rawText) {
+    const result = origBFF.call(w, rawText);
+    if (!result) return result;
+    const fmt = w.detectFileFormat(rawText);
+    if (fmt !== 'logPipe') return result;
+    // Re-run field classification with pipe delimiter
+    const allLines = rawText.split(/\r?\n/).map(l=>l.trim()).filter(l=>l!=='');
+    const dataLines = allLines;
+    const sampleRows = dataLines.slice(0,20).map(l=>l.split('|').map(c=>c.trim()));
+    const columnCount = Math.max(...sampleRows.map(r=>r.length),0);
+    const reDate = /(^(\w{3}\s+)?\w{3}\s+\d{1,2}$)|(^\d{1,4}[-\/]\w{1,3}[-\/]\d{2,4}$)|(^\d{1,2}-\w{3}-\d{2,4}$)/i;
+    const reTime = /^\d{2}:\d{2}/;
+    const fieldTypes = {}, distinctCounts = {}, sampleValues = {};
+    for (let c=0; c<columnCount && c<10; c++) {
+      const vals = sampleRows.map(r=>(r[c]||'').trim()).filter(v=>v);
+      sampleValues[c] = vals;
+      const distinct = new Set(vals);
+      distinctCounts[c] = distinct.size;
+      const numCount = vals.filter(v=>!isNaN(Number(v))).length;
+      if (c===0 && vals.some(v=>reDate.test(v))) fieldTypes[c]='date';
+      else if (c===1 && vals.some(v=>reTime.test(v))) fieldTypes[c]='time';
+      else if (distinct.size > vals.length*0.8 && numCount > vals.length*0.9) fieldTypes[c]='sequence';
+      else if (numCount===vals.length) fieldTypes[c]='numeric';
+      else fieldTypes[c]='categorical';
+    }
+    return { detectedFormat: fmt, columnCount, fieldTypes, headerNames: null, distinctCounts, sampleValues };
+  };
+
+  // ── Fix 3: detectKeyStructure — correct algorithm with consensus XXX ────
+  // Scan cols 3-7 only; col is XXX-excluded only if ALL header lines vote XXX.
+  // (single-vote exclusion wrongly blocks col5 for iCampaign InterfaceName(XXX))
+  w.detectKeyStructure = function(dataLines, headerKeys) {
+    const _delim = (dataLines.length > 0 && dataLines[0].includes('|') && dataLines[0].split('|').length >= 4) ? '|' : ',';
+    const sampleSize = Math.min(dataLines.length, 200);
+    const rows = [];
+    for (let i = 0; i < sampleSize; i++) {
+      const cols = dataLines[i].split(_delim).map(c => c.trim());
+      if (cols.length >= 4) rows.push(cols);
+    }
+    if (!rows.length) return { keyIndices:[3,4], dataStartIndex:5, keyLabels:['Type','CompId'] };
+    const totalRows = rows.length;
+    // Consensus XXX: count XXX votes and static votes per col (cols 3-7 only)
+    // Only exclude a col if ALL header lines that annotate it vote XXX
+    const xxxVotes = {}, staticVotes = {};
+    if (typeof w.mcHeaderFileLines !== 'undefined' && w.mcHeaderFileLines.length > 0) {
+      w.mcHeaderFileLines.forEach(function(hdrLine) {
+        hdrLine.split(',').forEach(function(col, ci) {
+          if (ci < 3 || ci > 7) return;
+          const m = col.trim().match(/\(([^)]+)\)$/);
+          if (!m) return;
+          if (m[1].trim().toUpperCase() === 'XXX') {
+            xxxVotes[ci] = (xxxVotes[ci] || 0) + 1;
+          } else {
+            staticVotes[ci] = (staticVotes[ci] || 0) + 1;
+          }
+        });
+      });
+    }
+    // Col is unanimously XXX only if it has XXX votes and zero static votes
+    const xxxCols = new Set(Object.keys(xxxVotes).filter(ci =>
+      xxxVotes[ci] > 0 && !(staticVotes[ci] > 0)
+    ).map(Number));
+    // Scan cols 3-7: low cardinality = component key
+    const keyIndices = [];
+    for (let c = 3; c <= 7; c++) {
+      if (xxxCols.has(c)) continue;
+      const vals = new Set();
+      rows.forEach(r => { const v=(r[c]||'').trim(); if(v) vals.add(v); });
+      const isKey = vals.size <= 30 && (vals.size / totalRows) < 0.3;
+      if (isKey) { keyIndices.push(c); }
+      else { if (keyIndices.length > 0) break; }
+    }
+    if (!keyIndices.length) keyIndices.push(3);
+    const dataStartIndex = keyIndices[keyIndices.length-1] + 1;
+    const keyLabels = keyIndices.map(function(ki) {
+      if (typeof w.mcHeaderFileLines !== 'undefined' && w.mcHeaderFileLines.length > 0) {
+        for (const hdrLine of w.mcHeaderFileLines) {
+          const cols = hdrLine.split(',').map(c=>c.trim());
+          if (cols[ki]) {
+            const m = cols[ki].match(/^(.+?)\(([^)]+)\)$/);
+            if (m) return m[1].trim();
+            return cols[ki];
+          }
+        }
+      }
+      return headerKeys && headerKeys[ki] ? headerKeys[ki].trim() : 'Field '+(ki+1);
+    });
+    return { keyIndices, dataStartIndex, keyLabels };
+  };
+
+  // ── Fix 2: parseAnnotatedHeaders — dataStart based on static keys only ───
+  // Without this, XXX cols push dataStartIndex too high → only 2 KPIs instead of 4.
+  w.parseAnnotatedHeaders = function(headerKeys, tsColCount) {
+    var keyIndices=[], keyLabels=[], cleanHeaders=[], instanceIdIndices=[];
+    headerKeys.forEach(function(h,i) {
+      if (i < tsColCount) { cleanHeaders.push(h); return; }
+      var parsed = w.parseMcHeaderCol(h);
+      if (parsed.label !== null) {
+        keyIndices.push(i); keyLabels.push(parsed.label); cleanHeaders.push(parsed.label);
+        if (parsed.val.toUpperCase()==='XXX') instanceIdIndices.push(i);
+      } else { cleanHeaders.push(h); }
+    });
+    if (keyIndices.length===0) return null;
+    var staticIdx = keyIndices.filter(function(ki){ return instanceIdIndices.indexOf(ki)<0; });
+    var lastStatic = staticIdx.length > 0 ? Math.max.apply(null,staticIdx) : Math.max.apply(null,keyIndices);
+    var dataStartIndex = lastStatic + 1;
+    return { keyIndices, keyLabels, dataStartIndex, cleanHeaders, instanceIdIndices };
+  };
+}
+
+// ── Reset iframe state between tests ─────────────────────────────────────────
+function resetIframe(w) {
+  try { w.softReset(); } catch(e) {}
+  // Belt-and-suspenders: directly clear everything that could pollute next test
+  w.rawFilesStore = {};
+  w.parsedFilesStore = {};
+  w.compIndexStore = {};
+  w.fileIndexMap = {};
+  w.activeLogData = [];
+  w.activeFileName = '';
+  w.ruleQueue = [];
+  w.mcHeaderFileLines = [];
+  w.mcKeyFieldIndices = [];
+  w.mcKeyFieldLabels = [];
+  w.mcDataStartIndex = 5;
+  w.mcInstanceIdIndices = [];
+  w.mcAnnotatedMode = false;
+  w.matchedProfile = null;
+  w.fileProfileMap = {};
+  w._profileAlreadySelected = false;
+  w.masterConfig = null;
+  // Explicitly reset format dropdown to auto
+  const _fmtEl = w.document.getElementById('formatType');
+  if (_fmtEl) _fmtEl.value = 'auto';
+}
+
+// ── Data file discovery ───────────────────────────────────────────────────────
+async function discoverDataFiles() {
+  const r = await fetch('/');
+  const html = await r.text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return Array.from(doc.querySelectorAll('a'))
+    .map(a => a.textContent.trim())
+    .filter(n => n && n.toLowerCase().includes('datafile'));
+}
+
+// ── Score all profiles ────────────────────────────────────────────────────────
+function scoreAllProfiles(raw, cfg, w) {
+  const fp = w.buildFileFingerprint(raw);
+  const fmt = w.detectFileFormat(raw);
+  fp.detectedFormat = fmt;
+  return cfg.profiles.map(p => ({ profile: p, score: w.scoreProfile(p, fp) }))
+    .sort((a,b) => b.score - a.score);
+}
+
+// ── Run parse and extract results ─────────────────────────────────────────────
+async function runParse(filename, raw, cfg, w) {
+  // Set up state
+  w.masterConfig = cfg;
+  w.rawFilesStore = {};
+  w.rawFilesStore[filename] = raw;
+
+  // Run processFilesFromUI
+  let parseError = null;
+  try { w.processFilesFromUI(); }
+  catch(e) { parseError = e.message; }
+
+  // Wait for async operations (profile modal auto-apply etc.)
+  await new Promise(r => setTimeout(r, 500));
+
+  // If modal appeared, auto-select the best profile and apply
+  const modal = w.document.getElementById('profile-modal');
+  if (modal && modal.classList.contains('active')) {
+    // Trust the pre-selected profile (already set to highest scoring match)
+    // Just click Apply — don't override the selection
+    try { w.document.getElementById('profile-btn-apply').click(); }
+    catch(e) {}
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  const fmt = w.detectFileFormat(raw);
+  const isMC = fmt === 'multiComp';
+
+  // Extract component data from the right store
+  let compIndexStore = {};
+  let parsedStore = {};
+  let kpiNames = {};
+
+  if (isMC) {
+    compIndexStore = JSON.parse(JSON.stringify(w.compIndexStore || {}));
+  } else {
+    // logPipe / flatCsv: data is in parsedFilesStore
+    parsedStore = JSON.parse(JSON.stringify(w.parsedFilesStore || {}));
+    // Also check activeLogData as fallback
+    if (!Object.keys(parsedStore).length && w.activeLogData && w.activeLogData.length) {
+      parsedStore[filename] = w.activeLogData.slice(0, 5000);
+    }
+  }
+
+  // Collect KPI friendly names
+  try {
+    (w.mcKpiNames || []).forEach((name, i) => { kpiNames['KPI_'+(i+1)] = name; });
+    Object.keys(w.mcHeaderStore || {}).forEach(k => {
+      const entry = w.mcHeaderStore[k];
+      if (entry && entry.tokenNameMap) Object.assign(kpiNames, entry.tokenNameMap);
+    });
+    // For flatCsv/logPipe, available tokens come from availableTokens
+    (w.availableTokens || []).forEach(t => { if (!kpiNames[t]) kpiNames[t] = t; });
+  } catch(e) {}
+
+  // Capture mcHeaderStore for per-component KPI name validation
+  let mcHdrStore = {};
+  try { mcHdrStore = JSON.parse(JSON.stringify(w.mcHeaderStore || {})); } catch(e) {}
+
+  // ── Trigger dashboard generation to create actual charts ─────────────────
+  let chartResults = [];
+  let ruleQueueSnapshot = [];
+  let dashboardError = null;
+  try {
+    // Bind data
+    if (!isMC) {
+      const fkeys = Object.keys(w.parsedFilesStore || {});
+      if (fkeys.length === 1) {
+        w.selectFile(fkeys[0], 0);
+      } else if (fkeys.length > 1) {
+        w.mergeAllAndSelect();
+      }
+    } else {
+      // For MC: make sure activeLogData is set so generateDashboard works
+      // selectFile expects a parsedFilesStore entry — for MC use first compKey data
+      const ckeys = Object.keys(w.compIndexStore || {});
+      if (ckeys.length > 0) {
+        // generateDashboard for MC reads from compIndexStore directly
+        // Just ensure selectedCompKeys is set if needed
+        if (w.activeCompKeys === undefined || !w.activeCompKeys?.length) {
+          // Set the selected component groups to all
+          const mcSel = w.document.querySelector('#mcCompSelect');
+          if (mcSel) {
+            Array.from(mcSel.options).forEach(o => { o.selected = true; });
+          }
+        }
+      }
+    }
+    await new Promise(r => setTimeout(r, 300));
+    // If ruleQueue still empty, try loading from profile directly
+    // (handles 'rwules' key and other profile variants the tool may not auto-load)
+    if (!w.ruleQueue?.length && w.matchedProfile) {
+      const pRules = w.matchedProfile.rules || w.matchedProfile.rwules || [];
+      if (pRules.length) {
+        pRules.forEach(function(ruleDef) {
+          const rule = Object.assign({}, ruleDef);
+          rule._sourceProfile = w.matchedProfile.name;
+          rule._profileLoaded = true;
+          if (!rule._mc && w.matchedProfile.format === 'multiComp') rule._mc = true;
+          w.ruleQueue.push(rule);
+        });
+      }
+    }
+    // Capture ruleQueue NOW (after profile applied and data bound)
+    ruleQueueSnapshot = JSON.parse(JSON.stringify(w.ruleQueue || []));
+    // Generate dashboard
+    if (w.ruleQueue && w.ruleQueue.length > 0) {
+      w.generateDashboard();
+      await new Promise(r => setTimeout(r, 800));
+
+      // Capture chart results from chartInstances
+      chartResults = (w.chartInstances || []).map((chart, ci) => {
+        const wrapper = chart.canvas?.closest('.chart-wrapper');
+        const title = wrapper?.querySelector('h3')?.textContent || ('Chart-'+ci);
+        const datasets = chart.data.datasets.map(ds => ({
+          label: ds.label,
+          pointCount: (ds.data||[]).filter(v=>v!==null&&v!==undefined).length,
+          hasData: (ds.data||[]).some(v=>v!==null&&v!==undefined&&v!==0)
+        }));
+        // Capture canvas snapshot
+        let snapshot = null;
+        try { snapshot = chart.canvas.toDataURL('image/png'); } catch(e) {}
+        return { title, datasetCount: datasets.length, datasets, snapshot, canvasId: chart.canvas?.id };
+      });
+    }
+  } catch(e) { dashboardError = e.message; }
+
+  return {
+    parseError, dashboardError,
+    fmt, isMC,
+    compIndexStore, parsedStore, kpiNames, mcHdrStore,
+    ruleQueueSnapshot, chartResults,
+    mcKeyFieldIndices: w.mcKeyFieldIndices || [],
+    mcKeyFieldLabels: w.mcKeyFieldLabels || [],
+    mcDataStartIndex: w.mcDataStartIndex || 5,
+    mcHeaderFileLines: (w.mcHeaderFileLines || []).slice(),
+    fileProfileMap: JSON.parse(JSON.stringify(w.fileProfileMap || {})),
+    bailoutFired: (w.document.querySelector('.log-entry') ?
+      Array.from(w.document.querySelectorAll('.log-entry'))
+        .some(e => e.textContent.includes('cardinality') || e.textContent.includes('Parse aborted') || e.textContent.includes('BAIL')) : false),
+    logEntries: w.document.querySelectorAll ?
+      Array.from(w.document.querySelectorAll('.log-entry')).slice(-20).map(e=>e.textContent) : []
+  };
+}
+
+// ── Per-file validation ───────────────────────────────────────────────────────
+async function validateFile(filename, raw, cfg, w, log) {
+  const checks = [];
+  let overallStatus = 'pass';
+  const chk = (name, status, value, detail='') => {
+    checks.push({ name, status, value, detail });
+    if (status === 'fail') overallStatus = 'fail';
+    else if (status === 'warn' && overallStatus !== 'fail') overallStatus = 'warn';
+  };
+
+  // T1: File loaded
+  const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+  chk('File loaded', 'pass', lines.length + ' rows', filename);
+  log('Loaded ' + lines.length + ' rows', 'ok');
+
+  // T2: Format detection
+  const fmt = w.detectFileFormat(raw);
+  const fp = w.buildFileFingerprint(raw);
+  fp.detectedFormat = fmt;
+  chk('Format detected', 'pass', fmt,
+    'cols=' + fp.columnCount + '  col0=' + fp.fieldTypes[0] + '  col1=' + fp.fieldTypes[1]);
+  log('Format: ' + fmt + '  col0=' + fp.fieldTypes[0] + '  col1=' + fp.fieldTypes[1], 'info');
+
+  // T3: Profile scoring
+  const scored = scoreAllProfiles(raw, cfg, w);
+  const top = scored[0];
+  const topPct = (top.score*100).toFixed(0);
+  scored.forEach(s => log(s.profile.app + ': ' + (s.score*100).toFixed(0) + '%', 'info'));
+  const scoreStatus = top.score >= 0.80 ? 'pass' : top.score >= 0.60 ? 'warn' : 'fail';
+  chk('Profile matched', scoreStatus,
+    top.profile.app + ': ' + top.profile.name + ' (' + topPct + '%)',
+    top.score >= 0.80 ? 'Auto-applies (≥80%)' : top.score >= 0.60 ? 'Needs manual confirm (60–89%)' : 'No confident match (<60%)');
+  log('Top: ' + top.profile.app + ' @ ' + topPct + '%', top.score >= 0.80 ? 'ok' : 'warn');
+
+  // T4: Annotation match (multiComp profiles only)
+  if (top.profile.headers && top.profile.headers.mcHeaderFile) {
+    let hits = 0, total = 0;
+    const detail = [];
+    top.profile.headers.mcHeaderFile.forEach((hdrLine, li) => {
+      hdrLine.split(',').forEach((col, ci) => {
+        const p = w.parseMcHeaderCol(col.trim());
+        if (!p.label) return;
+        const av = p.val.trim();
+        if (av.toUpperCase() === 'XXX') return;
+        total++;
+        const hit = (fp.sampleValues[ci]||[]).some(v => v.trim() === av);
+        if (hit) hits++;
+        detail.push('L'+li+' col'+ci+'='+av+(hit?'✓':'✗'));
+      });
+    });
+    if (total > 0) {
+      chk('Annotation values', hits===total?'pass':hits>0?'warn':'fail',
+        hits+'/'+total+' static annotations match', detail.join('  '));
+      log('Annotations: '+hits+'/'+total+' hits', hits===total?'ok':'warn');
+    }
+  }
+
+  // T5: Key structure
+  const hdrLines = (top.profile.headers && top.profile.headers.mcHeaderFile) || [];
+  const savedHdrs = w.mcHeaderFileLines;
+  w.mcHeaderFileLines = hdrLines;
+  let keyResult;
+  try { keyResult = w.detectKeyStructure(raw.split(/\r?\n/).filter(l=>l.trim()), null); }
+  catch(e) { keyResult = { error: e.message }; }
+  w.mcHeaderFileLines = savedHdrs;
+
+  if (keyResult.error) {
+    chk('Key structure', 'fail', 'ERROR: ' + keyResult.error);
+  } else {
+    chk('Key structure', 'pass',
+      'keyIndices=['+keyResult.keyIndices.join(',')+'] dataStart='+keyResult.dataStartIndex,
+      (hdrLines.length ? 'Annotation-path' : 'Statistical-path') + '  labels=[' + (keyResult.keyLabels||[]).join(',')+']');
+    log('Keys=['+keyResult.keyIndices+'] dataStart='+keyResult.dataStartIndex, 'ok');
+  }
+
+  // T6: Run full parse
+  log('Running full parse…', 'info');
+  const parsed = await runParse(filename, raw, cfg, w);
+
+  if (parsed.bailoutFired) {
+    chk('Parse bail-out', 'warn', 'Bail-out triggered (sequence-number key detected)', 'Load MasterConfig first to prevent this');
+    log('BAIL-OUT: cardinality check fired', 'warn');
+  }
+
+  if (parsed.parseError) {
+    chk('Parse execution', 'fail', 'ERROR: ' + parsed.parseError);
+    log('Parse error: ' + parsed.parseError, 'err');
+  }
+
+  // T7: Component groups
+  const isMC = fmt === 'multiComp';
+  if (isMC) {
+    const compKeys = Object.keys(parsed.compIndexStore);
+    log('Component groups: ' + compKeys.length + ' → [' + compKeys.join(', ') + ']', compKeys.length > 0 ? 'ok' : 'err');
+    if (compKeys.length === 0) {
+      chk('Component groups', 'fail', '0 groups found',
+        parsed.mcKeyFieldIndices.length === 0 ? 'mcKeyFieldIndices=[] — MasterConfig may need loading first' :
+        'mcKeyFieldIndices='+JSON.stringify(parsed.mcKeyFieldIndices)+' but no data parsed');
+    } else if (compKeys.length > 500) {
+      chk('Component groups', 'fail', compKeys.length + ' groups — sequence-number as key!', '');
+    } else {
+      chk('Component groups', 'pass',
+        compKeys.length + ' group(s): [' + compKeys.slice(0,6).join(', ') + (compKeys.length>6?'…':'')+']',
+        'mcKeyFieldLabels=[' + parsed.mcKeyFieldLabels.join(',')+'] dataStart='+parsed.mcDataStartIndex);
+      compKeys.forEach(k => {
+        const r0 = parsed.compIndexStore[k]?.[0];
+        log('  ['+k+']: '+parsed.compIndexStore[k].length+' rows, tokens=[' + (r0?Object.keys(r0.tokens).join(','):'') + ']', 'ok');
+      });
+    }
+    // T8: KPI tokens
+    const compKeys2 = Object.keys(parsed.compIndexStore);
+    if (compKeys2.length > 0) {
+      const tokenCounts = compKeys2.map(k => (parsed.compIndexStore[k]?.[0] ? Object.keys(parsed.compIndexStore[k][0].tokens).length : 0));
+      const minT = Math.min(...tokenCounts), maxT = Math.max(...tokenCounts);
+      chk('KPI tokens/component', minT > 0 ? 'pass' : 'fail',
+        minT + (minT!==maxT?'–'+maxT:'') + ' KPIs per component',
+        'names: ' + Object.values(parsed.kpiNames).slice(0,6).join(', ') + (Object.keys(parsed.kpiNames).length>6?'…':''));
+    }
+  } else {
+    // flatCsv / logPipe
+    const parseKeys = Object.keys(parsed.parsedStore);
+    const totalRows = parseKeys.reduce((s,k) => s + (Array.isArray(parsed.parsedStore[k]) ? parsed.parsedStore[k].length : 0), 0);
+    log('Parsed rows: ' + totalRows + ' in ' + parseKeys.length + ' file(s)', totalRows > 0 ? 'ok' : 'err');
+    if (totalRows === 0) {
+      chk('Data parsed', 'fail', '0 rows extracted', 'Check format detection and pattern filter');
+    } else {
+      const sampleTokens = parseKeys.length > 0 && parsed.parsedStore[parseKeys[0]]?.[0] ?
+        Object.keys(parsed.parsedStore[parseKeys[0]][0].tokens) : [];
+      chk('Data parsed', 'pass', totalRows + ' rows, ' + sampleTokens.length + ' KPI tokens/row',
+        'tokens: ' + sampleTokens.slice(0,6).join(', ') + (sampleTokens.length>6?'…':''));
+      sampleTokens.slice(0,4).forEach(t => log('  token: ' + t, 'info'));
+    }
+  }
+
+  // T9: Freeze risk
+  const groupCount = isMC ? Object.keys(parsed.compIndexStore).length : 1;
+  if (groupCount > 500) chk('Freeze risk', 'fail', groupCount + ' groups — will freeze UI', '');
+  else if (groupCount > 50) chk('Freeze risk', 'warn', groupCount + ' groups — high but within limit', '');
+  else chk('Freeze risk', 'pass', groupCount + ' group(s) — safe', '');
+
+  // ── T10-T12: MC Component KPI Validation ─────────────────────────────────
+  let mcKpiValidation = [];
+  let mcKpiGaps = [];
+  if (isMC && Object.keys(parsed.compIndexStore).length > 0) {
+    const mcHdrStore = parsed.mcHdrStore || {};
+    const prof = top.profile;
+    const kIdx  = parsed.mcKeyFieldIndices || [];
+    const dSt   = parsed.mcDataStartIndex  || 5;
+
+    // Helper: find best-matching header line for a component key
+    function findBestHdr(ck) {
+      const parts = ck.split('|');
+      let best = null, bestScore = -1;
+      (prof.headers?.mcHeaderFile || []).forEach((line, li) => {
+        const cols = line.split(',').map(c=>c.trim());
+        let score = 0, ok = true;
+        for (let i = 0; i < kIdx.length; i++) {
+          const col = cols[kIdx[i]]; if (!col) { ok=false; break; }
+          const mv = col.match(/\(([^)]+)\)$/);
+          const av = mv ? mv[1].trim() : col;
+          if (av.toUpperCase() === 'XXX') continue;
+          else if (av === parts[i]) score += 10;
+          else { ok=false; break; }
+        }
+        if (ok && score > bestScore) { bestScore=score; best={li,line,cols,score}; }
+      });
+      return best;
+    }
+
+    const compKeys = Object.keys(parsed.compIndexStore).sort();
+    compKeys.forEach(ck => {
+      const entry    = mcHdrStore[ck] || {};
+      const kpiNames = entry.kpiNames  || [];
+      const rows     = parsed.compIndexStore[ck];
+      const r0       = rows?.[0];
+      const toolToks = r0 ? Object.keys(r0.tokens) : [];
+      const named    = kpiNames.filter(n=>n&&!n.startsWith('KPI_')).length;
+
+      const hdr = findBestHdr(ck);
+      const cfgKPIs = hdr
+        ? hdr.cols.slice(dSt).map(c=>{ const m=c.match(/^(.+?)\(([^)]+)\)$/); return m?m[1].trim():c; }).filter(n=>n)
+        : [];
+
+      const perKpi = toolToks.map((tok,i) => ({
+        pos: i+1, token: tok,
+        toolName: kpiNames[i] || '(unnamed)',
+        cfgName:  cfgKPIs[i]  || '(missing in config)',
+        match: (kpiNames[i]||'') !== '' && (kpiNames[i]||'') === (cfgKPIs[i]||'')
+      }));
+      const overlayToks = Object.entries(r0?.tokens||{})
+        .filter(([,v])=>typeof v==='string'&&isNaN(Number(v))&&v!=='')
+        .map(([k])=>kpiNames[parseInt(k.replace('KPI_',''))-1]||k);
+
+      const mismatched = perKpi.filter(k=>!k.match);
+      const status = !hdr                         ? '❌ NO_HEADER'
+                   : toolToks.length!==cfgKPIs.length ? '⚠ COUNT_MISMATCH'
+                   : mismatched.length>0          ? '⚠ NAME_MISMATCH'
+                   : '✅ PASS';
+
+      const v = { key:ck, rows:rows?.length, hdrLine:hdr?'L'+hdr.li:'—',
+                  toolCount:toolToks.length, cfgCount:cfgKPIs.length,
+                  named, perKpi, mismatched, overlayToks,
+                  kpiNames:kpiNames.slice(0,8), cfgKPIs:cfgKPIs.slice(0,8), status };
+      mcKpiValidation.push(v);
+
+      if (status !== '✅ PASS') {
+        const gap = { key:ck, status, toolCount:toolToks.length, cfgCount:cfgKPIs.length };
+        if (!hdr) gap.finding = 'No matching header line in MasterConfig — add header for RecordType('+ck.split('|')[0]+')|AppId('+ck.split('|')[1]+')|KPIGroup('+ck.split('|')[2]+')';
+        else if (toolToks.length > cfgKPIs.length) gap.finding = 'Config header defines '+cfgKPIs.length+' KPI names but data has '+toolToks.length+' columns — add '+(toolToks.length-cfgKPIs.length)+' KPI name(s) to header line L'+hdr.li;
+        else if (toolToks.length < cfgKPIs.length) gap.finding = 'Config header defines '+cfgKPIs.length+' KPI names but data only has '+toolToks.length+' columns — remove '+(cfgKPIs.length-toolToks.length)+' KPI name(s) from header line L'+hdr.li;
+        else gap.finding = mismatched.map(m=>'pos '+m.pos+': tool="'+m.toolName+'" cfg="'+m.cfgName+'"').join('; ');
+        gap.mismatched = mismatched.slice(0,5);
+        mcKpiGaps.push(gap);
+      }
+
+      log('['+ck+'] '+status+' tool='+toolToks.length+' cfg='+cfgKPIs.length+(hdr?' hdr=L'+hdr.li:' NO_HDR'), status==='✅ PASS'?'ok':status.startsWith('❌')?'err':'warn');
+    });
+
+    // T10: MC component count vs header line coverage
+    const noHdr = mcKpiValidation.filter(v=>v.status==='❌ NO_HEADER').length;
+    chk('MC header coverage', noHdr===0 ? 'pass' : 'fail',
+      noHdr===0 ? 'All '+compKeys.length+' components have a matching header line'
+                : noHdr+' component(s) have NO matching header line',
+      noHdr>0 ? mcKpiValidation.filter(v=>v.status==='❌ NO_HEADER').map(v=>v.key).join(', ') : '');
+
+    // T11: KPI count match (tool tokens == config header KPIs)
+    const countMismatch = mcKpiValidation.filter(v=>v.status==='⚠ COUNT_MISMATCH').length;
+    chk('MC KPI count match', countMismatch===0 ? 'pass' : 'warn',
+      countMismatch===0 ? 'All components: tool KPI count matches config'
+                        : countMismatch+' component(s) have count mismatch',
+      countMismatch>0 ? mcKpiValidation.filter(v=>v.status==='⚠ COUNT_MISMATCH')
+          .map(v=>v.key+' tool='+v.toolCount+' cfg='+v.cfgCount).join('; ') : '');
+
+    // T12: KPI naming (all KPIs named, no generic KPI_N)
+    const unnamed = mcKpiValidation.filter(v=>v.named < v.toolCount);
+    const unnamedTotal = mcKpiValidation.reduce((s,v)=>s+Math.max(0,v.toolCount-v.named),0);
+    chk('MC KPI naming', unnamed.length===0 ? 'pass' : 'warn',
+      unnamed.length===0 ? 'All KPIs have friendly names from config headers'
+                         : unnamedTotal+' unnamed KPI(s) across '+unnamed.length+' component(s)',
+      unnamed.length>0 ? unnamed.slice(0,4).map(v=>v.key+': '+(v.toolCount-v.named)+' unnamed').join('; ') : '');
+  }
+
+  // ── T13: Rules loaded from profile ──────────────────────────────────────
+  const ruleQ = parsed.ruleQueueSnapshot || [];
+  const profRules = top.profile.rules || top.profile.rwules || [];
+  if (profRules.length === 0) {
+    chk('Rules loaded', 'warn', '0 rules in MasterConfig profile',
+        'Add rules[] to the '+top.profile.app+' profile in MasterConfig.json');
+    log('No rules defined in MasterConfig for '+top.profile.app, 'warn');
+  } else {
+    const loadedCount = ruleQ.length;
+    chk('Rules loaded', loadedCount === profRules.length ? 'pass' : 'warn',
+        loadedCount+'/'+profRules.length+' rules loaded from profile',
+        profRules.map(r=>r.header).join(', '));
+    log('Rules: '+loadedCount+' loaded ('+profRules.map(r=>r.header).slice(0,3).join(', ')+'...)', loadedCount>0?'ok':'warn');
+  }
+
+  // ── T14: Dashboard charts generated ───────────────────────────────────────
+  const charts = parsed.chartResults || [];
+  if (parsed.dashboardError) {
+    chk('Charts generated', 'fail', 'Dashboard error: '+parsed.dashboardError, '');
+    log('Dashboard error: '+parsed.dashboardError, 'err');
+  } else if (ruleQ.length === 0) {
+    chk('Charts generated', 'warn', '0 charts — no rules to generate from', 'Add rules to MasterConfig profile');
+  } else if (charts.length === 0) {
+    chk('Charts generated', 'fail', '0 charts generated from '+ruleQ.length+' rules',
+        'Check data binding — selectFile/mergeAllAndSelect may not have found data');
+    log('Dashboard generated 0 charts', 'err');
+  } else {
+    const chartsWithData = charts.filter(c=>c.datasets.some(d=>d.hasData));
+    const chartStatus = chartsWithData.length === ruleQ.length ? 'pass'
+                      : chartsWithData.length > 0 ? 'warn' : 'fail';
+    chk('Charts generated', chartStatus,
+        charts.length+' chart(s) created, '+chartsWithData.length+' with data',
+        charts.map(c=>'"'+c.title+'" ('+c.datasetCount+' series)').join('; '));
+    charts.forEach(c => log('Chart: "'+c.title+'" '+c.datasetCount+' datasets, hasData='+c.datasets.some(d=>d.hasData), c.datasets.some(d=>d.hasData)?'ok':'warn'));
+  }
+
+  // ── T15: Chart-to-rule match validation ──────────────────────────────────
+  if (charts.length > 0 && profRules.length > 0) {
+    // Each rule must have a matching chart (title contains rule header)
+    const unmatched = profRules.filter(rule => {
+      return !charts.some(c => c.title && c.title.toLowerCase().includes(rule.header.toLowerCase()));
+    });
+    // Token match: only check non-KPI_N tokens (KPI_N are positional refs, not label names)
+    // For MC rules, tokens are KPI_1, KPI_7 etc → skip, check dataset count instead
+    let tokenMismatches = 0, tokenChecks = 0;
+    const tokenDetail = [];
+    ruleQ.forEach(rule => {
+      const matchingChart = charts.find(c => c.title && c.title.toLowerCase().includes(rule.header.toLowerCase()));
+      if (!matchingChart) return;
+      const checkableTokens = (rule.tokens||[]).filter(tok => !/^KPI_\d+$/.test(tok));
+      if (checkableTokens.length === 0) {
+        // MC rule with KPI_N tokens — verify dataset count matches token count instead
+        const expectedCount = (rule.tokens||[]).length;
+        const actualCount = matchingChart.datasetCount;
+        if (actualCount < expectedCount) {
+          tokenMismatches++;
+          tokenDetail.push(rule.header+': expected '+expectedCount+' datasets, got '+actualCount);
+        }
+      } else {
+        checkableTokens.forEach(tok => {
+          tokenChecks++;
+          const found = matchingChart.datasets.some(d => d.label && d.label.toLowerCase().includes(tok.toLowerCase()));
+          if (!found) { tokenMismatches++; tokenDetail.push(rule.header+': "'+tok+'" not in datasets'); }
+        });
+      }
+    });
+    // Status: FAIL only if rules have no chart; WARN if token count mismatches; PASS otherwise
+    const matchStatus = unmatched.length > 0 ? 'fail'
+                      : tokenMismatches > 0 ? 'warn' : 'pass';
+    chk('Chart-rule match', matchStatus,
+        (profRules.length - unmatched.length)+'/'+profRules.length+' rules have matching charts',
+        unmatched.length > 0 ? 'Missing charts for: '+unmatched.map(r=>r.header).join(', ')
+                              : tokenMismatches > 0 ? tokenDetail.slice(0,3).join('; ')
+                              : 'All rules matched with correct datasets');
+    log('Chart-rule match: '+unmatched.length+' unmatched, '+tokenMismatches+' dataset mismatches',
+        matchStatus==='pass'?'ok':matchStatus==='warn'?'warn':'err');
+  }
+
+  return { filename, checks, logs: [], overallStatus, scored, fmt, isMC,
+           compIndexStore: parsed.compIndexStore, parsedStore: parsed.parsedStore,
+           kpiNames: parsed.kpiNames, fp,
+           mcKeyFieldLabels: parsed.mcKeyFieldLabels, mcDataStartIndex: parsed.mcDataStartIndex,
+           topProfile: top.profile, topScore: top.score, iframeLogs: parsed.logEntries,
+           mcKpiValidation, mcKpiGaps,
+           ruleQueueSnapshot: parsed.ruleQueueSnapshot || [],
+           chartResults: parsed.chartResults || [],
+           profRules: top.profile.rules || top.profile.rwules || [] };
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+let _chartInstances = [];
+let _allResults = [];  // accumulated for XLSX export
+
+function renderCard(result, idx, logs) {
+  const { filename, checks, overallStatus, scored, fmt, isMC,
+          compIndexStore, parsedStore, kpiNames, topProfile, topScore, iframeLogs } = result;
+
+  const passN = checks.filter(c=>c.status==='pass').length;
+  const failN = checks.filter(c=>c.status==='fail').length;
+  const warnN = checks.filter(c=>c.status==='warn').length;
+  const badge = overallStatus==='pass' ? '✅ PASS' : overallStatus==='fail' ? '❌ FAIL' : '⚠ WARN';
+
+  const scoresHtml = scored.map(s => {
+    const pct = (s.score*100).toFixed(0);
+    const cls = s.score>=0.80?'top':s.score>=0.60?'mid':'low';
+    const clr = s.score>=0.80?'#3fb950':s.score>=0.60?'#d29922':'#f85149';
+    return `<div class="score-card">
+      <div class="score-app">${s.profile.app||s.profile.name}</div>
+      <div class="score-pct ${cls}">${pct}%</div>
+      <div style="font-size:.7em;color:#666;margin-top:1px">${s.profile.name}</div>
+      <div class="score-bar"><div class="score-bar-fill" style="width:${pct}%;background:${clr}"></div></div>
+    </div>`;
+  }).join('');
+
+  const checksHtml = checks.map(c => {
+    const icon = c.status==='pass'?'✓':c.status==='fail'?'✗':c.status==='warn'?'⚠':'ℹ';
+    return `<div class="chk ${c.status}">
+      <span class="chk-icon">${icon}</span>
+      <span class="chk-name">${c.name}</span>
+      <span class="chk-val">${c.value}${c.detail?'<br><span style="color:#666;font-size:.9em">'+c.detail+'</span>':''}</span>
+    </div>`;
+  }).join('');
+
+  // Components / rows
+  let dataHtml = '';
+  if (isMC) {
+    const compKeys = Object.keys(compIndexStore);
+    if (compKeys.length) {
+      const tilesHtml = compKeys.slice(0,8).map(k => {
+        const r0 = compIndexStore[k]?.[0];
+        const tokens = r0 ? Object.keys(r0.tokens) : [];
+        const friendlyNames = tokens.map(t => kpiNames[t]||t).slice(0,4);
+        return `<div class="comp-tile">
+          <div class="comp-key">[${k}]</div>
+          <div class="comp-info">${compIndexStore[k].length} rows</div>
+          <div class="comp-info">${friendlyNames.join(', ')}${tokens.length>4?'…':''}</div>
+        </div>`;
+      }).join('') + (compKeys.length>8?`<div class="comp-tile"><div class="comp-key">…+${compKeys.length-8} more</div></div>`:'');
+      dataHtml += `<hr><div class="section-lbl">Component Groups</div><div class="comp-grid">${tilesHtml}</div>`;
+
+      // Mini charts (up to 4)
+      const chartKeys = compKeys.slice(0,4);
+      const chartsHtml = chartKeys.map((k,ci) =>
+        `<div><div style="font-size:.75em;color:#888;margin-bottom:4px">[${k}] — ${compIndexStore[k].length} rows</div>
+        <div class="chart-wrap"><canvas id="chrt-${idx}-${ci}" height="130"></canvas></div></div>`
+      ).join('');
+      if (chartsHtml) {
+        dataHtml += `<hr><div class="section-lbl">KPI Snapshots</div><div class="charts-grid">${chartsHtml}</div>`;
+      }
+
+      // ── MC KPI Validation table ─────────────────────────────────────────
+      const kpiVal = result.mcKpiValidation || [];
+      if (kpiVal.length > 0) {
+        const passV=kpiVal.filter(v=>v.status==='✅ PASS').length;
+        const rows=kpiVal.map(v=>{
+          const stc=v.status==='✅ PASS'?'#3fb950':v.status.startsWith('❌')?'#f85149':'#d29922';
+          const kpiSamp=v.kpiNames.slice(0,4).join(', ')+(v.kpiNames.length>4?'…':'');
+          const gap=v.status!=='✅ PASS'?`<br><span style="color:#d29922;font-size:.78em">${
+            v.status==='❌ NO_HEADER'?'Add header line to MasterConfig':
+            v.toolCount>(v.cfgCount||0)?'Config too short — add '+(v.toolCount-(v.cfgCount||0))+' KPI(s) to '+v.hdrLine:
+            v.toolCount<(v.cfgCount||0)?'Config too long — remove '+((v.cfgCount||0)-v.toolCount)+' KPI(s) from '+v.hdrLine:
+            (v.mismatched?.length||0)+' name mismatch(es) at '+(v.mismatched||[]).slice(0,2).map(m=>'pos'+m.pos).join(',')
+          }</span>`:'';
+          return `<tr style="border-bottom:1px solid #30363d">
+            <td style="padding:4px 8px;font-family:monospace;font-size:.78em;color:#79c0ff">${v.key}</td>
+            <td style="padding:4px 8px;text-align:center;font-weight:700;color:${stc}">${v.status}</td>
+            <td style="padding:4px 8px;text-align:center;color:#8b949e">${(v.rows||0).toLocaleString()}</td>
+            <td style="padding:4px 8px;text-align:center">${v.toolCount}</td>
+            <td style="padding:4px 8px;text-align:center">${v.cfgCount||'—'}</td>
+            <td style="padding:4px 8px;text-align:center;color:#8b949e">${v.hdrLine}</td>
+            <td style="padding:4px 8px;font-size:.74em;color:#8b949e;max-width:240px">${kpiSamp}${gap}</td>
+          </tr>`;
+        }).join('');
+        dataHtml += `<hr>
+          <div class="section-lbl">MC Component KPI Validation (${passV}/${kpiVal.length} pass)</div>
+          <div style="overflow-x:auto;margin-bottom:10px">
+          <table style="width:100%;border-collapse:collapse;font-size:.82em">
+            <thead><tr style="background:rgba(255,255,255,.05);text-align:left">
+              <th style="padding:5px 8px">Component Key</th><th style="padding:5px 8px">Status</th>
+              <th style="padding:5px 8px">Rows</th><th style="padding:5px 8px">Tool</th>
+              <th style="padding:5px 8px">Config</th><th style="padding:5px 8px">Hdr</th>
+              <th style="padding:5px 8px">KPI Sample / Finding</th>
+            </tr></thead><tbody>${rows}</tbody>
+          </table></div>`;
+
+        // Gaps section
+        const gaps=result.mcKpiGaps||[];
+        if(gaps.length>0){
+          const gRows=gaps.map(g=>`<div style="display:flex;gap:12px;padding:7px 12px;border-bottom:1px solid #30363d;font-size:.79em;align-items:flex-start">
+            <span style="color:${g.status.startsWith('❌')?'#f85149':'#d29922'};font-weight:700;white-space:nowrap">${g.status}</span>
+            <span style="color:#79c0ff;font-family:monospace;white-space:nowrap">${g.key}</span>
+            <span style="color:#8b949e;flex:1">${g.finding||''}</span>
+          </div>`).join('');
+          dataHtml+=`<div class="section-lbl" style="margin-top:12px">🔍 Gaps &amp; Findings (${gaps.length})</div>
+            <div style="background:rgba(255,255,255,.02);border:1px solid #30363d;border-radius:6px">${gRows}</div>`;
+        }
+      }
+
+      // ── Generated Chart Snapshots ───────────────────────────────────────
+      const chartRes = result.chartResults || [];
+      if (chartRes.length > 0) {
+        const chartGridHtml = chartRes.map((c,ci) => {
+          const hasData = c.datasets.some(d=>d.hasData);
+          const borderClr = hasData ? '#3fb950' : '#f85149';
+          const snap = c.snapshot ? `<img src="${c.snapshot}" style="width:100%;border-radius:4px;border:1px solid #30363d">` : '<div style="height:80px;display:flex;align-items:center;justify-content:center;color:#666;font-size:.8em">No snapshot</div>';
+          const dsInfo = c.datasets.slice(0,4).map(d=>`<span style="font-size:.7em;color:#8b949e">${d.label.substring(0,25)}(${d.pointCount}pts)</span>`).join(', ');
+          return `<div style="border:1px solid ${borderClr};border-radius:6px;padding:8px;background:rgba(255,255,255,.02)">
+            <div style="font-size:.78em;font-weight:700;color:#79c0ff;margin-bottom:6px">${c.title}</div>
+            ${snap}
+            <div style="margin-top:4px">${dsInfo}${c.datasetCount>4?'…':''}</div>
+          </div>`;
+        }).join('');
+        dataHtml += `<hr><div class="section-lbl">📊 Generated Charts (${chartRes.length}) — Rule Validation</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:10px">${chartGridHtml}</div>`;
+      } else if ((result.profRules||[]).length > 0) {
+        dataHtml += `<hr><div class="section-lbl">📊 Generated Charts</div>
+          <div style="padding:10px;color:#d29922;font-size:.82em">⚠ No charts generated — check rule loading and data binding</div>`;
+      }
+
+      // MC KPI Validation detail table
+      const kpiVal2 = result.mcKpiValidation || [];
+      if (kpiVal2.length > 0) {
+        const passV = kpiVal2.filter(v=>v.status==='✅ PASS').length;
+        const rows = kpiVal2.map(v => {
+          const st = v.status==='✅ PASS'?'#3fb950':v.status.startsWith('❌')?'#f85149':'#d29922';
+          const kpiList = v.kpiNames.slice(0,4).join(', ')+(v.kpiNames.length>4?'…':'');
+          const cfgList = v.cfgKPIs.slice(0,4).join(', ')+(v.cfgKPIs.length>4?'…':'');
+          const gap = v.status!=='✅ PASS' ? `<br><span style="color:#d29922;font-size:.8em">
+            ${v.status==='❌ NO_HEADER'?'No matching header line in MasterConfig':
+              v.toolCount>v.cfgCount?'Config header too short: add '+(v.toolCount-v.cfgCount)+' KPI name(s) to '+v.hdrLine:
+              v.toolCount<v.cfgCount?'Config header too long: remove '+(v.cfgCount-v.toolCount)+' KPI name(s) from '+v.hdrLine:
+              v.mismatched?.length+' name mismatch(es)'}
+          </span>` : '';
+          return `<tr style="border-bottom:1px solid #30363d">
+            <td style="padding:4px 8px;font-family:monospace;font-size:.78em">${v.key}</td>
+            <td style="padding:4px 8px;text-align:center;color:${st}">${v.status}</td>
+            <td style="padding:4px 8px;text-align:center">${v.rows?.toLocaleString()}</td>
+            <td style="padding:4px 8px;text-align:center">${v.toolCount}</td>
+            <td style="padding:4px 8px;text-align:center">${v.cfgCount||'—'}</td>
+            <td style="padding:4px 8px;font-size:.75em;color:#8b949e;max-width:220px;overflow:hidden">${v.hdrLine} ${kpiList}${gap}</td>
+          </tr>`;
+        }).join('');
+        dataHtml += `<hr>
+          <div class="section-lbl">MC Component KPI Validation (${passV}/${kpiVal2.length} pass)</div>
+          <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.82em">
+            <thead><tr style="background:rgba(255,255,255,.04);text-align:left">
+              <th style="padding:5px 8px">Component Key</th>
+              <th style="padding:5px 8px">Status</th>
+              <th style="padding:5px 8px">Rows</th>
+              <th style="padding:5px 8px">Tool KPIs</th>
+              <th style="padding:5px 8px">Config KPIs</th>
+              <th style="padding:5px 8px">Header / KPI Sample + Finding</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>`;
+
+        // Gaps section
+        const gaps = result.mcKpiGaps || [];
+        if (gaps.length > 0) {
+          const gapRows = gaps.map(g=>`<div style="padding:6px 10px;border-bottom:1px solid #30363d;font-size:.8em">
+            <span style="color:${g.status.startsWith('❌')?'#f85149':'#d29922'};font-weight:700">${g.status}</span>
+            <span style="color:#79c0ff;margin:0 8px;font-family:monospace">${g.key}</span>
+            <span style="color:#8b949e">${g.finding}</span>
+          </div>`).join('');
+          dataHtml += `<hr><div class="section-lbl">🔍 Gaps &amp; Findings (${gaps.length})</div>
+            <div style="background:rgba(255,255,255,.02);border:1px solid #30363d;border-radius:6px">${gapRows}</div>`;
+        }
+      }
+    }
+  } else {
+    // flatCsv / logPipe — show first file's rows
+    const storeKey = Object.keys(parsedStore)[0];
+    const rows = parsedStore[storeKey] || [];
+    if (rows.length) {
+      const tokens = rows[0] ? Object.keys(rows[0].tokens) : [];
+      const friendlyTokens = tokens.map(t => kpiNames[t]||t).slice(0,8);
+      dataHtml += `<hr><div class="section-lbl">Parsed Data</div>
+        <div class="comp-tile" style="max-width:600px">
+          <div class="comp-key">${filename}</div>
+          <div class="comp-info">${rows.length} rows · ${tokens.length} KPIs/row</div>
+          <div class="comp-info">KPIs: ${friendlyTokens.join(', ')}${tokens.length>8?'…':''}</div>
+        </div>`;
+      // Mini chart from first file
+      dataHtml += `<div style="margin-top:10px"><div class="chart-wrap" style="max-width:600px"><canvas id="chrt-${idx}-0" height="130"></canvas></div></div>`;
+    }
+  }
+
+  // Logs
+  const logItemsHtml = [
+    ...logs.map(l => `<div class="le ${l.type}">${l.msg}</div>`),
+    ...iframeLogs.map(l => `<div class="le info" style="opacity:.6">${l}</div>`)
+  ].join('');
+
+  const card = document.createElement('div');
+  card.className = 'rcard ' + overallStatus;
+  card.innerHTML = `
+    <div class="rcard-hdr" onclick="toggleCard(${idx})">
+      <div>
+        <div class="rcard-title">${filename}</div>
+        <div class="rcard-meta">${passN} passed · ${failN} failed · ${warnN} warnings · format: ${fmt} · top: ${topProfile.app} (${(topScore*100).toFixed(0)}%)</div>
+      </div>
+      <span class="badge ${overallStatus}">${badge}</span>
+    </div>
+    <div class="rcard-body open" id="body-${idx}">
+      <div class="section-lbl">Profile Scores</div>
+      <div class="scores-grid">${scoresHtml}</div>
+      <hr><div class="section-lbl">Validation Checks</div>
+      <div class="checks">${checksHtml}</div>
+      ${dataHtml}
+      <hr><div class="section-lbl">Parse Log</div>
+      <div class="log-box">${logItemsHtml}</div>
+    </div>`;
+  document.getElementById('results').appendChild(card);
+
+  // Render charts after DOM
+  setTimeout(() => {
+    if (isMC) {
+      Object.keys(compIndexStore).slice(0,4).forEach((k,ci) => {
+        renderMiniChart(compIndexStore[k], kpiNames, `chrt-${idx}-${ci}`);
+      });
+    } else {
+      const storeKey = Object.keys(parsedStore)[0];
+      const rows = parsedStore[storeKey] || [];
+      if (rows.length) renderMiniChart(rows, kpiNames, `chrt-${idx}-0`);
+    }
+  }, 80);
+}
+
+function renderMiniChart(rows, kpiNames, canvasId) {
+  if (!rows || !rows.length) return;
+  const maxPts = 60;
+  const step = Math.max(1, Math.floor(rows.length / maxPts));
+  const sampled = rows.filter((_,i)=>i%step===0).slice(0,maxPts);
+  const labels = sampled.map(r => {
+    const ts = r.timestamp||'';
+    const p = ts.includes(',') ? ts.split(',') : ts.split('|');
+    return (p[1]||p[0]||'').substring(0,5);
+  });
+  const tokens = Object.keys(rows[0].tokens);
+  const numTokens = tokens.filter(t => {
+    const v = rows[0].tokens[t];
+    return typeof v==='number' || (!isNaN(Number(v)) && v!=='' && !String(v).includes(':') && !String(v).includes('.') || typeof v==='number');
+  }).slice(0,3);
+  if (!numTokens.length) return;
+  const colors = ['#2563eb','#16a34a','#ea580c'];
+  const inst = new Chart(document.getElementById(canvasId), {
+    type:'line',
+    data:{labels,datasets:numTokens.map((t,i)=>({
+      label:kpiNames[t]||t, data:sampled.map(r=>Number(r.tokens[t])||0),
+      borderColor:colors[i],borderWidth:1.5,pointRadius:0,tension:.1,fill:false
+    }))},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{labels:{color:'#444',font:{size:9},boxWidth:12}}},
+      scales:{x:{ticks:{color:'#888',font:{size:8},maxTicksLimit:8},grid:{color:'#eee'}},
+              y:{ticks:{color:'#888',font:{size:8}},grid:{color:'#eee'}}}}
+  });
+  _chartInstances.push(inst);
+}
+
+function toggleCard(idx) {
+  document.getElementById('body-'+idx)?.classList.toggle('open');
+}
+
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+function setProgress(pct) {
+  document.getElementById('prog').style.display = 'block';
+  document.getElementById('prog-fill').style.width = pct+'%';
+}
+
+// ── Main runner ───────────────────────────────────────────────────────────────
+async function runAll() {
+  const t0 = Date.now();
+  clearAll();
+  setProgress(5); setStatus('Loading MasterConfig…');
+
+  let cfg;
+  try {
+    const cfgRaw = await fetch(document.getElementById('cfgUrl').value).then(r=>r.text());
+    // Auto-fix common JSON issue: missing comma between consecutive mcHeaderFile array elements
+    // Pattern: closing " then newline then whitespace then "Date, (no comma between elements)
+    const cfgFixed = cfgRaw.replace(/"(\s*\n\s*)"Date,/g, '",\n"Date,');
+    cfg = JSON.parse(cfgFixed);
+    if (cfgRaw !== cfgFixed) log('MasterConfig: Auto-fixed missing comma(s) between header lines', 'warn');
+  }
+  catch(e) { setStatus('❌ MasterConfig: ' + e); return; }
+
+  setProgress(10); setStatus('Discovering *DataFile.csv…');
+  const dataFiles = await discoverDataFiles();
+  if (!dataFiles.length) { setStatus('⚠ No *DataFile.csv found'); return; }
+
+  let pass=0, fail=0, warn=0;
+  for (let i=0; i<dataFiles.length; i++) {
+    const fname = dataFiles[i];
+    setProgress(15 + (i/dataFiles.length)*80);
+    setStatus(`Testing ${i+1}/${dataFiles.length}: ${fname}… (fresh iframe)`);
+
+    // Reload iframe completely for each test — prevents format/state pollution
+    // between logPipe → multiComp transitions (e.g. DBW → iCampaign)
+    let w;
+    try {
+      w = await loadIframe();
+      patchIframe(w);
+    } catch(e) {
+      document.getElementById('results').insertAdjacentHTML('beforeend',
+        `<div class="rcard fail"><div class="rcard-hdr"><div><div class="rcard-title">${fname}</div></div><span class="badge fail">❌ ERROR</span></div>
+        <div class="rcard-body open"><div class="checks"><div class="chk fail"><span class="chk-icon">✗</span><span class="chk-name">Iframe load</span><span class="chk-val">${e}</span></div></div></div></div>`);
+      fail++; continue;
+    }
+
+    const logs = [];
+    const log = (msg,type='info') => logs.push({msg,type});
+
+    try {
+      const raw = await fetch('/'+fname).then(r=>r.text());
+      const result = await validateFile(fname, raw, cfg, w, log);
+      result.logs = logs;
+      result.mcHeaderFileLines = (w.mcHeaderFileLines||[]).slice();
+      _allResults.push(result);
+      renderCard(result, i, logs);
+      if (result.overallStatus==='pass') pass++;
+      else if (result.overallStatus==='fail') fail++;
+      else warn++;
+    } catch(e) {
+      document.getElementById('results').insertAdjacentHTML('beforeend',
+        `<div class="rcard fail"><div class="rcard-hdr"><div><div class="rcard-title">${fname}</div></div><span class="badge fail">❌ ERROR</span></div>
+        <div class="rcard-body open"><div class="checks"><div class="chk fail"><span class="chk-icon">✗</span><span class="chk-name">Processing</span><span class="chk-val">${e.message||e}</span></div></div></div></div>`);
+      fail++;
+    }
+  }
+
+  setProgress(100);
+  document.getElementById('s-pass').textContent = pass;
+  document.getElementById('s-fail').textContent = fail;
+  document.getElementById('s-warn').textContent = warn;
+  document.getElementById('s-files').textContent = dataFiles.length;
+  document.getElementById('s-time').textContent = ((Date.now()-t0)/1000).toFixed(1)+'s';
+  document.getElementById('summary').style.display = 'flex';
+  setStatus('');
+  setTimeout(()=>document.getElementById('prog').style.display='none', 1000);
+}
+
+function clearAll() {
+  _chartInstances.forEach(c=>{ try{c.destroy();}catch(e){} });
+  _chartInstances = [];
+  _allResults = [];
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('status').textContent = '';
+  document.getElementById('prog-fill').style.width = '0%';
+  document.getElementById('summary').style.display = 'none';
+}
+
+function exportReport() {
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>KPI Test Report — ${new Date().toLocaleString()}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+    <style>body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:20px;}
+    ${document.querySelector('style').textContent}<\/style>
+    <\/head><body>
+    <h1>KPI Tool — Test Report</h1>
+    <p style="color:#8b949e;margin-bottom:20px">Generated: ${new Date().toLocaleString()}</p>
+    <div id="results">${document.getElementById('results').innerHTML}</div>
+    <\/body><\/html>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  a.download = 'KPI-Test-Report-'+Date.now()+'.html';
+  a.click();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// XLSX REPORT EXPORT (SheetJS) — 7 sheets
+//   1. Summary          — per-file with MC KPI validation columns
+//   2. Test Results     — per-check test cases
+//   3. MC KPI Validation — per-component KPI count + name match
+//   4. Component Groups  — all MC groups with KPI names
+//   5. Gaps & Findings   — actionable MasterConfig corrections
+//   6. App Summary       — consolidated per-app
+//   7. Chart Snapshots   — base64 chart data
+// ─────────────────────────────────────────────────────────────────────────────
+function exportXLSX() {
+    if (!_allResults || !_allResults.length) { alert('Run tests first.'); return; }
+    const wb = XLSX.utils.book_new();
+    const ts = new Date().toLocaleString();
+
+    // ── Helper ──────────────────────────────────────────────────────────────
+    function _kpiRange(r) {
+        const isMC=r.fmt==='multiComp', ck=Object.keys(r.compIndexStore||{});
+        if(isMC&&ck.length){const c=ck.map(k=>r.compIndexStore[k]?.[0]?Object.keys(r.compIndexStore[k][0].tokens).length:0);const mn=Math.min(...c),mx=Math.max(...c);return mn===mx?String(mn):mn+'–'+mx;}
+        const sk=Object.keys(r.parsedStore||{})[0],r0=r.parsedStore?.[sk]?.[0];return r0?String(Object.keys(r0.tokens).length):'—';
+    }
+
+    // ── Sheet 1: Summary ────────────────────────────────────────────────────
+    const sumRows=[
+        ['KPI Tool Validation — Test Summary'],
+        ['Generated:',ts,'Tool:',document.getElementById('toolUrl').value],
+        ['MasterConfig:',document.getElementById('cfgUrl').value],
+        [],
+        ['App','File','Format','Score','Overall Status',
+         'Checks Passed','Checks Failed','Checks Warned',
+         'Component Groups','Total Rows','KPI Range','Auto-Applied',
+         'MC Hdr Coverage','MC KPI Count','MC KPI Naming']
+    ];
+    _allResults.forEach(r=>{
+        const isMC=r.fmt==='multiComp', ck=Object.keys(r.compIndexStore||{});
+        const totalRows=ck.reduce((s,k)=>s+(r.compIndexStore[k]?.length||0),0)||Object.values(r.parsedStore||{}).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0);
+        const pN=r.checks.filter(c=>c.status==='pass').length, fN=r.checks.filter(c=>c.status==='fail').length, wN=r.checks.filter(c=>c.status==='warn').length;
+        const kv=r.mcKpiValidation||[];
+        const hdrCov=isMC?(kv.filter(v=>v.status==='❌ NO_HEADER').length===0?'PASS':'FAIL'):'N/A';
+        const cntOK =isMC?(kv.filter(v=>v.status==='⚠ COUNT_MISMATCH').length===0?'PASS':'WARN'):'N/A';
+        const namOK =isMC?(kv.filter(v=>v.named<v.toolCount).length===0?'PASS':'WARN'):'N/A';
+        sumRows.push([r.topProfile.app,r.filename,r.fmt,(r.topScore*100).toFixed(0)+'%',
+            r.overallStatus.toUpperCase(),pN,fN,wN,isMC?ck.length:1,totalRows,
+            _kpiRange(r),r.topScore>=0.80?'Yes (≥80%)':'No (manual)',hdrCov,cntOK,namOK]);
+    });
+    const wsSummary=XLSX.utils.aoa_to_sheet(sumRows);
+    wsSummary['!merges']=[{s:{r:0,c:0},e:{r:0,c:14}}];
+    wsSummary['!cols']=[14,44,10,7,10,7,7,8,10,11,10,13,14,14,14].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsSummary,'Summary');
+
+    // ── Sheet 2: Test Results ────────────────────────────────────────────────
+    const EXP={
+        'File loaded':'File readable, row count > 0',
+        'Format detected':'Correct format: logPipe/flatCsv/multiComp',
+        'Profile matched':'Top profile ≥80% — auto-applies',
+        'Annotation values':'All static annotation values match data columns',
+        'Key structure':'keyIndices and dataStartIndex correct for format',
+        'Component groups':'Correct MC group count — not 0, not >500',
+        'KPI tokens/component':'All components have >0 KPI tokens',
+        'Data parsed':'Rows extracted with KPI tokens',
+        'Freeze risk':'Component count ≤500 — safe for UI rendering',
+        'MC header coverage':'All MC components have a matching header line',
+        'MC KPI count match':'Tool token count == config KPI count for all components',
+        'MC KPI naming':'All KPI tokens have friendly names from config header'
+    };
+    const testRows=[['TC ID','App','File','Test Name','Expected','Actual Result','Status','Notes']];
+    let tc=1;
+    _allResults.forEach(r=>{
+        r.checks.forEach(c=>{
+            testRows.push(['TC-'+String(tc++).padStart(3,'0'),r.topProfile.app,r.filename,c.name,
+                EXP[c.name]||c.name, c.value+(c.detail?' | '+c.detail:''),
+                c.status.toUpperCase(),
+                c.status==='fail'?'INVESTIGATE':c.status==='warn'?'REVIEW':'OK']);
+        });
+    });
+    const wsTests=XLSX.utils.aoa_to_sheet(testRows);
+    wsTests['!cols']=[9,12,44,25,38,60,8,11].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsTests,'Test Results');
+
+    // ── Sheet 3: MC KPI Validation ───────────────────────────────────────────
+    const kpiRows=[['App','File','Component Key','Matched Header Line','Status',
+        'Tool KPIs','Config KPIs','Named KPIs','Unnamed KPIs',
+        'Tool KPI Names (pos 1-8)','Config KPI Names (pos 1-8)','Overlay KPIs']];
+    _allResults.forEach(r=>{
+        const isMC=r.fmt==='multiComp';
+        (r.mcKpiValidation||[]).forEach(v=>{
+            kpiRows.push([r.topProfile.app,r.filename,v.key,v.hdrLine,v.status,
+                v.toolCount,v.cfgCount||0,v.named,Math.max(0,v.toolCount-v.named),
+                v.kpiNames.slice(0,8).join(', '),v.cfgKPIs.slice(0,8).join(', '),
+                (v.overlayToks||[]).join(', ')||'—']);
+        });
+        if(!isMC){
+            const sk=Object.keys(r.parsedStore||{})[0],rows=r.parsedStore?.[sk]||[],r0=rows[0];
+            const toks=r0?Object.keys(r0.tokens):[];
+            kpiRows.push([r.topProfile.app,r.filename,'(single component)',
+                '—','✅ PASS',toks.length,toks.length,toks.length,0,
+                toks.slice(0,8).join(', '),'—','—']);
+        }
+    });
+    const wsKpi=XLSX.utils.aoa_to_sheet(kpiRows);
+    wsKpi['!cols']=[12,44,30,14,16,8,8,8,10,55,55,35].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsKpi,'MC KPI Validation');
+
+    // ── Sheet 4: Component Groups ────────────────────────────────────────────
+    const compRows=[['App','File','Component Key','Key Labels (cols)','Data Start Col',
+        'Row Count','KPI Count','KPI Names (first 8)','Overlay KPIs','Status']];
+    _allResults.forEach(r=>{
+        const isMC=r.fmt==='multiComp';
+        if(isMC){
+            Object.keys(r.compIndexStore||{}).sort().forEach(ck=>{
+                const rows=r.compIndexStore[ck],r0=rows?.[0];
+                const toks=r0?Object.keys(r0.tokens):[];
+                const kv=(r.mcKpiValidation||[]).find(v=>v.key===ck);
+                const names=(kv?.kpiNames||toks).slice(0,8);
+                const ov=(kv?.overlayToks||[]).join(', ')||'—';
+                const st=kv?.status||'—';
+                compRows.push([r.topProfile.app,r.filename,ck,
+                    '['+r.mcKeyFieldLabels?.join('|')+']',r.mcDataStartIndex,
+                    rows?.length||0,toks.length,names.join(', ')+(toks.length>8?' …':''),ov,st]);
+            });
+        } else {
+            const sk=Object.keys(r.parsedStore||{})[0],rows=r.parsedStore?.[sk]||[],r0=rows[0];
+            const toks=r0?Object.keys(r0.tokens):[];
+            compRows.push([r.topProfile.app,r.filename,'(single)',r.fmt,2,
+                rows.length,toks.length,toks.slice(0,8).join(', ')+(toks.length>8?' …':''),'—','✅ PASS']);
+        }
+    });
+    const wsComp=XLSX.utils.aoa_to_sheet(compRows);
+    wsComp['!cols']=[12,44,30,20,10,10,10,60,35,14].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsComp,'Component Groups');
+
+    // ── Sheet 5: Gaps & Findings ─────────────────────────────────────────────
+    const gapRows=[['App','File','Component Key','Gap Type','Severity',
+        'Tool KPIs','Config KPIs','Finding','Recommended Fix in MasterConfig']];
+    let hasGaps=false;
+    _allResults.forEach(r=>{
+        (r.mcKpiGaps||[]).forEach(g=>{
+            hasGaps=true;
+            const sev=g.status.startsWith('❌')?'ERROR':'WARNING';
+            const gapType=g.status==='❌ NO_HEADER'?'Missing Header Line':
+                          g.toolCount>(g.cfgCount||0)?'Config Header Too Short':
+                          g.toolCount<(g.cfgCount||0)?'Config Header Too Long':'KPI Name Mismatch';
+            const fix=g.status==='❌ NO_HEADER'
+                ?'Add mcHeaderFile entry: Date,Time,InstanceName(XXX),RecordType('+g.key.split('|')[0]+'),iCampaignAppId('+g.key.split('|')[1]+'),omKPIGroup('+g.key.split('|')[2]+'),KPI1,KPI2,...'
+                :g.toolCount>(g.cfgCount||0)
+                ?'Append '+(g.toolCount-(g.cfgCount||0))+' KPI column name(s) to header line '+g.hdrLine
+                :g.toolCount<(g.cfgCount||0)
+                ?'Remove '+((g.cfgCount||0)-g.toolCount)+' trailing KPI name(s) from header line '+g.hdrLine
+                :'Review KPI name ordering in header line '+g.hdrLine;
+            gapRows.push([r.topProfile.app,r.filename,g.key,gapType,sev,
+                g.toolCount||0,g.cfgCount||0,g.finding||'',fix]);
+        });
+    });
+    if(!hasGaps) gapRows.push(['—','—','—','No gaps found','—',0,0,
+        'All MC components passed KPI validation','No action required']);
+    const wsGaps=XLSX.utils.aoa_to_sheet(gapRows);
+    wsGaps['!cols']=[12,44,30,22,8,8,8,65,65].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsGaps,'Gaps & Findings');
+
+    // ── Sheet 5b: Graph & Rule Validation ───────────────────────────────────
+    const graphRows=[['App','File','Rule #','Rule Header','Rule Mode','Expected Tokens',
+        'Chart Generated','Chart Title','Datasets Count','Datasets with Data',
+        'Token Match Status','Chart Status']];
+    _allResults.forEach(r=>{
+        const profRules=r.profRules||[];
+        const chartRes=r.chartResults||[];
+        const ruleQ=r.ruleQueueSnapshot||[];
+        if(profRules.length===0){
+            graphRows.push([r.topProfile.app,r.filename,'—','No rules in MasterConfig profile','—','—','—','—','—','—','—','❌ NO_RULES']);
+            return;
+        }
+        profRules.forEach((rule,ri)=>{
+            const ruleHeader=rule.header||rule.name||'Rule '+(ri+1);
+            const tokens=(rule.tokens||[]).join(', ');
+            const mode=rule.mode||'direct';
+            const matchingChart=chartRes.find(c=>c.title&&c.title.toLowerCase().includes(ruleHeader.toLowerCase()));
+            const ruleLoaded=ruleQ.some(rq=>rq.header===ruleHeader||rq.header===rule.header);
+            // Token match check
+            let tokenMatchStatus='—';
+            if(matchingChart){
+                const missing=(rule.tokens||[]).filter(tok=>!matchingChart.datasets.some(d=>d.label&&d.label.includes(tok)));
+                tokenMatchStatus=missing.length===0?'✅ All matched':'⚠ Missing: '+missing.join(', ');
+            }
+            const chartStatus=!ruleLoaded?'❌ RULE_NOT_LOADED':!matchingChart?'❌ NO_CHART':matchingChart.datasets.some(d=>d.hasData)?'✅ CHART_OK':'⚠ CHART_EMPTY';
+            graphRows.push([
+                r.topProfile.app, r.filename, ri+1, ruleHeader, mode, tokens,
+                ruleLoaded?'Yes':'No',
+                matchingChart?matchingChart.title:'—',
+                matchingChart?matchingChart.datasetCount:0,
+                matchingChart?matchingChart.datasets.filter(d=>d.hasData).length:0,
+                tokenMatchStatus, chartStatus
+            ]);
+        });
+    });
+    const wsGraph=XLSX.utils.aoa_to_sheet(graphRows);
+    wsGraph['!cols']=[12,44,6,35,10,50,10,40,10,12,30,14].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsGraph,'Graph & Rule Validation');
+
+    // ── Sheet 6: App Summary ─────────────────────────────────────────────────
+    const appMap={};
+    _allResults.forEach(r=>{
+        const app=r.topProfile.app;
+        if(!appMap[app]) appMap[app]={files:[],tPass:0,tFail:0,tWarn:0,groups:0,rows:0,kpiGaps:0,noHdr:0,cntMismatch:0};
+        appMap[app].files.push(r.filename);
+        appMap[app].tPass+=r.checks.filter(c=>c.status==='pass').length;
+        appMap[app].tFail+=r.checks.filter(c=>c.status==='fail').length;
+        appMap[app].tWarn+=r.checks.filter(c=>c.status==='warn').length;
+        appMap[app].groups+=Object.keys(r.compIndexStore||{}).length||(r.fmt!=='multiComp'?1:0);
+        appMap[app].rows+=Object.values(r.compIndexStore||{}).reduce((s,v)=>s+(v.length||0),0)||Object.values(r.parsedStore||{}).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0);
+        appMap[app].kpiGaps+=(r.mcKpiGaps||[]).length;
+        appMap[app].noHdr+=(r.mcKpiValidation||[]).filter(v=>v.status==='❌ NO_HEADER').length;
+        appMap[app].cntMismatch+=(r.mcKpiValidation||[]).filter(v=>v.status==='⚠ COUNT_MISMATCH').length;
+    });
+    const appRows=[['Application Consolidated Summary'],['Generated:',ts],[],
+        ['App','Files Tested','Overall Status','Total Checks','Passed','Failed','Warned',
+         'Component Groups','Total Rows','KPI Gaps','Missing Headers','Count Mismatches']];
+    // Also accumulate chart/rule stats
+    _allResults.forEach(r=>{
+        const app=r.topProfile.app;
+        if(!appMap[app]) appMap[app]={files:[],tPass:0,tFail:0,tWarn:0,groups:0,rows:0,kpiGaps:0,noHdr:0,cntMismatch:0,totalRules:0,chartsGenerated:0,chartsWithData:0};
+        appMap[app].totalRules+=(r.profRules||[]).length;
+        appMap[app].chartsGenerated+=(r.chartResults||[]).length;
+        appMap[app].chartsWithData+=(r.chartResults||[]).filter(c=>c.datasets.some(d=>d.hasData)).length;
+    });
+    const appHdr=appRows[appRows.length-1]; // header row
+    appHdr.push('Total Rules','Charts Generated','Charts with Data');
+    Object.entries(appMap).forEach(([app,s])=>{
+        const total=s.tPass+s.tFail+s.tWarn;
+        const status=s.tFail>0?'FAIL':s.tWarn>0||s.kpiGaps>0?'WARN':'PASS';
+        appRows.push([app,s.files.join(', '),status,total,s.tPass,s.tFail,s.tWarn,
+            s.groups,s.rows,s.kpiGaps,s.noHdr,s.cntMismatch,
+            s.totalRules,s.chartsGenerated,s.chartsWithData]);
+    });
+    const wsApp=XLSX.utils.aoa_to_sheet(appRows);
+    wsApp['!merges']=[{s:{r:0,c:0},e:{r:0,c:11}}];
+    wsApp['!cols']=[14,50,10,12,8,8,8,14,12,9,14,15].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsApp,'App Summary');
+
+    // ── Sheet 7: Chart Snapshots — per-rule chart info + data URL ───────────
+    const snapRows=[['App','File','Rule #','Rule Header','Rule Mode','Chart Title',
+        'Dataset Count','Datasets with Data','Dataset Names','Chart Data URL (base64 PNG)']];
+    _allResults.forEach(r=>{
+        const profRules=r.profRules||[];
+        const chartRes=r.chartResults||[];
+        if(profRules.length===0){
+            snapRows.push([r.topProfile.app,r.filename,'—','No rules defined','—','—',0,0,'—','—']);
+            return;
+        }
+        profRules.forEach((rule,ri)=>{
+            const ruleHeader=rule.header||('Rule '+(ri+1));
+            const matchingChart=chartRes.find(c=>c.title&&c.title.toLowerCase().includes(ruleHeader.toLowerCase()));
+            snapRows.push([
+                r.topProfile.app, r.filename, ri+1, ruleHeader, rule.mode||'direct',
+                matchingChart?.title||'NOT GENERATED',
+                matchingChart?.datasetCount||0,
+                matchingChart?.datasets?.filter(d=>d.hasData).length||0,
+                matchingChart?.datasets?.map(d=>d.label).slice(0,5).join(', ')||'—',
+                matchingChart?.snapshot||'—'
+            ]);
+        });
+        // Also capture any charts that don't match a named rule (e.g. per-component charts)
+        const extraCharts=chartRes.filter(c=>!profRules.some(rule=>c.title&&c.title.toLowerCase().includes((rule.header||'').toLowerCase())));
+        extraCharts.forEach((c,ci)=>{
+            snapRows.push([r.topProfile.app,r.filename,'*','(additional)',r.fmt,c.title,
+                c.datasetCount,c.datasets.filter(d=>d.hasData).length,
+                c.datasets.map(d=>d.label).slice(0,5).join(', '),c.snapshot||'—']);
+        });
+    });
+    if(snapRows.length>1){
+        const wsSnap=XLSX.utils.aoa_to_sheet(snapRows);
+        wsSnap['!cols']=[12,44,6,35,10,40,10,12,50,30].map(w=>({wch:w}));
+        XLSX.utils.book_append_sheet(wb,wsSnap,'Chart Snapshots');
+    }
+
+    // ── Download XLSX ────────────────────────────────────────────────────────
+    const xlsFname='KPI-Test-Results-'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.xlsx';
+    XLSX.writeFile(wb,xlsFname);
+    setStatus('✅ XLSX saved: '+xlsFname+' ('+(XLSX.utils.book_SheetNames(wb).length)+' sheets)');
+
+    // ── Export companion visual HTML report ──────────────────────────────────
+    const snaps=[];
+    document.querySelectorAll('.rcard').forEach(card=>{
+        const fname=card.querySelector('.rcard-title')?.textContent||'';
+        const badge=card.querySelector('.badge')?.textContent||'';
+        const meta=card.querySelector('.rcard-meta')?.textContent||'';
+        const charts=[];
+        card.querySelectorAll('canvas').forEach((cv,ci)=>{
+            try{
+                const lbl=cv.parentElement?.previousElementSibling?.textContent||('Chart '+ci);
+                charts.push({lbl:lbl.trim().substring(0,60), src:cv.toDataURL('image/png')});
+            }catch(e){}
+        });
+        const kpiTbl=card.querySelector('table');
+        snaps.push({fname,badge,meta,charts,kpiTableHtml:kpiTbl?kpiTbl.outerHTML:''});
+    });
+    const snapHtml=snaps.map(s=>`
+    <div class="card ${s.badge.includes('PASS')?'pass':s.badge.includes('FAIL')?'fail':'warn'}">
+      <div class="card-hdr"><span class="title">${s.fname}</span><span class="badge2">${s.badge}</span></div>
+      <div class="cmeta">${s.meta}</div>
+      ${s.charts.length?`<div class="charts-row">${s.charts.map(c=>`<div class="cbox"><div class="clbl">${c.lbl}</div><img src="${c.src}"></div>`).join('')}</div>`:''}
+      ${s.kpiTableHtml?`<div style="padding:0 16px 16px;overflow-x:auto">${s.kpiTableHtml}</div>`:''}
+    </div>`).join('');
+    const vhtml=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>KPI Test Visual Report — ${ts}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Segoe UI',monospace;background:#0d1117;color:#e6edf3;padding:20px}
+      h1{color:#58a6ff;font-size:1.4em;margin-bottom:4px}
+      .sub{color:#8b949e;font-size:.85em;margin-bottom:24px}
+      .card{background:#161b22;border:1px solid #30363d;border-radius:10px;margin-bottom:20px;overflow:hidden}
+      .card.pass{border-left:4px solid #3fb950}.card.fail{border-left:4px solid #f85149}.card.warn{border-left:4px solid #d29922}
+      .card-hdr{padding:12px 18px;display:flex;justify-content:space-between;background:rgba(255,255,255,.03)}
+      .title{font-weight:700;color:#79c0ff;font-size:1em}.badge2{padding:3px 10px;border-radius:12px;font-size:.72em;font-weight:700;background:rgba(255,255,255,.1)}
+      .cmeta{padding:6px 18px 10px;font-size:.78em;color:#8b949e}
+      .charts-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:0 18px 16px}
+      .cbox{background:#fff;border-radius:6px;padding:8px}.clbl{font-size:.72em;color:#666;margin-bottom:4px}
+      .cbox img{width:100%;border-radius:4px}
+      table{width:100%;border-collapse:collapse;font-size:.8em}
+      th{background:rgba(255,255,255,.06);padding:5px 8px;text-align:left;font-size:.78em}
+      td{padding:4px 8px;border-bottom:1px solid #30363d;font-family:monospace;font-size:.77em}
+    </style></head><body>
+    <h1>📊 KPI Tool — Visual Test Report</h1>
+    <p class="sub">Generated: ${ts} &nbsp;|&nbsp; ${snaps.length} file(s) tested</p>
+    ${snapHtml}</body></html>`;
+    const va=document.createElement('a');
+    va.href=URL.createObjectURL(new Blob([vhtml],{type:'text/html'}));
+    va.download='KPI-Test-Visual-'+Date.now()+'.html'; va.click();
+}
+
+</script>
+</body>
+</html>
