@@ -2,34 +2,37 @@
     "ruleQueue": [
         {
             "header": "GTPv1 Stats",
-            "desc": "GTPv1 Statistics per min",
-            "type": "a",
+            "description": "GTPv1 Statistics per min",
+            "mode": "direct",
             "tokens": [
                 "Total_Requested_V1_Sessions_in_last_min",
                 "Total_Rejected_V1_Sessions_in_last_min",
                 "Total_Established_V1_Sessions_in_last_min",
                 "Total_Failed_V1_Sessions_in_last_min"
-            ]
+            ],
+            "thresholds": {}
         },
         {
             "header": "GTPv2 Stats",
-            "desc": "GTPv2 Statistics per min",
-            "type": "a",
+            "description": "GTPv2 Statistics per min",
+            "mode": "direct",
             "tokens": [
                 "Total_Requested_V2_Sessions_Count",
                 "Total_Rejected_V2_Sessions_Count",
                 "Total_Established_V2_Sessions_Count",
                 "Total_Failed_V2_Sessions_Count"
-            ]
+            ],
+            "thresholds": {}
         },
         {
             "header": "DNS Stats",
-            "desc": "DNS Statistics per min",
-            "type": "a",
+            "description": "DNS Statistics per min",
+            "mode": "direct",
             "tokens": [
                 "Total_External_DNS_Requests_in_last_min",
                 "Total_External_DNS_Requests_Failed_in_last_min"
-            ]
+            ],
+            "thresholds": {}
         }
     ],
     "csvHeaderConfig": {

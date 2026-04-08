@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- CSP omitted: file:/// protocol has inconsistent CSP support across browsers.
          SRI integrity hashes on CDN scripts below provide MITM protection instead. -->
-    <title>KPI Graph and Analysis | v2.2.0</title>
+    <title>KPI Graph and Analysis | v2.2.0-DEBUG</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8" integrity="sha384-Cs3dgUx6+jDxxuqHvVH8Onpyj2LF1gKZurLDlhqzuJmUqVYMJ0THTWpxK5Z086Zm" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0" integrity="sha384-dwwI6ICEN/0ZQlS5owhUa/6ZzvwUPmjH45bFVCAcjgjTulbHJvlE+TGU3g1k0N3R" crossorigin="anonymous"></script>
@@ -30,9 +30,20 @@
         .meta-bar { background:var(--dark); color:white; padding:15px; border-radius:8px; margin-top:10px; display:flex; justify-content:space-between; align-items:center; }
         #console-panel { position:fixed; bottom:0; left:0; right:0; background:#1e1e1e; color:#00ff00; font-family:'Courier New',monospace; font-size:12px; border-top:2px solid var(--primary); z-index:1000; }
         #console-header { background:#333; padding:5px 15px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
-        #console-body { height:150px; overflow-y:auto; padding:10px; display:block; }
+        #console-body { height:280px; overflow-y:auto; padding:10px; display:block; }
         #console-panel.collapsed #console-body { display:none; }
         .log-entry { margin-bottom:4px; border-bottom:1px solid #333; white-space:pre-wrap; word-break:break-all; }
+        /* ── DEBUG category colours ── */
+        .log-entry.dbg-format  { color:#ffd700; }   /* gold   — format/profile decisions */
+        .log-entry.dbg-header  { color:#00cfff; }   /* cyan   — headerKeys / column layout */
+        .log-entry.dbg-parse   { color:#b0e57c; }   /* lime   — per-row parsing events */
+        .log-entry.dbg-chart   { color:#ff9f40; }   /* orange — chart / tooltip */
+        .log-entry.dbg-import  { color:#e57cf5; }   /* violet — importRules / reset */
+        .log-entry.dbg-warn    { color:#ff6b6b; font-weight:bold; } /* red — anomaly */
+        .log-entry.dbg-verbose { color:#cccccc; font-style:italic; opacity:0.85; } /* white/grey — verbose detail */
+        /* ── Debug legend bar ── */
+        #dbg-legend { background:#2a2a2a; padding:3px 14px; display:flex; gap:14px; align-items:center; font-size:10px; flex-wrap:wrap; }
+        .dbg-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:3px; vertical-align:middle; }
         /* Queue */
         .queue-item { padding:6px 8px; border:1px solid var(--border-color); margin-bottom:5px; border-radius:4px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
         .queue-item.editing { border-color:var(--warning); background:rgba(255,193,7,0.08); }
@@ -145,7 +156,7 @@
             <button style="background:var(--info);color:white;" onclick="document.getElementById('masterConfigFile').click()">&#128295; Config</button>
             <input type="file" id="masterConfigFile" accept=".json" style="display:none" onchange="loadMasterConfig(this)">
             <button style="background:var(--dark);color:white;" onclick="toggleTheme()">&#127763; Theme</button>
-            <button style="background:var(--danger);color:white;" onclick="logAction('Hard Reset.'); location.reload()">&#128260; Reset All</button>
+            <button style="background:var(--danger);color:white;" onclick="softReset()">&#128260; Reset All</button>
             <button style="background:var(--primary);color:white;" onclick="exportFullPDF()">&#128196; Export PDF</button>
         </div>
     </div>
@@ -393,15 +404,39 @@
     </div>
 </div>
 
-<div id="console-panel" class="collapsed">
+<div id="console-panel">
     <div id="console-header" onclick="toggleConsole()">
-        <span>Activity Console</span>
-        <div>
+        <span>Activity Console <span id="dbg-count" style="font-size:0.8em;color:#aaa;margin-left:6px;"></span></span>
+        <div style="display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">
+            <select id="dbg-filter" style="background:#2a2a2a;color:#ccc;border:1px solid #555;padding:2px 6px;border-radius:4px;font-size:11px;cursor:pointer;" onchange="applyConsoleFilter()">
+                <option value="all">All entries</option>
+                <option value="format">🟡 Format/Profile</option>
+                <option value="header">🔵 Header/Cols</option>
+                <option value="parse">🟢 Parse rows</option>
+                <option value="chart">🟠 Chart/Tooltip</option>
+                <option value="import">🟣 Import/Reset</option>
+                <option value="warn">🔴 Anomaly/Warn</option>
+                <option value="dbg">DBG only (all categories)</option>
+                <option value="verbose">⚪ Verbose (when VERBOSE_LOGGING=true)</option>
+                <option value="action">logAction only</option>
+            </select>
+            <button class="btn-mini" style="background:#555;color:#ccc;font-size:11px;" onclick="clearConsole()">Clear</button>
             <button class="btn-mini" style="background:var(--primary);color:white;" onclick="copyConsole(event)">Copy Log</button>
-            <span id="console-arrow" style="margin-left:10px;">&#9650;</span>
+            <span id="console-arrow" style="margin-left:4px;">&#9660;</span>
         </div>
     </div>
     <div id="console-body"></div>
+    <div id="dbg-legend">
+        <span style="color:#aaa;font-weight:600;">DEBUG:</span>
+        <span><span class="dbg-dot" style="background:#ffd700;"></span><span style="color:#ffd700;">Format/Profile</span></span>
+        <span><span class="dbg-dot" style="background:#00cfff;"></span><span style="color:#00cfff;">Header/Cols</span></span>
+        <span><span class="dbg-dot" style="background:#b0e57c;"></span><span style="color:#b0e57c;">Parse rows</span></span>
+        <span><span class="dbg-dot" style="background:#ff9f40;"></span><span style="color:#ff9f40;">Chart/Tooltip</span></span>
+        <span><span class="dbg-dot" style="background:#e57cf5;"></span><span style="color:#e57cf5;">Import/Reset</span></span>
+        <span><span class="dbg-dot" style="background:#ff6b6b;"></span><span style="color:#ff6b6b;">Anomaly/Warn</span></span>
+        <span id="verbose-legend-badge" style="color:#aaa;font-size:0.85em;padding:1px 5px;border:1px solid #555;border-radius:3px;margin-left:2px;">VERBOSE: OFF</span>
+        <span style="margin-left:auto;color:#888;">v2.2.0-DEBUG</span>
+    </div>
 </div>
 
 <script>
@@ -427,6 +462,7 @@ var mcKeyFieldIndices  = [];   // detected key field column indices (e.g. [3,4] 
 var mcKeyFieldLabels   = [];   // labels for detected key fields (e.g. ['Type','CompId'])
 var mcDataStartIndex   = 5;    // first KPI data column index (after key fields)
 var mcInstanceIdIndices = [];   // column indices marked as (XXX) instance ID
+var mcOverlayFieldNames = new Set(); // token names that are XXX overlay-only fields (never shown in KPI Metrics)
 var mcHeaderFileLines  = [];   // raw lines from loaded MC header file (for profile saving)
 var alertLog           = [];   // threshold breach log
 var mcAnnotatedMode    = false; // true when header annotations were used (not detectKeyStructure)
@@ -441,6 +477,25 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;  // [SEC9] 50MB
 const ALLOWED_EXTENSIONS = ['.txt', '.log', '.csv', '.json'];  // [SEC9]
 
 // =============================================================================
+// VERBOSE LOGGING — developer-only troubleshooting flag
+// =============================================================================
+// Set VERBOSE_LOGGING = true to enable highly detailed trace output covering:
+//   • Per-profile scoring breakdown with every points component
+//   • detectFileFormat column cardinality analysis
+//   • detectKeyStructure annotation parsing step-by-step
+//   • buildFileFingerprint field-type decisions
+//   • processFilesFromUI decision points per file
+//   • Per-row parse events (first 10 rows per compKey)
+//   • populateMcSelects / refreshMcKpiSelector token mapping
+//
+// NOT exposed in the GUI — change this constant to toggle.
+// Verbose entries appear in the console as [VRB:category] in bright white,
+// and can be filtered using the "⚪ Verbose" filter option in the console.
+// WARNING: verbose=true on large files (>10K rows) generates many entries.
+// =============================================================================
+const VERBOSE_LOGGING = false;
+
+// =============================================================================
 // CONSOLE
 // =============================================================================
 function logAction(msg) {
@@ -448,10 +503,95 @@ function logAction(msg) {
     const div  = document.createElement('div');
     div.className   = 'log-entry';
     div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + (msg||'').substring(0, 500);
+    // Respect active filter — plain logAction entries are 'action' category
+    var filter = (document.getElementById('dbg-filter') || {}).value || 'all';
+    if (filter !== 'all' && filter !== 'action') div.style.display = 'none';
     body.appendChild(div);
     while (body.children.length > MAX_CONSOLE_ENTRIES) body.removeChild(body.firstChild);
-    body.scrollTop = body.scrollHeight;
+    if (div.style.display !== 'none') body.scrollTop = body.scrollHeight;
+    _updateDbgCount();
 }
+// =============================================================================
+// DEBUG LOGGER  (category-coloured entries in Activity Console)
+// Categories: 'format' | 'header' | 'parse' | 'chart' | 'import' | 'warn'
+// =============================================================================
+function _updateDbgCount() {
+    var counter = document.getElementById('dbg-count');
+    if (!counter) return;
+    var body = document.getElementById('console-body');
+    var total = body.children.length;
+    var visible = Array.from(body.children).filter(function(el) { return el.style.display !== 'none'; }).length;
+    counter.textContent = visible === total ? '(' + total + ')' : '(' + visible + '/' + total + ')';
+}
+function applyConsoleFilter() {
+    var filter = document.getElementById('dbg-filter').value;
+    var body = document.getElementById('console-body');
+    Array.from(body.children).forEach(function(el) {
+        if (filter === 'all') {
+            el.style.display = '';
+        } else if (filter === 'dbg') {
+            // Show all DBG entries but hide verbose unless VERBOSE_LOGGING
+            el.style.display = (el.className.includes('dbg-') && (VERBOSE_LOGGING || !el.className.includes('dbg-verbose'))) ? '' : 'none';
+        } else if (filter === 'verbose') {
+            el.style.display = el.className.includes('dbg-verbose') ? '' : 'none';
+        } else if (filter === 'action') {
+            el.style.display = !el.className.includes('dbg-') ? '' : 'none';
+        } else {
+            // Category filter: show matching but hide verbose unless VERBOSE_LOGGING
+            el.style.display = (el.className.includes('dbg-' + filter) && (VERBOSE_LOGGING || !el.className.includes('dbg-verbose'))) ? '' : 'none';
+        }
+    });
+    _updateDbgCount();
+    // Scroll to last visible entry
+    var body = document.getElementById('console-body');
+    var visible = Array.from(body.children).filter(function(el) { return el.style.display !== 'none'; });
+    if (visible.length) visible[visible.length - 1].scrollIntoView({ block: 'nearest' });
+}
+function clearConsole() {
+    document.getElementById('console-body').innerHTML = '';
+    _updateDbgCount();
+    logAction('Console cleared.');
+}
+function logDebug(category, msg) {
+    var body = document.getElementById('console-body');
+    var div  = document.createElement('div');
+    div.className   = 'log-entry dbg-' + (category || 'parse');
+    div.textContent = '[' + new Date().toLocaleTimeString() + '] [DBG:' + category.toUpperCase() + '] ' + (msg||'').substring(0,600);
+    // Apply current filter immediately on insert
+    var filter = (document.getElementById('dbg-filter') || {}).value || 'all';
+    if (filter !== 'all' && filter !== 'dbg' && filter !== category) div.style.display = 'none';
+    if (filter === 'action') div.style.display = 'none';
+    body.appendChild(div);
+    while (body.children.length > MAX_CONSOLE_ENTRIES) body.removeChild(body.firstChild);
+    if (div.style.display !== 'none') body.scrollTop = body.scrollHeight;
+    _updateDbgCount();
+    // Mirror to browser DevTools console
+    console.log('%c[DBG:' + category + ']', 'color:' + ({format:'#ffd700',header:'#00cfff',parse:'#b0e57c',chart:'#ff9f40',import:'#e57cf5',warn:'#ff6b6b'}[category]||'#aaa'), msg);
+}
+
+// logVerbose: only fires when VERBOSE_LOGGING === true.
+// Category matches logDebug categories for consistent colour coding.
+// Verbose entries get an extra 'dbg-verbose' class and [VRB:] prefix so they
+// can be filtered independently — shows everything including per-row detail.
+function logVerbose(category, msg) {
+    if (!VERBOSE_LOGGING) return;
+    var body = document.getElementById('console-body');
+    var div  = document.createElement('div');
+    div.className   = 'log-entry dbg-' + (category || 'parse') + ' dbg-verbose';
+    div.textContent = '[' + new Date().toLocaleTimeString() + '] [VRB:' + (category||'parse').toUpperCase() + '] ' + (msg||'').substring(0, 800);
+    var filter = (document.getElementById('dbg-filter') || {}).value || 'all';
+    // Visible when: all / dbg / verbose / matching category
+    var show = (filter === 'all' || filter === 'dbg' || filter === 'verbose' || filter === category);
+    if (!show) div.style.display = 'none';
+    body.appendChild(div);
+    while (body.children.length > MAX_CONSOLE_ENTRIES) body.removeChild(body.firstChild);
+    if (div.style.display !== 'none') body.scrollTop = body.scrollHeight;
+    _updateDbgCount();
+    // Also mirror to DevTools at debug level
+    console.debug('%c[VRB:' + category + ']', 'color:#ffffff;font-weight:normal',
+        (msg||'').substring(0, 800));
+}
+
 function toggleConsole() {
     const p = document.getElementById('console-panel');
     p.classList.toggle('collapsed');
@@ -673,27 +813,40 @@ async function ingestFiles(fileList) {
     document.getElementById('file-status').textContent = Object.keys(rawFilesStore).length + ' file(s) ready.';
     logAction('Filesystem: ' + loaded + ' of ' + fileList.length + ' file(s) loaded.');
 
+    // [DBG-A] Log the state that governs whether format will be re-evaluated
+    logDebug('format', '=== ingestFiles ===  newFiles=[' + newFileNames.join(', ') + ']');
+    logDebug('format', '  _profileAlreadySelected=' + _profileAlreadySelected
+        + '  masterConfig=' + (masterConfig ? '"' + (masterConfig.name||'loaded') + '"' : 'null'));
+    logDebug('format', '  currentFormatType="' + document.getElementById('formatType').value + '"'
+        + '  rawFilesStore total=' + Object.keys(rawFilesStore).length);
+    if (_profileAlreadySelected && !masterConfig) {
+        logDebug('warn', '[DBG-A] _profileAlreadySelected=true but masterConfig=null.'
+            + ' No re-evaluation will happen. Format stays as "' + document.getElementById('formatType').value + '".'
+            + ' If this is stale from a previous import, it may apply the wrong format to new files.');
+    }
+
     // Incremental: if profiles already assigned, match only NEW files
     if (_profileAlreadySelected && masterConfig && newFileNames.length) {
         newFileNames.forEach(function(fname) {
             var candidates = autoMatchProfile(rawFilesStore[fname], fname);
             if (candidates && candidates.length) {
-                var strong = candidates.filter(function(c) { return c.score >= 0.90; });
+                var strong = candidates.filter(function(c) { return c.score >= 0.80; });
                 if (strong.length === 1) {
                     fileProfileMap[fname] = { profile: strong[0].profile, score: strong[0].score, candidates: candidates };
                     logAction('Config: Incremental auto-matched "' + fname + '" \u2192 "' + strong[0].profile.name + '".');
                 } else {
                     fileProfileMap[fname] = { profile: candidates[0].profile, score: candidates[0].score, candidates: candidates, needsReview: true };
-                    // Need to show selector for new file(s)
                     _profileAlreadySelected = false;
+                    logDebug('format', '  Multiple candidates for "' + fname + '" — _profileAlreadySelected reset to false.');
                 }
             } else {
                 fileProfileMap[fname] = { profile: null, score: 0, candidates: [], needsReview: true };
                 _profileAlreadySelected = false;
+                logDebug('format', '  No profile match for "' + fname + '" — _profileAlreadySelected reset to false.');
             }
         });
     } else if (!_profileAlreadySelected) {
-        // Fresh matching needed
+        logDebug('format', '  _profileAlreadySelected=false — full profile matching will run in processFilesFromUI.');
     }
     processFilesFromUI();
 }
@@ -726,145 +879,165 @@ function detectCsvTsFormat(dataLines) {
 //   Name (no parens) → KPI data column.  Name(XXX) → instance ID key.
 // Returns null when no annotations are found (caller falls back to detectKeyStructure).
 function parseAnnotatedHeaders(headerKeys, tsColCount) {
+    // KEY RULE (cols 3-7 only):
+    //   Name(value) where value != XXX  → STATIC component key
+    //   Name(XXX)                       → VARIABLE overlay KPI, NOT a component key
+    //   Col index > 7 or no parens      → KPI data column, never a key
+    //
+    // Restricting to cols 3-7 prevents long header lines (e.g. iCampaign 81-col) from
+    // picking up duplicate annotations at col 68/69 which would corrupt dataStartIndex.
+    var KEY_COL_MAX = 7;
     var keyIndices = [], keyLabels = [], cleanHeaders = [];
     var instanceIdIndices = [];
     headerKeys.forEach(function(h, i) {
         if (i < tsColCount) { cleanHeaders.push(h); return; }
-        var parsed = parseMcHeaderCol(h);        // reuse existing parser
-        if (parsed.label !== null) {              // has Name(value) pattern
+        var parsed = parseMcHeaderCol(h);
+        if (parsed.label !== null && i <= KEY_COL_MAX) {
+            // Annotated column within key zone (cols 3-7)
             keyIndices.push(i);
             keyLabels.push(parsed.label);
-            cleanHeaders.push(parsed.label);      // strip annotation for KPI display
-            if (parsed.val.toUpperCase() === 'XXX') instanceIdIndices.push(i);
+            cleanHeaders.push(parsed.label);
+            if (parsed.val.toUpperCase() === 'XXX') {
+                instanceIdIndices.push(i);  // XXX → overlay KPI, tracked for demoting
+            }
         } else {
-            cleanHeaders.push(h);                 // plain KPI column
+            cleanHeaders.push(parsed.label || h);
         }
     });
-    if (keyIndices.length === 0) return null;     // no annotations found
-    var dataStartIndex = Math.max.apply(null, keyIndices) + 1;
+    if (keyIndices.length === 0) return null;
+    // dataStartIndex = after last STATIC key (non-XXX).
+    // XXX cols fall in data zone → named per-component by _processMcHeaderLines.
+    var _staticIdx = keyIndices.filter(function(ki) { return instanceIdIndices.indexOf(ki) < 0; });
+    var _lastStatic = _staticIdx.length > 0
+        ? Math.max.apply(null, _staticIdx)
+        : Math.max.apply(null, keyIndices);
+    var dataStartIndex = _lastStatic + 1;
     return { keyIndices: keyIndices, keyLabels: keyLabels, dataStartIndex: dataStartIndex,
              cleanHeaders: cleanHeaders, instanceIdIndices: instanceIdIndices };
 }
 
+
 // =============================================================================
-// DYNAMIC KEY STRUCTURE DETECTION (Enhancement 1)
+// DYNAMIC KEY STRUCTURE DETECTION (Enhanced)
 // =============================================================================
-// Analyzes multiComp CSV data rows to determine which fields (columns 2+) are
-// component key fields vs KPI data fields. Replaces the hardcoded assumption
-// that fields 3,4 (Type|CompId) are always the key.
-//
-// Returns: { keyIndices: [3,4], dataStartIndex: 5, keyLabels: ['Field4','Field5'] }
+// Analyzes multiComp CSV data rows to determine which fields (columns 2-7) are
+// component key fields vs KPI data fields. KPI Metrics start immediately after.
 function detectKeyStructure(dataLines, headerKeys) {
-    // Parse sample rows (up to 1000 for large files)
-    const sampleSize = Math.min(dataLines.length, 1000);
+    // ─── Correct MC Component Key Algorithm ──────────────────────────────────
+    // 1. Scan cols 3–7 ONLY (no further — KPI data starts beyond)
+    // 2. Header Name(XXX) = overlay KPI → excluded from key scan, falls in data zone
+    // 3. Low cardinality in actual data = component key
+    // 4. Stop at first high-cardinality non-XXX col after finding ≥1 key
+    // 5. dataStartIndex = lastKey + 1  (XXX cols between/after keys land here as overlay KPI_N)
+    // 6. Header annotations used for LABELS ONLY — data cardinality drives key identification
+
+    // Use correct delimiter — logPipe files use | not ,
+    const _delim = (typeof detectFileFormat === 'function' && dataLines.length > 0)
+        ? (dataLines[0].includes('|') && dataLines[0].split('|').length >= 4 ? '|' : ',')
+        : ',';
+
+    const sampleSize = Math.min(dataLines.length, 200);
     const rows = [];
-    let maxCols = 0;
     for (let i = 0; i < sampleSize; i++) {
-        const cols = dataLines[i].split(',').map(c => c.trim());
-        if (cols.length < 4) continue; // skip malformed
-        rows.push(cols);
-        if (cols.length > maxCols) maxCols = cols.length;
+        const cols = dataLines[i].split(_delim).map(function(c){ return c.trim(); });
+        if (cols.length >= 4) rows.push(cols);
     }
-    if (!rows.length) return { keyIndices: [3, 4], dataStartIndex: 5, keyLabels: ['Type', 'CompId'] };
-
+    if (!rows.length) return { keyIndices: [3,4], dataStartIndex: 5, keyLabels: ['Type', 'CompId'] };
     const totalRows = rows.length;
-    const lastFieldToCheck = Math.min(7, maxCols - 1); // check fields 2 through 7 max
 
-    // Phase 1: Classify each field from index 2 onward
-    const fieldInfo = [];
-    for (let f = 2; f <= lastFieldToCheck; f++) {
-        const values = [];
-        let numericCount = 0, emptyCount = 0;
-        const distinctSet = new Set();
-        for (let r = 0; r < totalRows; r++) {
-            const v = (rows[r][f] || '').trim();
-            if (!v) { emptyCount++; continue; }
-            values.push(v);
-            distinctSet.add(v);
-            if (!isNaN(Number(v))) numericCount++;
-        }
-        const nonEmpty = values.length || 1;
-        const distinctCount = distinctSet.size;
-        const uniqueRatio = distinctCount / totalRows;
-        const numericRatio = numericCount / nonEmpty;
-        const emptyRatio = emptyCount / totalRows;
-
-        let classification;
-        if (emptyRatio > 0.9) {
-            classification = 'empty';
-        } else if (uniqueRatio > 0.8 && numericRatio > 0.9) {
-            classification = 'sequence';
-        } else if (distinctCount === 1) {
-            classification = 'constant';
-        } else if (distinctCount <= 50 && uniqueRatio < 0.5) {
-            classification = 'categorical';
-        } else {
-            classification = 'data';
-        }
-
-        fieldInfo.push({ index: f, classification, distinctCount, uniqueRatio, numericRatio, emptyRatio });
-    }
-
-    logAction('Key Detection: Field analysis:');
-    fieldInfo.forEach(fi => {
-        logAction('  col[' + fi.index + ']: ' + fi.classification
-            + ' (distinct=' + fi.distinctCount + ', uRatio=' + fi.uniqueRatio.toFixed(3)
-            + ', numRatio=' + fi.numericRatio.toFixed(3) + ')');
-    });
-
-    // Phase 2: Determine key depth from categorical + constant fields
-    // Stop at first 'data' field — everything from there is KPI data
-    const candidateFields = [];
-    for (let i = 0; i < fieldInfo.length; i++) {
-        const fi = fieldInfo[i];
-        if (fi.classification === 'data') break; // all subsequent fields are data
-        if (fi.classification === 'sequence' || fi.classification === 'empty') continue;
-        // constant or categorical → key candidate
-        candidateFields.push(fi);
-    }
-
-    if (!candidateFields.length) {
-        // No categorical fields found — fall back to hardcoded [3,4]
-        logAction('Key Detection: No categorical fields found — using default [3,4].');
-        return { keyIndices: [3, 4], dataStartIndex: 5, keyLabels: ['Type', 'CompId'] };
-    }
-
-    // Find minimum depth of candidate fields that produces unique groups per timestamp
-    let bestKeyIndices = candidateFields.map(cf => cf.index); // default: use all candidates
-    let dataStart = bestKeyIndices.length ? (bestKeyIndices[bestKeyIndices.length - 1] + 1) : 5;
-
-    for (let depth = 1; depth <= candidateFields.length; depth++) {
-        const testIndices = candidateFields.slice(0, depth).map(cf => cf.index);
-        // Check: for each timestamp, is (timestamp + key) unique?
-        const groupMap = {};
-        let isUnique = true;
-        for (let r = 0; r < totalRows; r++) {
-            const ts = (rows[r][0] || '') + ',' + (rows[r][1] || '');
-            const key = testIndices.map(fi => rows[r][fi] || '').join('|');
-            const groupKey = ts + '||' + key;
-            if (groupMap[groupKey]) {
-                isUnique = false;
-                break;
+    // ── Step 1: Identify XXX-annotated columns from header (overlay KPIs, not keys) ──
+    // Only cols 3-7. A col is considered XXX-overlay only if ALL header lines that
+    // annotate it mark it as XXX. If any line gives it a static value, it may be a key.
+    // Final arbiter: DATA CARDINALITY — if col is low-cardinality in actual data it IS
+    // a component key regardless of header annotation.
+    const xxxCols = new Set();
+    if (typeof mcHeaderFileLines !== 'undefined' && mcHeaderFileLines.length > 0) {
+        // Count how many header lines annotate each col as XXX vs static
+        var _xxxVotes = {}, _staticVotes = {};
+        mcHeaderFileLines.forEach(function(hdrLine) {
+            hdrLine.split(',').forEach(function(col, ci) {
+                if (ci < 3 || ci > 7) return;
+                const m = col.trim().match(/\(([^)]+)\)$/);
+                if (!m) return;
+                if (m[1].trim().toUpperCase() === 'XXX') {
+                    _xxxVotes[ci] = (_xxxVotes[ci]||0) + 1;
+                } else {
+                    _staticVotes[ci] = (_staticVotes[ci]||0) + 1;
+                }
+            });
+        });
+        // Only exclude col from key scan if ALL votes are XXX (no static votes at all)
+        Object.keys(_xxxVotes).forEach(function(ci) {
+            if (!_staticVotes[ci]) {
+                xxxCols.add(parseInt(ci));
+                logDebug('header', '[detectKeyStructure] col'+ci+' → unanimously XXX ('+_xxxVotes[ci]+' votes) — overlay KPI');
+            } else {
+                logDebug('header', '[detectKeyStructure] col'+ci+' → XXX in '+_xxxVotes[ci]+' lines but static in '+_staticVotes[ci]+' lines — data cardinality will decide');
             }
-            groupMap[groupKey] = true;
+        });
+    }
+
+    // ── Step 2: Scan cols 3–7 — cardinality check on actual data ──────────────
+    const keyIndices = [];
+    for (let c = 3; c <= 7; c++) {
+        // Skip cols that are unanimously XXX-annotated across ALL header lines
+        if (xxxCols.has(c)) {
+            logDebug('header', '[detectKeyStructure] col' + c + ' → XXX overlay KPI, skipped in key scan');
+            continue;
         }
-        if (isUnique) {
-            bestKeyIndices = testIndices;
-            dataStart = testIndices[testIndices.length - 1] + 1;
-            break;
+
+        const vals = new Set();
+        rows.forEach(function(r) { var v=(r[c]||'').trim(); if(v) vals.add(v); });
+        const cardinality = vals.size / totalRows;
+        const isKey = vals.size <= 30 && cardinality < 0.3;
+
+        logDebug('header', '[detectKeyStructure] col' + c
+            + ': distinct=' + vals.size + ' ratio=' + cardinality.toFixed(3)
+            + ' → ' + (isKey ? 'KEY' : 'data/stop')
+            + ' [' + [...vals].slice(0,4).join('|') + ']');
+
+        if (isKey) {
+            keyIndices.push(c);
+        } else {
+            // First non-key after finding keys = end of key region
+            if (keyIndices.length > 0) break;
+            // No keys yet = keep scanning (e.g. if earlier col was XXX-skipped)
         }
     }
 
-    // Generate labels from header keys if available, else generic names
-    const keyLabels = bestKeyIndices.map((fi, i) => {
-        if (headerKeys && headerKeys[fi]) return headerKeys[fi];
-        return 'Field' + (fi + 1);
+    if (keyIndices.length === 0) {
+        logAction('Dynamic Detection: WARNING — no categorical key found in cols 3-7. Falling back to col 3.');
+        keyIndices.push(3);
+    }
+
+    // ── Step 3: dataStartIndex = col after last key ───────────────────────────
+    const dataStartIndex = keyIndices[keyIndices.length - 1] + 1;
+
+    // ── Step 4: Labels from header annotations (first matching header line) ───
+    const keyLabels = keyIndices.map(function(ki) {
+        if (typeof mcHeaderFileLines !== 'undefined' && mcHeaderFileLines.length > 0) {
+            for (var li = 0; li < mcHeaderFileLines.length; li++) {
+                var cols = mcHeaderFileLines[li].split(',').map(function(c){ return c.trim(); });
+                if (cols[ki]) {
+                    var m = cols[ki].match(/^(.+?)\(([^)]+)\)$/);
+                    if (m) return m[1].trim();
+                    return cols[ki];
+                }
+            }
+        }
+        return headerKeys && headerKeys[ki] ? headerKeys[ki].trim() : 'Field ' + (ki + 1);
     });
 
-    logAction('Key Detection: Key fields = [' + bestKeyIndices.join(',') + '] ('
-        + keyLabels.join(' · ') + '), data starts at col[' + dataStart + '].');
+    logAction('Dynamic Detection: Keys=[' + keyIndices.join(',') + '] ('
+        + keyLabels.join('|') + ') | KPIs start at col ' + dataStartIndex
+        + (xxxCols.size ? ' | Overlay KPI cols: [' + [...xxxCols].join(',') + ']' : ''));
+    logDebug('header', '[detectKeyStructure] Result:'
+        + ' keyIndices=' + JSON.stringify(keyIndices)
+        + '  keyLabels=[' + keyLabels.join(', ') + ']'
+        + '  dataStartIndex=' + dataStartIndex
+        + '  xxxOverlayCols=' + JSON.stringify([...xxxCols]));
 
-    return { keyIndices: bestKeyIndices, dataStartIndex: dataStart, keyLabels: keyLabels };
+    return { keyIndices: keyIndices, dataStartIndex: dataStartIndex, keyLabels: keyLabels };
 }
 
 // =============================================================================
@@ -873,46 +1046,72 @@ function detectKeyStructure(dataLines, headerKeys) {
 // Examines the first few lines of a file to determine its format.
 // Returns 'logPipe', 'flatCsv', or 'multiComp'.
 function detectFileFormat(rawText) {
-    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l !== '').slice(0, 10);
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l !== '').slice(0, 20);
     if (!lines.length) return 'flatCsv';
 
     let pipeScore = 0, flatScore = 0, mcScore = 0;
 
+    // Pre-compute column cardinality across all sample lines to detect
+    // low-cardinality numeric key columns (e.g. Type=2, CompId=75).
+    // These look numeric but have very few distinct values — a strong MC signal.
+    const colValues = {};
+    lines.forEach(function(line) {
+        line.split(',').forEach(function(v, i) {
+            if (!colValues[i]) colValues[i] = new Set();
+            colValues[i].add(v.trim());
+        });
+    });
+
     lines.forEach(line => {
-        // Log-pipe detection: contains | delimiters with key=value or structured segments
+        // Log-pipe detection
         const pipes = line.split('|');
         if (pipes.length >= 5) pipeScore += 2;
 
         // CSV detection
         const commas = line.split(',');
-        if (commas.length >= 3) {
-            // Check if fields 3+ have categorical (non-numeric, low-cardinality) data
-            // indicating multi-component format
-            if (commas.length >= 6) {
-                const f2 = (commas[2] || '').trim();
-                const f3 = (commas[3] || '').trim();
-                const f4 = (commas[4] || '').trim();
-                // Multi-component: key fields must be non-numeric categorical values
-                const isF3Cat = f3 && f3.length < 20 && isNaN(Number(f3));
-                const isF4Cat = f4 && f4.length < 20 && isNaN(Number(f4));
-                // Label detection: parentheses format like "Type(1)"
-                const hasLabel = /\(.+\)/.test(f3) || /\(.+\)/.test(f4);
-                if (hasLabel || (isF3Cat && isF4Cat && commas.length >= 7)) {
-                    mcScore += 2;
-                } else if (isF3Cat && commas.length >= 7) {
-                    mcScore += 1;   // partial: at least one key field is categorical
-                } else {
-                    flatScore += 1;
-                }
+        if (commas.length >= 6) {
+            const f3 = (commas[3] || '').trim();
+            const f4 = (commas[4] || '').trim();
+
+            // Annotation detection: parentheses format like "Type(1)", "InputStats(1)"
+            const hasLabel = /\(.+\)/.test(f3) || /\(.+\)/.test(f4);
+
+            // Text-categorical: non-numeric short strings
+            const isF3TextCat = f3 && f3.length < 20 && isNaN(Number(f3));
+            const isF4TextCat = f4 && f4.length < 20 && isNaN(Number(f4));
+
+            // Numeric-categorical: numeric but very low cardinality across sample rows.
+            // e.g. col3 has only values {1,2}, col4 has only {75} — these are keys, not data.
+            const f3Distinct = colValues[3] ? colValues[3].size : 99;
+            const f4Distinct = colValues[4] ? colValues[4].size : 99;
+            const isF3NumCat = !isNaN(Number(f3)) && f3 !== '' && f3Distinct <= 5;
+            const isF4NumCat = !isNaN(Number(f4)) && f4 !== '' && f4Distinct <= 5;
+
+            const isF3Key = isF3TextCat || isF3NumCat;
+            const isF4Key = isF4TextCat || isF4NumCat;
+
+            if (hasLabel || (isF3Key && isF4Key && commas.length >= 7)) {
+                mcScore += 2;
+            } else if (isF3Key && commas.length >= 7) {
+                mcScore += 1;
             } else {
                 flatScore += 1;
             }
+        } else if (commas.length >= 3) {
+            flatScore += 1;
         }
     });
 
-    if (pipeScore > flatScore && pipeScore > mcScore) return 'logPipe';
-    if (mcScore > flatScore) return 'multiComp';
-    return 'flatCsv';
+    var _detResult = (pipeScore > flatScore && pipeScore > mcScore) ? 'logPipe'
+                   : (mcScore > flatScore) ? 'multiComp' : 'flatCsv';
+    logVerbose('format', '[detectFileFormat] result="' + _detResult + '"'
+        + '  scores: pipe=' + pipeScore + ' mc=' + mcScore + ' flat=' + flatScore);
+    // Show column cardinality that drove the decision
+    var _cardStr = Object.keys(colValues).slice(0,7).map(function(c){
+        return 'col'+c+'('+colValues[c].size+'d:['+Array.from(colValues[c]).slice(0,3).join('|')+'])';
+    }).join('  ');
+    logVerbose('format', '  colCardinality: ' + _cardStr);
+    return _detResult;
 }
 
 // =============================================================================
@@ -933,6 +1132,7 @@ function processFilesFromUI() {
     mcKeyFieldIndices=[]; mcKeyFieldLabels=[]; mcDataStartIndex=5;
     if (!_profileAlreadySelected) { matchedProfile=null; fileProfileMap={}; }
     mcAnnotatedMode=false; mcInstanceIdIndices=[];
+
     let tokenCheck=new Set(), invIdx=0;
 
     const tbody = document.getElementById('fileTableBody'); tbody.innerHTML='';
@@ -949,13 +1149,25 @@ function processFilesFromUI() {
     let manualHeaderRaw   = document.getElementById('csvManualHeaders').value.trim();
     const csvTsFormatPref = document.getElementById('csvTsFormat').value;
 
+    // ── [DBG-A] Parser entry state snapshot ──────────────────────────────────
+    logDebug('format', '=== processFilesFromUI START ===');
+    logDebug('format', 'UI formatType="' + modeGlobal + '"  hasHeader=' + hasHeader
+        + '  manualHeaderRaw="' + (manualHeaderRaw||'(empty)') + '"'
+        + '  csvTsFormatPref="' + csvTsFormatPref + '"');
+    logDebug('format', 'rawFilesStore keys: [' + Object.keys(rawFilesStore).join(', ') + ']');
+    logDebug('import', '_profileAlreadySelected=' + _profileAlreadySelected
+        + '  masterConfig=' + (masterConfig ? '"' + (masterConfig.name||'loaded') + '"' : 'null')
+        + '  fileProfileMap keys: [' + Object.keys(fileProfileMap).join(', ') + ']');
+    logDebug('import', 'ruleQueue=' + ruleQueue.length + ' rule(s): ['
+        + ruleQueue.map(function(r){return '"'+r.header+'"'+(r._sourceProfile?'[P]':'')+(r._mc?'[MC]':'');}).join(', ') + ']');
+
     // ── Per-file profile matching ────────────────────────────────────────────
     if (masterConfig && !_profileAlreadySelected) {
         var allAutoMatched = true;
         Object.keys(rawFilesStore).forEach(function(fname) {
             var candidates = autoMatchProfile(rawFilesStore[fname], fname);
             if (candidates && candidates.length) {
-                var strong = candidates.filter(function(c) { return c.score >= 0.90; });
+                var strong = candidates.filter(function(c) { return c.score >= 0.80; });
                 if (strong.length === 1) {
                     fileProfileMap[fname] = { profile: strong[0].profile, score: strong[0].score, candidates: candidates };
                     logAction('Config: Auto-matched "' + fname + '" \u2192 "' + (strong[0].profile.app ? strong[0].profile.app + ': ' : '') + strong[0].profile.name + '" (' + (strong[0].score * 100).toFixed(0) + '%).');
@@ -992,9 +1204,21 @@ function processFilesFromUI() {
                 if (fileProfile.headers.columns) fileManualHeaderRaw = fileProfile.headers.columns;
             }
             logAction("Profile '" + (fileProfile.app ? fileProfile.app + ': ' : '') + fileProfile.name + "' \u2192 format=" + mode + ", hasHeader=" + fileHasHeader);
+            // [DBG-A] Profile applied — log what changed vs. the UI values
+            logDebug('format', '[FILE: ' + name + '] Profile "' + (fileProfile.name||'?') + '" applied:');
+            logDebug('format', '  mode: UI="' + modeGlobal + '" → profile="' + mode + '"');
+            logDebug('format', '  hasHeader: UI=' + hasHeader + ' → profile=' + fileHasHeader);
+            logDebug('format', '  manualHeaderRaw: UI="' + (manualHeaderRaw||'(empty)') + '" → profile="' + (fileManualHeaderRaw||'(empty)') + '"');
         } else {
             mode = (modeGlobal === 'auto') ? detectFileFormat(rawFilesStore[name]) : modeGlobal;
             if (modeGlobal === 'auto') logAction("Auto-detect '" + name + "': format=" + mode);
+            // [DBG-A] No profile — show auto-detect result vs UI selection
+            logDebug('format', '[FILE: ' + name + '] No profile. modeGlobal="' + modeGlobal + '" → resolved mode="' + mode + '"');
+            logDebug('format', '  hasHeader=' + fileHasHeader + '  manualHeaderRaw="' + (fileManualHeaderRaw||'(empty)') + '"');
+            logVerbose('format', '[FILE: ' + name + '] First 3 raw lines:');
+            rawFilesStore[name].split(/\r?\n/).slice(0,3).forEach(function(l,i){
+                logVerbose('format', '  ['+i+']: ' + l.substring(0,120));
+            });
         }
         var fileManualTokens = fileManualHeaderRaw ? fileManualHeaderRaw.split(',').map(function(t){return t.replace(/\s+/g,'').toLowerCase();}) : [];
 
@@ -1004,6 +1228,18 @@ function processFilesFromUI() {
             if (!fileManualHeaderRaw) headerKeys = lines[0].split(',').map(h=>h.trim());
             lines.shift();
         }
+
+        // [DBG-D] headerKeys state after initial construction
+        logDebug('header', '[FILE: ' + name + '] headerKeys built (' + headerKeys.length + ' cols) source='
+            + (fileManualHeaderRaw ? '"manualHeaders"' : (fileHasHeader ? '"firstRow"' : '"none(fallback=Col_N)"'))
+            + ':');
+        if (headerKeys.length) {
+            logDebug('header', '  [0..' + Math.min(headerKeys.length-1,4) + ']: ['
+                + headerKeys.slice(0,5).join(' | ') + (headerKeys.length>5 ? ' | …('+headerKeys.length+' total)' : '') + ']');
+        } else {
+            logDebug('header', '  (empty — data columns will be named Col_N or KPI_N as fallback)');
+        }
+        logDebug('header', '  mode="' + mode + '"  fileManualHeaderRaw="' + (fileManualHeaderRaw||'(empty)') + '"  fileHasHeader=' + fileHasHeader);
         let csvTsFormat = csvTsFormatPref;
         if (mode==='flatCsv' && csvTsFormatPref==='auto') {
             const filtered = lines.filter(l=>!pattern||l.includes(pattern));
@@ -1021,26 +1257,52 @@ function processFilesFromUI() {
                     annotated.keyIndices.some(function(v,i){ return v !== mcKeyFieldIndices[i]; })
                 )) {
                     logAction('Warning: File "' + name + '" has different annotation structure — using latest.');
+                    logDebug('warn', '[FILE: ' + name + '] Annotation structure mismatch!'
+                        + ' existing keyIndices=' + JSON.stringify(mcKeyFieldIndices)
+                        + ' new keyIndices=' + JSON.stringify(annotated.keyIndices));
                 }
                 mcKeyFieldIndices  = annotated.keyIndices;
                 mcKeyFieldLabels   = annotated.keyLabels;
                 mcDataStartIndex   = annotated.dataStartIndex;
                 mcInstanceIdIndices = annotated.instanceIdIndices;
                 mcAnnotatedMode    = true;
-                headerKeys = annotated.cleanHeaders;    // strip (value) for KPI display
+                headerKeys = annotated.cleanHeaders;
                 logAction('Header annotations detected: keys=[' + annotated.keyLabels.join(',')
                     + '] dataStart=' + annotated.dataStartIndex
                     + (annotated.instanceIdIndices.length ? ' instanceId=col ' + annotated.instanceIdIndices.join(',') : ''));
+                // Register XXX instance-ID columns as overlay-only fields
+                annotated.instanceIdIndices.forEach(function(col) {
+                    var name = annotated.cleanHeaders[col] || headerKeys[col] || ('Col_' + col);
+                    mcOverlayFieldNames.add(name);
+                    logAction('Overlay-only field registered: "' + name + '" (from annotated instanceId col ' + col + ')');
+                });
+                // [DBG-D] Annotation applied — show exactly what KPI names are at each position
+                logDebug('header', '[ANNOTATED] keyIndices=' + JSON.stringify(mcKeyFieldIndices)
+                    + '  keyLabels=[' + mcKeyFieldLabels.join(', ') + ']'
+                    + '  dataStartIndex=' + mcDataStartIndex);
+                logDebug('header', '  cleanHeaders total=' + headerKeys.length
+                    + '  KPI cols [' + mcDataStartIndex + '..]: ['
+                    + headerKeys.slice(mcDataStartIndex, mcDataStartIndex + 6).join(' | ')
+                    + (headerKeys.length > mcDataStartIndex + 6 ? ' …' : '') + ']');
+                if (mcInstanceIdIndices.length) {
+                    logDebug('header', '  instanceId cols: ' + JSON.stringify(mcInstanceIdIndices)
+                        + ' → names: [' + mcInstanceIdIndices.map(function(i){return headerKeys[i]||'?';}).join(', ') + ']');
+                }
+            } else {
+                // [DBG-D] No annotations found in provided headerKeys
+                logDebug('header', '[FILE: ' + name + '] parseAnnotatedHeaders → no Name(value) annotations detected.');
+                logDebug('header', '  headerKeys[0..4]: [' + headerKeys.slice(0,5).join(' | ') + ']');
             }
             // If file has no annotations but mcAnnotatedMode already set from a prior file,
             // keep using the existing globals (mcKeyFieldIndices etc.)
+        } else {
+            logDebug('header', '[FILE: ' + name + '] Skipping annotation check — headerKeys empty (mode="' + mode + '").');
         }
 
         // ── MultiComp: run key structure detection before parsing ────────────
         // Skip when header annotations already defined the key structure
         if (mode === 'multiComp' && mcKeyFieldIndices.length === 0 && !mcAnnotatedMode) {
             const filteredForDetection = lines.filter(l => !pattern || l.includes(pattern));
-            // Filter out header-like rows for detection (rows where KPI cols are all non-numeric text)
             const dataOnlyLines = filteredForDetection.filter(l => {
                 const cols = l.split(',');
                 if (cols.length < 4) return false;
@@ -1049,15 +1311,90 @@ function processFilesFromUI() {
                 if (/\(.+\)/.test((cols[3]||'').trim()) && /\(.+\)/.test((cols[4]||'').trim())) return false;
                 return true;
             });
+            logDebug('header', '[FILE: ' + name + '] detectKeyStructure: '
+                + filteredForDetection.length + ' pattern-matched lines, '
+                + dataOnlyLines.length + ' data-only lines (header rows stripped).');
             if (dataOnlyLines.length > 0) {
                 const detected = detectKeyStructure(dataOnlyLines, headerKeys.length ? headerKeys : null);
                 mcKeyFieldIndices = detected.keyIndices;
                 mcKeyFieldLabels  = detected.keyLabels;
                 mcDataStartIndex  = detected.dataStartIndex;
+                // [DBG-D] Log detection result explicitly
+                logDebug('header', '  → keyIndices=' + JSON.stringify(mcKeyFieldIndices)
+                    + '  keyLabels=[' + mcKeyFieldLabels.join(', ') + ']'
+                    + '  dataStartIndex=' + mcDataStartIndex);
+                logDebug('header', '  headerKeys supplied to detection: '
+                    + (headerKeys.length ? '[' + headerKeys.slice(0, mcDataStartIndex + 3).join(' | ') + ']' : '(none)'));
+                if (headerKeys.length < mcDataStartIndex + 1) {
+                    logDebug('warn', '[DBG-D ISSUE] headerKeys.length=' + headerKeys.length
+                        + ' but mcDataStartIndex=' + mcDataStartIndex
+                        + ' → KPI columns beyond index ' + (headerKeys.length - 1) + ' will use KPI_N fallback!');
+                }
+            } else {
+                logDebug('warn', '[FILE: ' + name + '] detectKeyStructure: no data-only lines after filtering — using default keyIndices [3,4].');
+            }
+        } else if (mode === 'multiComp') {
+            logDebug('header', '[FILE: ' + name + '] Skipping detectKeyStructure — '
+                + (mcAnnotatedMode ? 'mcAnnotatedMode=true' : 'mcKeyFieldIndices already set: ' + JSON.stringify(mcKeyFieldIndices)));
+        }
+
+        // [DBG-D] Pre-parse state: everything the row mapper will use
+        if (mode === 'multiComp' || mcAnnotatedMode) {
+            logDebug('header', '[PRE-PARSE: ' + name + '] mcDataStartIndex=' + mcDataStartIndex
+                + '  mcKeyFieldIndices=' + JSON.stringify(mcKeyFieldIndices)
+                + '  mcAnnotatedMode=' + mcAnnotatedMode);
+            logDebug('header', '  headerKeys.length=' + headerKeys.length
+                + (headerKeys.length > 0
+                    ? '  last KPI col in header="' + headerKeys[headerKeys.length-1] + '" (idx ' + (headerKeys.length-1) + ')'
+                    : '  (EMPTY — all data cols will be KPI_N)'));
+            if (headerKeys.length > 0 && headerKeys.length <= mcDataStartIndex) {
+                logDebug('warn', '[DBG-D ISSUE] headerKeys exhausted before dataStartIndex!'
+                    + ' headerKeys.length=' + headerKeys.length + ' ≤ mcDataStartIndex=' + mcDataStartIndex
+                    + ' → EVERY KPI column will use KPI_N fallback name!');
             }
         }
 
-        const data = lines.filter(l=>!pattern||l.includes(pattern)).map(line=>{
+        // PARSE BAIL-OUT — prevents 79K-row freeze in all cases:
+        // When mode=multiComp and no MasterConfig/header annotations are loaded,
+        // we cannot reliably identify component keys. Sample col 2 (the first non-timestamp
+        // column) across 100 rows — if it has >80% unique values it is a sequence number,
+        // not a component key. Abort the parse immediately with a clear message.
+        // This fires whether mcKeyFieldIndices was set by statistics OR is still empty.
+        var _parseShouldBail = false;
+        if (mode === 'multiComp' && mcHeaderFileLines.length === 0) {
+            var _sampleLines = lines.filter(function(l){ return !pattern||l.includes(pattern); }).slice(0, 100);
+            // Check cardinality of col 2 (first non-timestamp col — sequence numbers live here)
+            var _col2Vals = new Set();
+            _sampleLines.forEach(function(l) {
+                var _c = l.split(','); var _v = (_c[2]||'').trim();
+                if (_v) _col2Vals.add(_v);
+            });
+            var _col2Card = _col2Vals.size / Math.max(_sampleLines.length, 1);
+            if (_col2Card > 0.5) {
+                // col 2 looks like a sequence number — high risk of 79K compKeys
+                // Check if detected keys (col 3/4) are actually low-cardinality
+                var _keyCheckIdx = mcKeyFieldIndices.length > 0 ? mcKeyFieldIndices[0] : 3;
+                var _keyColVals = new Set();
+                _sampleLines.forEach(function(l) {
+                    var _c = l.split(','); var _v = (_c[_keyCheckIdx]||'').trim();
+                    if (_v) _keyColVals.add(_v);
+                });
+                var _keyCardinality = _keyColVals.size / Math.max(_sampleLines.length, 1);
+                if (_keyCardinality > 0.3) {
+                    _parseShouldBail = true;
+                    logAction('⚠ Warning: No MasterConfig/Header loaded — cannot safely identify component keys for "'
+                        + name + '". col2 cardinality=' + (_col2Card*100).toFixed(0)
+                        + '% (likely sequence number). Parse aborted. '
+                        + 'Load MasterConfig.json FIRST, then re-upload the file.');
+                    logDebug('warn', '[PARSE BAIL-OUT] col2card=' + _col2Card.toFixed(2)
+                        + '  keyCol=' + _keyCheckIdx + '  keyCard=' + _keyCardinality.toFixed(2)
+                        + '  mcHeaderFileLines=' + mcHeaderFileLines.length
+                        + '  mcKeyFieldIndices=' + JSON.stringify(mcKeyFieldIndices));
+                }
+            }
+        }
+
+        const data = _parseShouldBail ? [] : lines.filter(l=>!pattern||l.includes(pattern)).map(line=>{
             if ((mode==='flatCsv'||mode==='multiComp') && fileManualHeaderRaw) {
                 const lt=line.split(',').map(t=>t.replace(/\s+/g,'').toLowerCase());
                 const limit=Math.min(lt.length,fileManualTokens.length,5);
@@ -1077,17 +1414,11 @@ function processFilesFromUI() {
             } else if (mode==='multiComp') {
                 const _dsi = mcDataStartIndex;
                 const s=line.split(','); if(s.length < _dsi + 1) return null;
-                // Auto-detect header rows in multiComp mode.
-                // A header row is identified by EITHER:
-                //   (a) key field columns hold label-format strings like "Type(1)"
-                //   (b) every KPI-column value is a non-empty, non-numeric string
                 const _kpiSample = s.slice(_dsi);
                 const _hasLabelParen = mcKeyFieldIndices.some(fi => /\(.+\)/.test((s[fi]||'').trim()));
                 const _allStr    = _kpiSample.length > 0 &&
                     _kpiSample.every(v => { const t=v.trim(); return t!=='' && isNaN(parseFloat(t)); });
                 if (_hasLabelParen || _allStr) {
-                    // Always update headerKeys for each embedded header row —
-                    // different component types may have different KPI columns
                     const rawHeaders = s.map(function(h){ return h.trim(); });
                     if (mcAnnotatedMode) {
                         const reAnnotated = parseAnnotatedHeaders(rawHeaders, 2);
@@ -1096,30 +1427,75 @@ function processFilesFromUI() {
                         headerKeys = rawHeaders;
                     }
                     logAction('MC Parser: embedded header row \u2014 ' + _kpiSample.length + ' KPI col(s): [' + headerKeys.slice(_dsi, _dsi+3).join(',') + (headerKeys.length>_dsi+3?'...':'') + ']');
-                    return null;  // skip this line as a data row
+                    // [DBG-D] Embedded header detail
+                    logDebug('header', '[EMBEDDED HDR] headerKeys updated from inline row: '
+                        + headerKeys.length + ' cols. KPI zone [' + _dsi + '..]: ['
+                        + headerKeys.slice(_dsi, _dsi + 5).join(' | ')
+                        + (headerKeys.length > _dsi + 5 ? ' …' : '') + ']');
+                    return null;
                 }
                 timestamp=s[0].trim()+','+s[1].trim();
-                // Build component key from detected key field indices
                 const keyParts = mcKeyFieldIndices.map(fi => (s[fi]||'').trim());
                 if(keyParts.every(p => !p)) return null;
                 const compKey = keyParts.join('|');
-                s.slice(_dsi).forEach((val,i)=>{
-                    const k=(headerKeys[i+_dsi])||('KPI_'+(i+1));
-                    // Preserve raw string for alphanumeric/special-char values
-                    // (e.g. overlay key: IPv4, IPv6, cell IDs). Only pure numeric → float.
-                    // Number() is strict (entire string must be numeric); parseFloat() is
-                    // too lenient and mangles "192.168.1.1" → 192.168, "2001:db8" → 2001.
+                // [DBG-D] Track KPI_N fallbacks — only on first row per compKey
+                const _isFirstRowForKey = !compIndexStore[compKey] || compIndexStore[compKey].length === 0;
+                let _kpiFallbackCount = 0;
+                // ── Multi-format header resolution ──────────────────────────────────
+                // Use _resolveKpiNamesForRow to pick the best-matching header variant
+                // for this specific compKey based on the actual data column count (80% threshold).
+                // Falls back to global headerKeys if no mcHeaderStore entry exists yet.
+                const _dataSlice = s.slice(_dsi);
+                const _resolvedNames = _resolveKpiNamesForRow(compKey, _dataSlice.length);
+                _dataSlice.forEach((val,i)=>{
+                    const _hdrName = (_resolvedNames && _resolvedNames[i]) || headerKeys[i+_dsi];
+                    const k = _hdrName || ('KPI_'+(i+1));
+                    if (!_hdrName) _kpiFallbackCount++;
                     const trimmed=val.trim();
                     const num=Number(trimmed);
                     const v=(trimmed!==''&&!isNaN(num))?num:trimmed;
                     tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k);availableTokens.push(k);}
                 });
                 if(!compIndexStore[compKey]) compIndexStore[compKey]=[];
+                // PARSE BAIL-OUT: if we're already over the UI-safe limit, it means
+                // detectKeyStructure picked a sequence-number column as the key.
+                // Stop accumulating — adding more will only make the freeze worse.
+                // The user will see a warning via the freeze guard in populateMcSelects.
+                if (Object.keys(compIndexStore).length > 500 && !compIndexStore[compKey]) {
+                    if (Object.keys(compIndexStore).length === 501) {
+                        logAction('Warning: >500 component groups detected — sequence-number column likely used as key. Load MasterConfig or Header File before uploading data to get correct key mapping. Parsing stopped early.');
+                        logDebug('warn', '[PARSE BAIL-OUT] compIndexStore reached 501 keys — aborting further accumulation.');
+                    }
+                    return null; // skip this row
+                }
                 compIndexStore[compKey].push({timestamp,tokens});
-                // Diagnostic: log first row per compKey so user can verify keys+values
-                if(compIndexStore[compKey].length===1){
+                if(_isFirstRowForKey){
                     const sampleKeys=Object.keys(tokens);
-                    logAction("MC Parser ['"+compKey+"']: keys=["+sampleKeys.slice(0,4).join(',')+"] sample="+sampleKeys.slice(0,2).map(k=>k+'='+tokens[k]).join(','));
+                    const _variantInfo = mcHeaderStore[compKey] && mcHeaderStore[compKey].variants
+                        ? '(variant: ' + (_resolvedNames ? _dataSlice.length + ' cols → matched ' + mcHeaderStore[compKey].variants.length + ' variant(s)' : 'no match') + ')'
+                        : '';
+                    logAction("MC Parser ['"+compKey+"']: keys=["+sampleKeys.slice(0,4).join(',')+"] sample="+sampleKeys.slice(0,2).map(k=>k+'='+tokens[k]).join(',')+((_variantInfo)?' '+_variantInfo:''));
+                    // Only log verbose detail when compKey count is sane (not a sequence-number explosion)
+                    if (Object.keys(compIndexStore).length <= 500) {
+                        logVerbose('parse', '[MC FIRST ROW raw] compKey="'+compKey+'"  line='+line.substring(0,120));
+                        logVerbose('parse', '  _dsi='+_dsi+'  s.length='+s.length
+                            +'  all tokens: {'+sampleKeys.map(function(k){return k+'='+tokens[k];}).join(', ')+'}');
+                    }
+                    // [DBG-D] Report resolution for this compKey's first row
+                    logDebug('parse', '[MC FIRST ROW: compKey="' + compKey + '"]'
+                        + '  dataCols=' + _dataSlice.length
+                        + '  headerVariants=' + (mcHeaderStore[compKey] && mcHeaderStore[compKey].variants ? mcHeaderStore[compKey].variants.map(function(v){return v.kpiCount+'cols';}).join('/') : 'none')
+                        + '  _dsi=' + _dsi
+                        + '  KPI_N fallbacks=' + _kpiFallbackCount);
+                    if (_kpiFallbackCount > 0) {
+                        logDebug('warn', '[DBG-D] KPI_N FALLBACK for compKey="' + compKey + '"!'
+                            + '  dataCols=' + _dataSlice.length
+                            + '  resolvedNames=' + (_resolvedNames ? _resolvedNames.length : 'none')
+                            + '  headerKeys[dsi..]=' + Math.max(0, headerKeys.length - _dsi));
+                    } else {
+                        logDebug('parse', '  All ' + _dataSlice.length + ' KPI cols named. First 4: ['
+                            + Object.keys(tokens).slice(0,4).join(', ') + ']');
+                    }
                 }
             } else if (mcAnnotatedMode) {
                 // ── Annotated flatCsv: route to compIndexStore (MC-style) ──
@@ -1132,24 +1508,54 @@ function processFilesFromUI() {
                     if(s.length < _dsiF + 1) return null;
                     timestamp=s[0].trim()+','+s[1].trim();
                 }
-                // Build component key from annotated key field indices
                 const keyParts = mcKeyFieldIndices.map(function(fi){ return (s[fi]||'').trim(); });
                 if(keyParts.every(function(p){ return !p; })) return null;
                 const compKey = keyParts.join('|');
-                s.slice(_dsiF).forEach(function(val,i){
-                    const k=(headerKeys[i+_dsiF])||('KPI_'+(i+1));
+                const _isFirstAnnotated = !compIndexStore[compKey] || compIndexStore[compKey].length === 0;
+                let _annFallbackCount = 0;
+                // Multi-format resolution for annotated CSV path
+                const _annDataSlice = s.slice(_dsiF);
+                const _annResolved = _resolveKpiNamesForRow(compKey, _annDataSlice.length);
+                _annDataSlice.forEach(function(val,i){
+                    const _hdrName = (_annResolved && _annResolved[i]) || headerKeys[i+_dsiF];
+                    const k = _hdrName || ('KPI_'+(i+1));
+                    if (!_hdrName) _annFallbackCount++;
                     const trimmed=val.trim();
                     const num=Number(trimmed);
                     const v=(trimmed!==''&&!isNaN(num))?num:trimmed;
                     tokens[k]=v; if(!tokenCheck.has(k)){tokenCheck.add(k);availableTokens.push(k);}
                 });
                 if(!compIndexStore[compKey]) compIndexStore[compKey]=[];
+                // PARSE BAIL-OUT: if we're already over the UI-safe limit, it means
+                // detectKeyStructure picked a sequence-number column as the key.
+                // Stop accumulating — adding more will only make the freeze worse.
+                // The user will see a warning via the freeze guard in populateMcSelects.
+                if (Object.keys(compIndexStore).length > 500 && !compIndexStore[compKey]) {
+                    if (Object.keys(compIndexStore).length === 501) {
+                        logAction('Warning: >500 component groups detected — sequence-number column likely used as key. Load MasterConfig or Header File before uploading data to get correct key mapping. Parsing stopped early.');
+                        logDebug('warn', '[PARSE BAIL-OUT] compIndexStore reached 501 keys — aborting further accumulation.');
+                    }
+                    return null; // skip this row
+                }
                 compIndexStore[compKey].push({timestamp,tokens});
-                if(compIndexStore[compKey].length===1){
+                if(_isFirstAnnotated){
                     const sampleKeys=Object.keys(tokens);
                     logAction("FlatCsv-MC ['"+compKey+"']: keys=["+sampleKeys.slice(0,4).join(',')+"] sample="+sampleKeys.slice(0,2).map(function(k){return k+'='+tokens[k];}).join(','));
+                    logDebug('parse', '[ANN-CSV FIRST ROW: compKey="' + compKey + '"]'
+                        + '  dataCols=' + s.slice(_dsiF).length
+                        + '  headerKeys.length=' + headerKeys.length
+                        + '  _dsiF=' + _dsiF
+                        + '  KPI_N fallbacks=' + _annFallbackCount);
+                    if (_annFallbackCount > 0) {
+                        logDebug('warn', '[DBG-D] KPI_N FALLBACK in annotated-CSV branch! compKey="' + compKey + '"'
+                            + '  dataCols=' + s.slice(_dsiF).length
+                            + '  headerKeys available for KPI zone=' + Math.max(0, headerKeys.length - _dsiF));
+                        logDebug('warn', '  token keys: [' + Object.keys(tokens).join(', ') + ']');
+                        logDebug('warn', '  headerKeys[' + _dsiF + '..'+(_dsiF+4)+']: ['
+                            + headerKeys.slice(_dsiF, _dsiF+5).join(' | ') + ']');
+                    }
                 }
-                return null;  // Don't also add to data[] — data is routed to compIndexStore
+                return null;
             } else {
                 const s=line.split(',');
                 if (csvTsFormat==='singleTs') {
@@ -1180,7 +1586,6 @@ function processFilesFromUI() {
             _pDisplayName = (_fp.app ? _fp.app + ': ' : '') + _fp.name;
         }
         if (mcAnnotatedMode && Object.keys(compIndexStore).length > 0) {
-            // Annotated flatCsv routed to compIndexStore — inventory row shows total rows
             const totalRows = Object.values(compIndexStore).reduce(function(s,a){return s+a.length;},0);
             fileIndexMap[invIdx]=name;
             renderInventoryRow(tbody,name,totalRows,invIdx,_pDisplayName);
@@ -1191,6 +1596,13 @@ function processFilesFromUI() {
             renderInventoryRow(tbody,name,data.length,invIdx,_pDisplayName);
             logAction("Parser: '"+name+"' \u2192 "+data.length+' rows.'); invIdx++;
         } else { logAction("Parser: '"+name+"' \u2192 0 rows."); }
+
+        // [DBG] Per-file end summary
+        logDebug('parse', '[FILE END: ' + name + ']'
+            + '  mode=' + mode
+            + '  parsedRows=' + (data ? data.length : 0)
+            + '  compKeys=' + Object.keys(compIndexStore).length
+            + '  availableTokens=' + availableTokens.length);
     });
 
     // ── MC DEBUG: full parser summary ───────────────────────────────────────
@@ -1225,6 +1637,14 @@ function processFilesFromUI() {
         document.getElementById('inventoryPanel').classList.remove('hidden');
         const hasMcData = Object.keys(compIndexStore).length > 0;
         const hasStdData = Object.keys(parsedFilesStore).length > 0;
+        // [DBG-A] Final state after all parsing complete
+        logDebug('format', '=== processFilesFromUI END ===');
+        logDebug('format', '  UI formatType (final)="' + document.getElementById('formatType').value + '"'
+            + '  hasMcData=' + hasMcData + '  hasStdData=' + hasStdData);
+        logDebug('format', '  availableTokens=' + availableTokens.length
+            + '  compKeys=' + Object.keys(compIndexStore).length
+            + '  parsedFiles=' + Object.keys(parsedFilesStore).length);
+        logDebug('import', '  ruleQueue=' + ruleQueue.length + ' rules  _profileAlreadySelected=' + _profileAlreadySelected);
         if (hasMcData || hasStdData) {
             if (hasMcData) {
                 document.getElementById('mcBuilderPanel').classList.remove('hidden');
@@ -1283,9 +1703,16 @@ function renderInventoryRow(tbody,name,count,index,profileName) {
         tag.dataset.profileFile = name;
         tag.addEventListener('click', function(e) {
             e.stopPropagation();
+            // [DBG-A] State before resetting for profile re-selection
+            logDebug('import', '[PROFILE TAG CLICK] file="' + name + '"  profileName="' + profileName + '"');
+            logDebug('import', '  BEFORE reset — _profileAlreadySelected=' + _profileAlreadySelected
+                + '  formatType="' + document.getElementById('formatType').value + '"'
+                + '  fileProfileMap keys=[' + Object.keys(fileProfileMap).join(', ') + ']');
             _profileAlreadySelected = false;
             fileProfileMap = {};
             ruleQueue = ruleQueue.filter(function(r) { return !r._sourceProfile; });
+            logDebug('import', '  AFTER reset — _profileAlreadySelected=false  fileProfileMap={}  '
+                + 'ruleQueue=' + ruleQueue.length + ' (source-profile rules removed)');
             processFilesFromUI();
         });
         tdN.appendChild(tag);
@@ -1392,6 +1819,109 @@ function syncCharts(sourceChart) {
 }
 function resetAllZoom() { logAction('View: Zoom reset.'); isInternalSync=true; chartInstances.forEach(c=>c.resetZoom()); isInternalSync=false; }
 
+// ── Soft Reset: clears all data/rules/charts/UI but PRESERVES masterConfig ──
+// The MasterConfig file does not need to be re-uploaded after every Reset.
+// Clicking ⚙ Config while a config is loaded will REPLACE it (existing behaviour).
+function softReset() {
+    logAction('Reset: Clearing data, rules and charts (MasterConfig preserved).');
+
+    // ── Destroy all chart instances ──
+    chartInstances.forEach(function(c){ try { c.destroy(); } catch(e){} });
+    chartInstances = [];
+
+    // ── Clear all file + parse state ──
+    rawFilesStore    = {};
+    parsedFilesStore = {};
+    fileIndexMap     = {};
+    activeLogData    = [];
+    activeFileName   = '';
+    availableTokens  = [];
+
+    // ── Clear rule queues ──
+    ruleQueue        = [];
+    editingRuleIndex = -1;
+    mcEditingIndex   = -1;
+
+    // ── Clear MC state ──
+    compIndexStore      = {};
+    mcHeaderStore       = {};
+    mcKpiNames          = [];
+    mcColLabels         = { typeLabel: 'Type', compLabel: 'CompId' };
+    mcKeyFieldIndices   = [];
+    mcKeyFieldLabels    = [];
+    mcDataStartIndex    = 5;
+    mcInstanceIdIndices = [];
+    mcHeaderFileLines   = [];
+    mcAnnotatedMode     = false;
+    mcOverlayFieldNames = new Set();
+
+    // ── Clear profile selection state ──
+    matchedProfile           = null;
+    fileProfileMap           = {};
+    _profileAlreadySelected  = false;
+
+    // ── Clear fetch/WS state ──
+    stopAutoFetch();
+    if (ws) { try { ws.close(); } catch(e){} ws = null; }
+    wsReconnectAttempts = 0; wsDelay = 1000;
+
+    // ── Reset UI panels ──
+    document.getElementById('fileTableBody').innerHTML    = '';
+    document.getElementById('dashboard').innerHTML        = '';
+    document.getElementById('queueList').innerHTML        = '';
+    document.getElementById('mcQueueList').innerHTML      = '';
+    document.getElementById('file-status').textContent   = 'Ready (.txt, .log, .csv)';
+    document.getElementById('dataFile').value            = '';
+
+    // Hide panels
+    ['inventoryPanel','builderPanel','mcBuilderPanel','dashboard-meta',
+     'statsPanel','alertPanel','rulesFileInfo','mcRulesFileInfo','mcHdrFileInfo']
+        .forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+
+    // Reset dropdowns / inputs to defaults
+    document.getElementById('formatType').value     = 'auto';
+    document.getElementById('kpiPattern').value     = '';
+    document.getElementById('csvHasHeader').checked = false;
+    document.getElementById('csvManualHeaders').value = '';
+    document.getElementById('csvTsFormat').value    = 'auto';
+    toggleCsvOptions();
+
+    // Reset builder fields
+    ['gHeader','formulaExpr','formulaLabel','mcHeader','mcDisplayName',
+     'mcFormulaExpr','mcFormulaLabel','mcOverlayExclude'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    var mcOv = document.getElementById('mcOverlay');
+    if (mcOv) { mcOv.checked = false; toggleOverlayKey(); }
+    var mcAgg = document.getElementById('mcAggregate');
+    if (mcAgg) { mcAgg.checked = false; document.getElementById('aggOptionsRow').style.display = 'none'; }
+    var mcPs = document.getElementById('mcPerSec');
+    if (mcPs) mcPs.checked = false;
+    cancelEditRule();
+    cancelMcEdit();
+    // Re-hide builder panels — cancelEditRule/cancelMcEdit call renderQueue() which un-hides them
+    ['builderPanel','mcBuilderPanel'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.classList.add('hidden');
+    });
+
+    // Reset console
+    clearConsole();
+
+    // ── MasterConfig is intentionally NOT cleared ──
+    // Badge stays visible so user can see which config is loaded.
+    // To load a new config, click ⚙ Config button — this replaces the existing one.
+    if (masterConfig) {
+        logAction('Reset complete. MasterConfig "' + (masterConfig.name || 'MasterConfig.json') + '" retained ('
+            + masterConfig.profiles.length + ' profile(s)). Upload a log file to continue.');
+    } else {
+        logAction('Reset complete. Upload a log file to continue.');
+    }
+}
+
 // =============================================================================
 // STATS
 // =============================================================================
@@ -1425,7 +1955,10 @@ function buildStatsTable(datasets,isRatio) {
     ['Metric','Min','Max','Avg','Points'].concat(isRatio?['Unit']:[]).forEach(h=>{const th=document.createElement('th');th.textContent=h;hr.appendChild(th);});
     const tb=tbl.createTBody();
     datasets.forEach(ds=>{
-        const s=computeStats(ds.data),row=tb.insertRow();
+        const s=computeStats(ds.data);
+        // Skip rows with zero data points — they add no value and clutter overlay charts
+        if (s.count === 0) return;
+        const row=tb.insertRow();
         [ds.label,s.min,s.max,s.avg,s.count.toLocaleString()].concat(isRatio?['%']:[]).forEach(val=>{const td=row.insertCell();td.textContent=val;});
     });
     return tbl;
@@ -1478,38 +2011,33 @@ function makeChartOptions() {
     // modifierKey on pan ensures the two mouse gestures never conflict.
     return {
         responsive:true, maintainAspectRatio:false,
-        interaction: { mode:'index', intersect:false },
+        interaction: { mode:'nearest', intersect:false, axis:'xy' },
         plugins:{
             tooltip:{
-                mode:'index', intersect:false, position:'nearest',
+                mode:'nearest', intersect:false, position:'nearest',
                 bodyFont:{size:11},
-                filter: function(tooltipItem) {
-                    var chart = tooltipItem.chart;
+                // Show ONLY the single geometrically-closest dataset to the cursor.
+                // filter(item, index): Chart.js passes items sorted by proximity;
+                // index 0 is always the closest — reject everything else.
+                filter: function(item, index) {
+                    if (index !== 0) return false;
+                    var chart = item.chart;
                     if (chart && typeof chart.isDatasetVisible === 'function') {
-                        return chart.isDatasetVisible(tooltipItem.datasetIndex);
+                        return chart.isDatasetVisible(item.datasetIndex);
                     }
                     return true;
                 },
                 callbacks:{
-                    afterBody: function(items) {
-                        if (items.length < 2) return '';
-                        var valMap = {};
-                        items.forEach(function(item) {
-                            var v = item.parsed.y;
-                            if (v === null || v === undefined) return;
-                            var key = v.toFixed(4);
-                            if (!valMap[key]) valMap[key] = [];
-                            valMap[key].push(item.dataset.label);
-                        });
-                        var overlaps = Object.entries(valMap).filter(function(e){ return e[1].length > 1; });
-                        if (!overlaps.length) return '';
-                        var maxShow = 3;
-                        var shown = overlaps.slice(0, maxShow);
-                        var lines = '\n\u26a0 Overlapping:\n' + shown.map(function(e){
-                            return '  ' + parseFloat(e[0]).toLocaleString() + ': ' + e[1].join(', ');
-                        }).join('\n');
-                        if (overlaps.length > maxShow) lines += '\n  \u2026 +' + (overlaps.length - maxShow) + ' more';
-                        return lines;
+                    title: function(items) {
+                        return items[0] ? items[0].label : '';
+                    },
+                    label: function(item) {
+                        var v = item.parsed.y;
+                        if (v === null || v === undefined) return null;
+                        var fmt = v >= 1000 ? v.toLocaleString()
+                                : Number.isInteger(v) ? String(v)
+                                : v.toFixed(2);
+                        return ' ' + item.dataset.label + ': ' + fmt;
                     }
                 }
             },
@@ -1532,7 +2060,32 @@ function makeChartOptions() {
 function makeOverlayChartOptions(ovKeyLabel, kpiLabel) {
     return {
         responsive:true, maintainAspectRatio:false,
-        plugins:{zoom:{
+        plugins:{
+            tooltip:{
+                mode:'nearest', intersect:false, position:'nearest',
+                bodyFont:{size:11},
+                // Overlay charts have many series — show ONLY the single closest.
+                filter: function(item, index) {
+                    if (index !== 0) return false;
+                    var chart = item.chart;
+                    if (chart && typeof chart.isDatasetVisible === 'function') {
+                        return chart.isDatasetVisible(item.datasetIndex);
+                    }
+                    return true;
+                },
+                callbacks:{
+                    title: function(items) { return items[0] ? items[0].label : ''; },
+                    label: function(item) {
+                        var v = item.parsed.y;
+                        if (v === null || v === undefined) return null;
+                        var fmt = v >= 1000 ? v.toLocaleString()
+                                : Number.isInteger(v) ? String(v)
+                                : v.toFixed(2);
+                        return ' ' + item.dataset.label + ': ' + fmt;
+                    }
+                }
+            },
+            zoom:{
             zoom:{drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},mode:'x',onZoomComplete:({chart})=>{syncCharts(chart);logAction('View: Chart zoomed.');}},
             pan:{enabled:true,mode:'x',modifierKey:'ctrl',onPanComplete:({chart})=>{syncCharts(chart);logAction('View: Chart panned.');}}
         }},
@@ -1574,6 +2127,17 @@ function generateDashboard() {
     }
     if(!ruleQueue.length){logAction('Warning: Rule queue empty.'); return;}
     logAction('Dashboard: Rebuilding.');
+    // [DBG-B] Log state at dashboard build time
+    logDebug('chart', '=== generateDashboard ===  rules=' + ruleQueue.length
+        + '  activeLogData=' + activeLogData.length
+        + '  compKeys=' + Object.keys(compIndexStore).length);
+    ruleQueue.forEach(function(r, i) {
+        logDebug('chart', '  rule[' + i + '] "' + r.header + '"'
+            + '  _mc=' + !!r._mc
+            + '  tokens=' + r.tokens.length
+            + ' [' + r.tokens.slice(0,4).join(', ') + (r.tokens.length>4?'…':'') + ']'
+            + (r.compKeys ? '  compKeys=' + r.compKeys.length : ''));
+    });
     chartInstances.forEach(c=>c.destroy()); chartInstances=[];
     const container=document.getElementById('dashboard'); container.innerHTML='';
     document.getElementById('dashboard-meta').classList.remove('hidden');
@@ -1676,9 +2240,14 @@ function generateDashboard() {
                 const _aggGapCfg = makeGapPlugin(aggGapIndices);
                 const _aggOpts = makeChartOptions();
                 if (_aggGapCfg) _aggOpts.plugins.gapShader = _aggGapCfg;
+                logDebug('chart', '[CHART MC-agg] "' + rule.header + '"  datasets=' + aggDatasets.length + '  labels=' + aggLabels.length);
+                if (aggDatasets.length > 5) {
+                    logDebug('warn', '[DBG-B] TOOLTIP OVERFLOW LIKELY: MC-agg rule "' + rule.header + '" has '
+                        + aggDatasets.length + ' datasets.');
+                }
                 chartInstances.push(new Chart(canvas.getContext('2d'), { type: 'line', data: { labels: aggLabels, datasets: aggDatasets }, options: _aggOpts }));
                 wrap.appendChild(buildStatsTable(aggDatasets, isRatio && !isFormulaMc));
-                return; // skip per-component rendering
+                return;
             }
 
             // Normalize overlay keys: support both _overlayKeys (array) and legacy _overlayKey (string)
@@ -2031,6 +2600,18 @@ function generateDashboard() {
                     const{wrap,canvas}=makeChartWrap(title,'canvas-mc-'+idx+'-'+ci,container);
                     const _pcGapCfg=makeGapPlugin(pcGapIndices);
                     const _pcOpts=makeChartOptions(); if(_pcGapCfg) _pcOpts.plugins.gapShader=_pcGapCfg;
+                    logDebug('chart', '[CHART MC-pc] "' + title + '"  datasets=' + cd.length + '  labels=' + cl.length);
+                    if (cd.length > 5) {
+                        logDebug('warn', '[DBG-B] TOOLTIP OVERFLOW LIKELY: MC per-component chart "' + title
+                            + '" has ' + cd.length + ' datasets.');
+                    }
+                    // [DBG-D] Warn if any dataset label is a raw KPI_N key
+                    var _kpiNDatasets = cd.filter(function(d){ return /^KPI_\d+$/.test(d.label); });
+                    if (_kpiNDatasets.length) {
+                        logDebug('warn', '[DBG-D] ' + _kpiNDatasets.length + ' dataset(s) still using KPI_N labels in chart "'
+                            + title + '": [' + _kpiNDatasets.map(function(d){return d.label;}).join(', ') + ']'
+                            + '  — headerKeys were not resolved for this component.');
+                    }
                     chartInstances.push(new Chart(canvas.getContext('2d'),{type:'line',data:{labels:cl,datasets:cd},options:_pcOpts}));
                     wrap.appendChild(buildStatsTable(cd, isRatio && !isFormulaMc));
                 });
@@ -2068,6 +2649,7 @@ function generateDashboard() {
             });
             const _stdGapCfg = makeGapPlugin(stdGapIndices);
             const _stdOpts = makeChartOptions(); if (_stdGapCfg) _stdOpts.plugins.gapShader = _stdGapCfg;
+            logDebug('chart', '[CHART formula] "' + rule.header + '"  datasets=' + ds.length + '  labels=' + labels.length);
             chartInstances.push(new Chart(canvas.getContext('2d'), { type: 'line', data: { labels, datasets: ds }, options: _stdOpts }));
             wrap.appendChild(buildStatsTable(ds, false));
         } else {
@@ -2083,6 +2665,23 @@ function generateDashboard() {
             }));
             const _stdGapCfg=makeGapPlugin(stdGapIndices);
             const _stdOpts=makeChartOptions(); if(_stdGapCfg) _stdOpts.plugins.gapShader=_stdGapCfg;
+            // [DBG-B] Dataset count warning for tooltip overflow diagnosis
+            logDebug('chart', '[CHART std] "' + rule.header + '"  datasets=' + ds.length + '  labels=' + labels.length
+                + '  mode=' + rule.mode);
+            if (ds.length > 5) {
+                logDebug('warn', '[DBG-B] TOOLTIP OVERFLOW LIKELY: rule "' + rule.header + '" has ' + ds.length
+                    + ' datasets. Default mode:index shows all simultaneously.'
+                    + ' Estimated tooltip height ~' + (ds.length * 18 + 60) + 'px on 450px canvas.');
+            }
+            // [DBG-B] Check which tokens have zero data (might indicate wrong key names)
+            var _emptyTokens = plotT.filter(function(t) {
+                return gappedStdData.every(function(d) { return !d.tokens || d.tokens[t] === undefined || d.tokens[t] === null; });
+            });
+            if (_emptyTokens.length) {
+                logDebug('warn', '[DBG] ' + _emptyTokens.length + ' token(s) have NO data in rule "'
+                    + rule.header + '": [' + _emptyTokens.join(', ') + ']'
+                    + '  — check token names match parsed keys.');
+            }
             chartInstances.push(new Chart(canvas.getContext('2d'),{type:'line',data:{labels,datasets:ds},options:_stdOpts}));
             wrap.appendChild(buildStatsTable(ds,isRatio));
         }
@@ -2438,12 +3037,16 @@ function populateSelects() {
 //   Date,Time,Inst,Type(1),Test,KPIHeader1,KPIHeader2
 function parseMcHeaderCol(raw) {
     // Parses "Label(value)" → {label, val}   — annotation: NO space before "("
-    // or bare "value"        → {label: null, val: raw}
+    // or bare "(value)"     → {label: null, val: value} — label-less annotation
+    // or bare "value"       → {label: null, val: raw}
     // Requires NO whitespace immediately before "(" so that unit notations like
     // "RSRP (dBm)", "Handover Success (%)", "PRB Usage DL (%)" are NOT treated
     // as annotations. Only true annotations like "Type(GSM)", "CompId(XXX)" match.
     const m = raw.match(/^(.+[^\s])\(([^)]+)\)$/);
     if (m) return { label: m[1].trim(), val: m[2].trim() };
+    // Handle bare "(value)" with no label — e.g. "(0)" → val="0"
+    const m2 = raw.match(/^\(([^)]+)\)$/);
+    if (m2) return { label: null, val: m2[1].trim() };
     return { label: null, val: raw.trim() };
 }
 
@@ -2461,8 +3064,61 @@ function loadMcHeaderFile(input) {
 }
 
 // Core MC header line processing — shared between file input and profile loading
+// ─────────────────────────────────────────────────────────────────────────────
+// Multi-format header resolution: pick best KPI name variant by column count.
+// For a component key with multiple header variants (different KPI column counts),
+// select the variant whose kpiCount best matches the data row's column count using
+// an 80% threshold: data must have at least 80% of a variant's columns to match.
+// Among valid candidates, pick the one closest to the actual data column count.
+// Extra data columns beyond the matched variant get KPI_N fallback names.
+// ─────────────────────────────────────────────────────────────────────────────
+function _resolveKpiNamesForRow(compKey, dataColCount) {
+    var entry = window.mcHeaderStore ? window.mcHeaderStore[compKey] : (typeof mcHeaderStore !== 'undefined' ? mcHeaderStore[compKey] : null);
+    if (!entry) return null;
+    var variants = entry.variants;
+    if (!variants || variants.length === 0) {
+        // Single-format fallback (legacy entries without variants)
+        variants = [{kpiCount: entry.kpiNames.length, kpiNames: entry.kpiNames}];
+    }
+    if (variants.length === 1) {
+        // Single variant — just pad/trim to dataColCount
+        var names = variants[0].kpiNames;
+        var result = [];
+        for (var i = 0; i < dataColCount; i++) result.push(names[i] || ('KPI_' + (i + 1)));
+        return result;
+    }
+    // Multi-variant: find best match using 80% threshold
+    // A variant is a CANDIDATE if dataColCount >= variant.kpiCount * 0.8
+    var threshold = 0.8;
+    var candidates = variants.filter(function(v) {
+        return dataColCount >= v.kpiCount * threshold;
+    });
+    if (candidates.length === 0) {
+        // No variant meets threshold — use the one with fewest columns (closest smaller)
+        candidates = variants.slice().sort(function(a, b) { return a.kpiCount - b.kpiCount; });
+    }
+    // Among candidates, prefer the largest kpiCount that is <= dataColCount (exact or partial match)
+    // This handles "data has 10 cols, variants are 12 and 20 → pick 12 (10 >= 12*0.8=9.6)"
+    // If data has 16 cols: 16 >= 12*0.8=9.6 ✓ and 16 >= 20*0.8=16 ✓ → both qualify → pick 20 (closer)
+    var best = null;
+    candidates.forEach(function(v) {
+        if (!best) { best = v; return; }
+        var bestDiff = Math.abs(dataColCount - best.kpiCount);
+        var vDiff    = Math.abs(dataColCount - v.kpiCount);
+        if (vDiff < bestDiff) best = v;
+        else if (vDiff === bestDiff && v.kpiCount > best.kpiCount) best = v; // prefer larger (more names)
+    });
+    if (!best) best = variants[0];
+    // Build final array: use matched kpiNames, pad extras with KPI_N
+    var finalNames = [];
+    for (var j = 0; j < dataColCount; j++) {
+        finalNames.push(best.kpiNames[j] || ('KPI_' + (j + 1)));
+    }
+    return finalNames;
+}
+
 function _processMcHeaderLines(lines, sourceName) {
-        mcHeaderStore = {}; mcKpiNames = []; mcColLabels = {typeLabel:'Type', compLabel:'CompId'};
+        mcHeaderStore = {}; mcKpiNames = []; mcColLabels = {typeLabel:'Type', compLabel:'CompId'}; mcOverlayFieldNames = new Set();
         const kpiNameSet = [];
         let matched = 0;
 
@@ -2518,8 +3174,25 @@ function _processMcHeaderLines(lines, sourceName) {
             if (parsed.hasWildcard) return;
             var compKey = parsed.keyInfos.map(function(ki){ return ki.val; }).join('|');
             if (compIndexStore[compKey] !== undefined) {
-                mcHeaderStore[compKey] = _buildHeaderEntry(parsed.keyInfos, parsed.kpiCols);
-                matched++;
+                var newEntry = _buildHeaderEntry(parsed.keyInfos, parsed.kpiCols);
+                newEntry.kpiCount = parsed.kpiCols.length;
+                if (mcHeaderStore[compKey]) {
+                    // Multi-format: same compKey, different column count — accumulate as variant
+                    if (!mcHeaderStore[compKey].variants) {
+                        var _exist = mcHeaderStore[compKey];
+                        _exist.variants = [{kpiCount: _exist.kpiCount||_exist.kpiNames.length, kpiNames: _exist.kpiNames.slice()}];
+                    }
+                    var _alreadyHas = mcHeaderStore[compKey].variants.some(function(v){ return v.kpiCount === parsed.kpiCols.length; });
+                    if (!_alreadyHas) {
+                        mcHeaderStore[compKey].variants.push({kpiCount: parsed.kpiCols.length, kpiNames: parsed.kpiCols.slice()});
+                        logAction('Header: Added variant for [' + compKey + ']: ' + parsed.kpiCols.length + ' KPI col(s) (now ' + mcHeaderStore[compKey].variants.length + ' variants)');
+                        matched++;
+                    }
+                } else {
+                    newEntry.variants = [{kpiCount: parsed.kpiCols.length, kpiNames: parsed.kpiCols.slice()}];
+                    mcHeaderStore[compKey] = newEntry;
+                    matched++;
+                }
             } else {
                 logAction("Header row " + (li+1) + ": key '" + compKey + "' not found in data \u2014 skipped.");
             }
@@ -2542,27 +3215,58 @@ function _processMcHeaderLines(lines, sourceName) {
                     var resolvedInfos = parsed.keyInfos.map(function(ki, idx) {
                         return { label: ki.label, val: (ki.val.toUpperCase() === 'XXX') ? keyParts[idx] : ki.val };
                     });
-                    mcHeaderStore[ck] = _buildHeaderEntry(resolvedInfos, parsed.kpiCols);
-                    matched++;
+                    var wildcardEntry = _buildHeaderEntry(resolvedInfos, parsed.kpiCols);
+                    wildcardEntry.kpiCount = parsed.kpiCols.length;
+                    if (mcHeaderStore[ck]) {
+                        // Multi-format: accumulate wildcard variant too
+                        if (!mcHeaderStore[ck].variants) {
+                            var _wxist = mcHeaderStore[ck];
+                            _wxist.variants = [{kpiCount: _wxist.kpiCount||_wxist.kpiNames.length, kpiNames: _wxist.kpiNames.slice()}];
+                        }
+                        var _wAlready = mcHeaderStore[ck].variants.some(function(v){ return v.kpiCount === parsed.kpiCols.length; });
+                        if (!_wAlready) {
+                            mcHeaderStore[ck].variants.push({kpiCount: parsed.kpiCols.length, kpiNames: parsed.kpiCols.slice()});
+                            matched++;
+                        }
+                    } else {
+                        wildcardEntry.variants = [{kpiCount: parsed.kpiCols.length, kpiNames: parsed.kpiCols.slice()}];
+                        mcHeaderStore[ck] = wildcardEntry;
+                        matched++;
+                    }
                 }
             });
         });
 
         // ── Pass 3: Demote XXX key fields to data columns ─────────────────
-        // If any header line marks a key field position with XXX, that field
-        // should become a data column (available for overlay/graphing), not
-        // a grouping dimension in the multi-select.
-        var xxxKeyPositions = []; // positions (indices into _keyIdx) that have XXX
+        // A key position is demoted to overlay/data ONLY if ALL header lines that
+        // reference that position mark it as XXX. If any header line gives it a
+        // static value, it must stay as a grouping key.
+        // This handles mixed configs like iCampaign where L0 has omKPIGroup(1) at
+        // position 2 (col5) but L1 has InterfaceName(XXX) at the same position.
+        var xxxKeyPositions = []; // positions (indices into _keyIdx) unanimously XXX
         var xxxLabels = {};      // {posIdx: label} for demoted fields
+        var _xxxVotes = {}, _staticVotes = {};
         lines.forEach(function(line) {
             var parsed = _parseHeaderLine(line);
             if (!parsed) return;
             parsed.keyInfos.forEach(function(ki, idx) {
-                if (ki.val.toUpperCase() === 'XXX' && xxxKeyPositions.indexOf(idx) < 0) {
-                    xxxKeyPositions.push(idx);
-                    if (ki.label) xxxLabels[idx] = ki.label;
+                if (ki.val.toUpperCase() === 'XXX') {
+                    _xxxVotes[idx] = (_xxxVotes[idx]||0) + 1;
+                    if (ki.label && !xxxLabels[idx]) xxxLabels[idx] = ki.label;
+                } else {
+                    _staticVotes[idx] = (_staticVotes[idx]||0) + 1;
                 }
             });
+        });
+        // Only demote positions where ALL votes are XXX (no static votes at that position)
+        Object.keys(_xxxVotes).forEach(function(idx) {
+            var i = parseInt(idx);
+            if (!_staticVotes[i]) {
+                xxxKeyPositions.push(i);
+                logDebug('header', '[Pass3] position '+i+' unanimously XXX ('+_xxxVotes[i]+' lines) → demote to overlay');
+            } else {
+                logDebug('header', '[Pass3] position '+i+' mixed: XXX×'+_xxxVotes[i]+' static×'+_staticVotes[i]+' → keep as key');
+            }
         });
 
         if (xxxKeyPositions.length > 0) {
@@ -2571,6 +3275,12 @@ function _processMcHeaderLines(lines, sourceName) {
 
             logAction('Header: Demoting ' + xxxKeyPositions.length + ' XXX key field(s) to data columns: '
                 + xxxKeyPositions.map(function(p) { return (xxxLabels[p] || 'Field' + (_keyIdx[p]+1)); }).join(', '));
+            // Track these demoted XXX field names as overlay-only
+            xxxKeyPositions.forEach(function(p) {
+                var lbl = xxxLabels[p] || ('Field' + (_keyIdx[p] + 1));
+                mcOverlayFieldNames.add(lbl);
+                logAction('Overlay-only field registered: "' + lbl + '" (from XXX key demote)');
+            });
 
             // Rebuild compIndexStore: merge entries that differ only in XXX positions
             // Use per-component labels from mcHeaderStore (not a global label map)
@@ -2675,6 +3385,17 @@ function _processMcHeaderLines(lines, sourceName) {
             logAction('Header: Rebuilt ' + Object.keys(compIndexStore).length
                 + ' component groups after XXX demotion (was ' + Object.keys(newCompIndexStore).length + ').');
         }
+
+        // ── Register KPI-zone (XXX) columns as overlay-only fields ──────────
+        // Columns in the DATA zone annotated with Name(XXX) e.g. ProbeIPAddr(XXX)
+        // are variable per-row: they belong in Overlay Key only, not KPI Metrics.
+        kpiNameSet.forEach(function(n) {
+            if (/\(XXX\)$/i.test(n)) {
+                var cleanName = n.replace(/\(XXX\)$/i, '').trim();
+                mcOverlayFieldNames.add(cleanName);
+                logAction('Overlay-only field registered: "' + cleanName + '" (KPI-zone XXX)');
+            }
+        });
 
         // ── Strip (XXX) from KPI names ──────────────────────────────────────
         // In the KPI data area, (XXX) indicates a variable-value column.
@@ -2869,15 +3590,49 @@ function scoreProfile(profile, fingerprint) {
         });
     }
 
-    // MC Header File matching (20 pts) — boost score for multiComp profiles with header content
+    // MC Header File matching — column count + date/time structure (20 pts)
     if (profile.headers && profile.headers.mcHeaderFile && profile.headers.mcHeaderFile.length) {
         maxScore += 20;
-        // Check if data column count matches any header line's column count
         var hdrColCounts = profile.headers.mcHeaderFile.map(function(l) { return l.split(',').length; });
         if (hdrColCounts.indexOf(fingerprint.columnCount) >= 0) score += 10;
-        // Check if first fields are date/time (standard MC data pattern)
         if (fingerprint.fieldTypes[0] === 'date' && fingerprint.fieldTypes[1] === 'time') score += 10;
+
+        // ── Annotation value matching (15 pts per static key column) ──────────
+        // This is the strongest signal: if the profile header says InputStats(1) at col 3,
+        // and the actual data has the value "1" in col 3, it's almost certainly this profile.
+        // Works regardless of whether detectFileFormat correctly identified multiComp.
+        // Only static-value annotations (non-XXX) are checked — XXX values vary per row.
+        var _bestLineScore = 0;
+        profile.headers.mcHeaderFile.forEach(function(hdrLine) {
+            var cols = hdrLine.split(',').map(function(c){ return c.trim(); });
+            var lineScore = 0, lineMax = 0;
+            cols.forEach(function(col, ci) {
+                var parsed = col.match(/^(.+[^\s])\(([^)]+)\)$/);
+                if (!parsed) return;                          // no annotation
+                var annotVal = parsed[2].trim();
+                if (annotVal.toUpperCase() === 'XXX') return; // skip variable fields
+                // Static annotation — check if this value appears in the data at col ci
+                lineMax += 15;
+                var dataVals = fingerprint.sampleValues[ci] || [];
+                if (dataVals.some(function(v){ return v.trim() === annotVal; })) {
+                    lineScore += 15;
+                }
+            });
+            // Take the best-matching header line score
+            if (lineMax > 0 && lineScore > _bestLineScore) _bestLineScore = lineScore;
+        });
+        if (_bestLineScore > 0) {
+            maxScore += _bestLineScore; // add only the max possible from best line
+            score    += _bestLineScore;
+            // Re-normalise: we only add to maxScore what was actually achievable
+            // so the ratio stays meaningful
+        }
     }
+
+    // [VERBOSE] Full scoring breakdown
+    logVerbose('format', '[scoreProfile] ' + (profile.app||'') + ': ' + profile.name
+        + '  SCORE=' + (maxScore>0?(score/maxScore*100).toFixed(0)+'%':'N/A')
+        + '  (' + score + '/' + maxScore + ')');
 
     return maxScore > 0 ? score / maxScore : 0;
 }
@@ -2896,14 +3651,19 @@ function buildFileFingerprint(rawText) {
     const headerNames = isHeader ? row0 : null;
 
     const dataLines = isHeader ? allLines.slice(1) : allLines;
-    const sampleRows = dataLines.slice(0, 20).map(l => l.split(',').map(c => c.trim()));
+    // Use correct delimiter for the detected format:
+    //   logPipe → split on "|"  (e.g. "Wed Feb 18|01:48:50|A|NodeId|key,val,key,val")
+    //   all others → split on ","
+    const _delim = (detectedFormat === 'logPipe') ? '|' : ',';
+    const sampleRows = dataLines.slice(0, 20).map(l => l.split(_delim).map(c => c.trim()));
     const columnCount = Math.max(...sampleRows.map(r => r.length), 0);
 
     // Classify fields
     const fieldTypes = {};
     const distinctCounts = {};
     const sampleValues = {};
-    const reDate = /^\d{1,4}[-\/]\w{1,3}[-\/]\d{2,4}$/;
+    // Date patterns: "2026-02-21" OR "Feb 18" OR "Wed Feb 18" OR "18-Feb-2026"
+    const reDate = /^(\w{3}\s+)?\w{3}\s+\d{1,2}$|^\d{1,4}[-\/]\w{1,3}[-\/]\d{2,4}$|^\d{1,2}-\w{3}-\d{2,4}$/i;
     const reTime = /^\d{2}:\d{2}/;
 
     for (let c = 0; c < columnCount && c < 10; c++) {
@@ -2919,6 +3679,17 @@ function buildFileFingerprint(rawText) {
         else if (numCount === vals.length) fieldTypes[c] = 'numeric';
         else fieldTypes[c] = 'categorical';
     }
+
+    // [VERBOSE] Full fingerprint dump
+    logVerbose('format', '[buildFileFingerprint] detectedFormat="' + detectedFormat + '"'
+        + '  columnCount=' + columnCount
+        + '  headerNames=' + (headerNames ? '['+headerNames.slice(0,5).join(', ')+(headerNames.length>5?'…':'')+']' : 'null'));
+    logVerbose('format', '  fieldTypes: ' + JSON.stringify(fieldTypes));
+    logVerbose('format', '  distinctCounts: ' + JSON.stringify(distinctCounts));
+    var _fpSampleStr = Object.keys(sampleValues).slice(0,6).map(function(c){
+        return 'col'+c+'=['+( sampleValues[c]||[]).slice(0,3).join('|')+']';
+    }).join('  ');
+    logVerbose('format', '  sampleValues (first 6 cols): ' + _fpSampleStr);
 
     return { detectedFormat, columnCount, fieldTypes, headerNames, distinctCounts, sampleValues };
 }
@@ -2940,6 +3711,17 @@ function autoMatchProfile(rawText, fileName) {
     });
 
     candidates.sort((a, b) => b.score - a.score);
+
+    // [VERBOSE] Show all candidate scores with breakdown
+    logVerbose('format', '[autoMatchProfile] All profile scores for "' + fileName + '":');
+    (window.masterConfig && window.masterConfig.profiles || []).forEach(function(profile) {
+        var _fp2 = buildFileFingerprint(rawText);
+        var _s = _fp2 ? scoreProfile(profile, _fp2) : 0;
+        logVerbose('format', '  ' + (profile.app||'') + ': ' + profile.name
+            + '  → ' + (_s*100).toFixed(0) + '%'
+            + '  format=' + profile.format
+            + (candidates.some(function(c){return c.profile===profile;}) ? ' ✓ candidate' : ''));
+    });
 
     if (candidates.length) {
         logAction('Config: ' + candidates.length + ' profile(s) matched >=60% for "' + fileName + '" — top: "' +
@@ -2968,9 +3750,56 @@ function _applyMcHeaderFromProfile(profile) {
     if (profile.headers.mcHeaderFile && profile.headers.mcHeaderFile.length) {
         mcHeaderFileLines = profile.headers.mcHeaderFile.slice();
         logAction('Config: Loaded ' + mcHeaderFileLines.length + ' MC header line(s) from profile.');
+
+        // KEY FIX: Parse the first header line through parseAnnotatedHeaders to
+        // pre-populate mcKeyFieldIndices/Labels/dataStartIndex BEFORE the data parsing
+        // loop runs. Without this, mcKeyFieldIndices stays [] and detectKeyStructure
+        // fires instead — which picks the sequence-number column as the key because
+        // it appears before the real categorical key columns (Type, CompId).
+        //
+        // Annotation rules (from parseMcHeaderCol):
+        //   Name(value) where value != XXX  → static component key field
+        //   Name(XXX)                       → variable field, demoted to data column
+        //   Name (no parens)                → KPI data column, not a key
+        //
+        // tsColCount=2 means cols 0 (Date) and 1 (Time) are always timestamp cols.
+        var _firstHdrLine = mcHeaderFileLines[0];
+        var _hdrCols = _firstHdrLine.split(',').map(function(c){ return c.trim(); });
+        var _annotated = parseAnnotatedHeaders(_hdrCols, 2);
+        if (_annotated) {
+            // Only set key indices for non-XXX annotations (static values = real keys).
+            // XXX-annotated columns are instance IDs — variable per row, not group keys.
+            var _staticKeyIndices = _annotated.keyIndices.filter(function(ki) {
+                return _annotated.instanceIdIndices.indexOf(ki) < 0;
+            });
+            var _staticKeyLabels = _staticKeyIndices.map(function(ki) {
+                var pos = _annotated.keyIndices.indexOf(ki);
+                return _annotated.keyLabels[pos] || ('Field ' + (ki + 1));
+            });
+            if (_staticKeyIndices.length > 0) {
+                mcKeyFieldIndices  = _staticKeyIndices;
+                mcKeyFieldLabels   = _staticKeyLabels;
+                // dataStartIndex = column AFTER the last annotated key (including XXX ones)
+                mcDataStartIndex   = _annotated.dataStartIndex;
+                mcAnnotatedMode    = true;
+                // Register key-zone XXX (instanceId) columns as overlay-only
+                _annotated.instanceIdIndices.forEach(function(col) {
+                    var name = (_annotated.cleanHeaders[col] || _hdrCols[col] || ('Col_' + col)).replace(/\(XXX\)$/i,'').trim();
+                    mcOverlayFieldNames.add(name);
+                    logAction('Overlay-only field registered: "' + name + '" (profile instanceId col ' + col + ')');
+                });
+                logAction('Config: Pre-set key structure from profile header: keyIndices=['
+                    + mcKeyFieldIndices.join(',') + '] labels=[' + mcKeyFieldLabels.join(',')
+                    + '] dataStart=' + mcDataStartIndex);
+                logDebug('header', '[_applyMcHeaderFromProfile] keyIndices=' + JSON.stringify(mcKeyFieldIndices)
+                    + '  keyLabels=[' + mcKeyFieldLabels.join(', ') + ']'
+                    + '  dataStartIndex=' + mcDataStartIndex
+                    + '  instanceIdCols=' + JSON.stringify(_annotated.instanceIdIndices));
+            }
+        }
     }
 
-    // Apply key field labels from profile
+    // Apply key field labels from profile (updates labels for already-set indices)
     if (profile.headers.keyLabels) {
         Object.keys(profile.headers.keyLabels).forEach(function(fi) {
             var idx = parseInt(fi);
@@ -2996,20 +3825,33 @@ function _applyMcHeaderFromProfile(profile) {
 
 // Apply a matched profile: set format, headers, and queue rules
 function applyProfile(profile) {
-    // Set format
+    // [DBG-A] Log what applyProfile is about to change
     const formatEl = document.getElementById('formatType');
+    const _prevFmt = formatEl.value;
+    logDebug('format', '=== applyProfile "' + (profile.name||'?') + '" ===');
+    logDebug('format', '  profile.format="' + (profile.format||'(none)') + '"'
+        + '  currentFormatType="' + _prevFmt + '"');
+
+    // Set format
     if (profile.format === 'flatCsv') { formatEl.value = 'flatCsv'; }
     else if (profile.format === 'multiComp') { formatEl.value = 'multiComp'; }
     else if (profile.format === 'logPipe') { formatEl.value = 'logPipe'; }
     toggleCsvOptions();
 
+    if (formatEl.value !== _prevFmt) {
+        logDebug('format', '  FORMAT CHANGED by applyProfile: "' + _prevFmt + '" → "' + formatEl.value + '"');
+    }
+
     // Apply headers
     if (profile.headers) {
         if (profile.headers.hasHeader) {
             document.getElementById('csvHasHeader').checked = true;
+            logDebug('header', '  applyProfile: csvHasHeader set to true');
         }
         if (profile.headers.columns) {
             document.getElementById('csvManualHeaders').value = profile.headers.columns;
+            logDebug('header', '  applyProfile: manualHeaders set to "'
+                + profile.headers.columns.substring(0, 80) + (profile.headers.columns.length > 80 ? '…' : '') + '"');
         }
     }
 
@@ -3018,24 +3860,24 @@ function applyProfile(profile) {
         if (!matchedProfile) matchedProfile = profile;
         if (!matchedProfile._friendlyNames) matchedProfile._friendlyNames = {};
         Object.assign(matchedProfile._friendlyNames, profile.headers.friendlyNames);
+        logDebug('format', '  friendlyNames applied: ' + Object.keys(profile.headers.friendlyNames).length + ' mapping(s).');
     }
 
     // MC-specific: apply mcHeaderFile lines, kpiColumns, and keyLabels from profile
     _applyMcHeaderFromProfile(profile);
 
     // Queue rules (dedup by profile name + header)
-    if (profile.rules && profile.rules.length) {
+    const profileRules = profile.rules || profile.rwules || [];
+    if (profileRules.length) {
         var queued = 0;
-        profile.rules.forEach(ruleDef => {
-            // Skip if already queued (e.g. from a prior call for the same profile)
+        profileRules.forEach(ruleDef => {
             var dupKey = (profile.name || '') + '::' + ruleDef.header;
             if (ruleQueue.some(r => (r._sourceProfile || '') + '::' + r.header === dupKey)) return;
             const rule = Object.assign({}, ruleDef);
-            // Expand __auto__ compKeys after data is parsed
             rule._autoExpand = (rule.compKeys && rule.compKeys.length === 1 && rule.compKeys[0] === '__auto__');
             if (!rule._mc && profile.format === 'multiComp') rule._mc = true;
-            rule._sourceProfile = profile.name;  // track origin for incremental save
-            rule._profileLoaded = true;  // mark for reverse-mapping after parse
+            rule._sourceProfile = profile.name;
+            rule._profileLoaded = true;
             ruleQueue.push(rule);
             queued++;
         });
@@ -3154,7 +3996,7 @@ function _showPerFileProfileSelector() {
         var nameDiv = document.createElement('div');
         nameDiv.className = 'pf-fname';
         nameDiv.textContent = fname;
-        if (entry.profile && entry.score >= 0.90 && !entry.needsReview) {
+        if (entry.profile && entry.score >= 0.80 && !entry.needsReview) {
             var badge = document.createElement('span');
             badge.className = 'pf-auto-badge';
             badge.textContent = '\u2713 auto';
@@ -3335,10 +4177,12 @@ function populateMcSelects() {
     // ── Show/update column label bar ─────────────────────────────────────────
     const bar = document.getElementById('mcColLabelBar');
     if (hasHdr) {
+        var labelParts = kLabels.map(function(lbl, i) {
+            var hdrLabel = mcColLabels['keyLabel_' + i] || lbl;
+            return lbl + ': "' + hdrLabel + '"';
+        });
         document.getElementById('mcColLabelText').textContent =
-            'Column labels from header file \u2014 ' + kLabels.map((lbl, i) =>
-                lbl + ': "' + (mcColLabels['keyLabel_' + i] || lbl) + '"'
-            ).join('   ');
+            'Column labels from header file \u2014 ' + labelParts.join('   ');
         bar.style.display = 'block';
     } else {
         bar.style.display = 'none';
@@ -3350,16 +4194,31 @@ function populateMcSelects() {
     const prevCompSel = new Set(Array.from(sc.selectedOptions).map(o => o.value));
     sc.innerHTML = '';
     const sortedCompKeys = Object.keys(compIndexStore);
+
+    // FREEZE GUARD: if compIndexStore has an unreasonable number of keys it means
+    // detectKeyStructure picked a sequence-number column as the key (one entry per row).
+    // Abort UI population — this state will be corrected when the profile/header is applied.
+    const MAX_COMP_KEYS_FOR_UI = 500;
+    if (sortedCompKeys.length > MAX_COMP_KEYS_FOR_UI) {
+        logAction('Warning: ' + sortedCompKeys.length + ' component groups detected — likely a sequence-number column was used as key. Load/verify your MasterConfig or Header File to correct key structure. UI population skipped to prevent freeze.');
+        logDebug('warn', '[populateMcSelects] FREEZE GUARD: ' + sortedCompKeys.length
+            + ' compKeys > ' + MAX_COMP_KEYS_FOR_UI + ' — aborting DOM insertion.'
+            + ' mcKeyFieldIndices=' + JSON.stringify(mcKeyFieldIndices)
+            + '  mcHeaderFileLines=' + mcHeaderFileLines.length);
+        return;
+    }
+
     sortedCompKeys.forEach((key, ki) => {
         const p   = key.split('|');
         const hdr = mcHeaderStore[key];
         const o   = document.createElement('option');
         o.value   = key;
-        if (hdr) {
-            // Use header labels for display
-            o.textContent = (hdr.typeLabel || kLabels[0]) + ': ' + hdr.typeVal
-                          + ' \u2014 ' + (hdr.compLabel || kLabels[1]) + ': ' + hdr.compVal
-                          + '  (' + compIndexStore[key].length + ' rows)';
+        if (hdr && hdr.keyInfos && hdr.keyInfos.length) {
+            // Use all key field labels from header for display
+            o.textContent = hdr.keyInfos.map(function(ki2, i2) {
+                var label = ki2.label || kLabels[i2] || ('Key' + (i2 + 1));
+                return label + ': ' + ki2.val;
+            }).join(' \u2014 ') + '  (' + compIndexStore[key].length + ' rows)';
         } else {
             // Use detected key labels
             o.textContent = p.map((v, i) => (kLabels[i] || 'Key' + (i+1)) + ': ' + v).join(' \u2014 ')
@@ -3434,18 +4293,35 @@ function refreshMcKpiSelector() {
     }
     const srcLabel = document.getElementById('mcKpiSourceLabel');
 
-    // Build one option per column this component actually has — no more, no less.
+    // Build one option per KPI column — exclude XXX overlay-only fields
     compKeys.forEach((rawKey, i) => {
+        // Skip if this token is designated as an overlay-only field (XXX-demoted or instanceId)
+        const displayName = tokenNameMap[rawKey] || rawKey;
+        if (mcOverlayFieldNames.size > 0) {
+            // Exclude if rawKey OR its display name is a known overlay field
+            if (mcOverlayFieldNames.has(rawKey) || mcOverlayFieldNames.has(displayName)) return;
+        } else {
+            // No header loaded — heuristic: skip string-valued tokens (they are overlay candidates)
+            // Check first non-null value for this token across rows
+            const sampleVal = compRows.slice(0,10).map(r => r.tokens[rawKey]).find(v => v !== undefined);
+            if (sampleVal !== undefined && typeof sampleVal === 'string' && isNaN(Number(sampleVal))) return;
+        }
         const o = document.createElement('option');
         o.value = rawKey;
-        // Use tokenNameMap for correct display name; fall back to raw key
-        o.textContent = tokenNameMap[rawKey] || rawKey;
+        o.textContent = displayName;
         if (prevSelected.has(rawKey)) o.selected = true;
         sk.appendChild(o);
     });
 
     // ── KPI SELECTOR DEBUG ────────────────────────────────────────────────────
     logAction('── KPI SELECTOR for [' + selectedKey + '] ──────────────────────');
+    logVerbose('header', '[refreshMcKpiSelector] Full tokenNameMap for "'+selectedKey+'":');
+    Object.keys(tokenNameMap).forEach(function(raw) {
+        logVerbose('header', '  ' + raw + ' → "' + tokenNameMap[raw] + '"');
+    });
+    if (kpiNames.length) {
+        logVerbose('header', '  kpiNames order: ['+kpiNames.join(', ')+']');
+    }
     logAction('  compRows: ' + compRows.length + ' rows');
     logAction('  compKeys (' + compKeys.length + '): [' + compKeys.slice(0,5).join(',') + (compKeys.length>5?',...,'+compKeys[compKeys.length-1]:'') + ']');
     logAction('  kpiNames (' + kpiNames.length + '): [' + kpiNames.slice(0,5).join(',') + (kpiNames.length>5?',...,'+kpiNames[kpiNames.length-1]:'') + ']');
@@ -3489,16 +4365,65 @@ function toggleOverlayKey() {
 }
 function populateOverlayKeySelect() {
     const src = document.getElementById('selMcKpi');
+    const sc  = document.getElementById('selComp');
     const dst = document.getElementById('selOverlayKey');
     const prevSet = new Set(Array.from(dst.selectedOptions).map(o => o.value));
     dst.innerHTML = '';
-    Array.from(src.options).forEach(o => {
-        const no = document.createElement('option');
-        no.value = o.value; no.textContent = o.textContent;
-        if (prevSet.has(o.value)) no.selected = true;
-        dst.appendChild(no);
-    });
-    if (!dst.selectedOptions.length && dst.options.length) dst.options[0].selected = true;
+
+    // Determine which tokens are overlay-only for the selected component
+    const selectedKey = sc.selectedOptions.length > 0 ? sc.selectedOptions[0].value
+                      : sc.options.length > 0 ? sc.options[0].value : null;
+    const compRows = (selectedKey && compIndexStore[selectedKey]) || [];
+    const maxRow   = compRows.reduce(
+        (a, b) => Object.keys(a.tokens).length >= Object.keys(b.tokens).length ? a : b,
+        { tokens: {} }
+    );
+    const allTokenKeys = Object.keys(maxRow.tokens);
+
+    // Build overlay-field list from mcOverlayFieldNames (header-driven, authoritative)
+    const overlayKeys = [];
+
+    if (mcOverlayFieldNames.size > 0) {
+        // Header loaded: show exactly the registered XXX fields that exist in this component's tokens
+        allTokenKeys.forEach(function(rawKey) {
+            const displayName = (mcHeaderStore[selectedKey] ? (function(){ const nm = buildTokenNameMap([rawKey], mcHeaderStore[selectedKey].kpiNames || []); return nm[rawKey] || rawKey; })() : rawKey);
+            if (mcOverlayFieldNames.has(rawKey) || mcOverlayFieldNames.has(displayName)) {
+                overlayKeys.push({ raw: rawKey, display: displayName });
+            }
+        });
+        // Also include any registered overlay names not yet in tokens (future-proofing)
+        mcOverlayFieldNames.forEach(function(name) {
+            if (!overlayKeys.some(function(ok){ return ok.raw === name || ok.display === name; })) {
+                // Check if it's literally a token key in this component
+                if (allTokenKeys.includes(name)) overlayKeys.push({ raw: name, display: name });
+            }
+        });
+    } else {
+        // No header loaded — heuristic: string-valued tokens are overlay candidates
+        allTokenKeys.forEach(function(rawKey) {
+            const sampleVal = compRows.slice(0,10).map(function(r){ return r.tokens[rawKey]; }).find(function(v){ return v !== undefined; });
+            if (sampleVal !== undefined && typeof sampleVal === 'string' && isNaN(Number(sampleVal))) {
+                overlayKeys.push({ raw: rawKey, display: rawKey });
+            }
+        });
+    }
+
+    if (overlayKeys.length === 0) {
+        const placeholder = document.createElement('option');
+        placeholder.disabled = true;
+        placeholder.textContent = '(no XXX overlay fields found — load a header file)';
+        dst.appendChild(placeholder);
+        logAction('Overlay Key: No XXX overlay fields found for [' + (selectedKey||'?') + ']. Load a header file with Name(XXX) annotations.');
+    } else {
+        overlayKeys.forEach(function(ok) {
+            const o = document.createElement('option');
+            o.value = ok.raw; o.textContent = ok.display;
+            if (prevSet.has(ok.raw)) o.selected = true;
+            dst.appendChild(o);
+        });
+        if (!dst.selectedOptions.length && dst.options.length) dst.options[0].selected = true;
+        logAction('Overlay Key: ' + overlayKeys.length + ' overlay field(s) available for [' + (selectedKey||'?') + ']: [' + overlayKeys.map(function(ok){ return ok.display; }).join(', ') + ']');
+    }
 }
 function addMcRule() {
     const ck=Array.from(document.getElementById('selComp').selectedOptions).map(o=>o.value);
@@ -3944,12 +4869,8 @@ function importRules(input) {
     const reader=new FileReader();
     reader.onload=(e)=>{
         input.value='';
-        // Narrow try/catch to JSON parsing ONLY.
-        // Dashboard/selectFile errors must NOT be swallowed as "Invalid Rule File".
         let data;
         try {
-            // Lenient parse: strip trailing commas before ] or } so hand-edited
-            // JSON files (common in text editors) load without error.
             const cleaned = e.target.result
                 .replace(/,(\s*[\]}])/g, '$1');
             data=JSON.parse(cleaned);
@@ -3958,21 +4879,65 @@ function importRules(input) {
             alert('Invalid Rule File — JSON syntax error:\n'+err.message);
             return;
         }
-        // Apply parsed rules and config
+
+        // [DBG-A] Snapshot BEFORE import modifies the UI
+        logDebug('import', '=== importRules START: "' + rfn + '" ===');
+        logDebug('import', '  BEFORE — formatType="' + document.getElementById('formatType').value + '"'
+            + '  csvHasHeader=' + document.getElementById('csvHasHeader').checked
+            + '  manualHeaders="' + (document.getElementById('csvManualHeaders').value||'(empty)') + '"');
+        logDebug('import', '  BEFORE — ruleQueue=' + ruleQueue.length + ' rules');
+        logDebug('import', '  JSON contains: ruleQueue=' + ((data.ruleQueue||[]).length) + ' rules'
+            + '  csvHeaderConfig=' + JSON.stringify(data.csvHeaderConfig||null));
+
         ruleQueue=data.ruleQueue||(Array.isArray(data)?data:[]);
         const cfg=data.csvHeaderConfig;
-        if(cfg&&(cfg.hasHeader===true||(cfg.manualHeaders&&cfg.manualHeaders.trim()!=='')||cfg.tsFormat==='singleTs')){
+
+        // [DBG-A] Log the format-override decision
+        const _cfgWillOverride = cfg && (cfg.hasHeader===true || (cfg.manualHeaders && cfg.manualHeaders.trim()!=='') || cfg.tsFormat==='singleTs');
+        logDebug('import', '  csvHeaderConfig override will fire: ' + !!_cfgWillOverride);
+        if (cfg) {
+            logDebug('import', '  cfg.hasHeader=' + cfg.hasHeader
+                + '  cfg.manualHeaders="' + (cfg.manualHeaders||'(empty)') + '"'
+                + '  cfg.tsFormat="' + (cfg.tsFormat||'(none)') + '"');
+        }
+
+        if(_cfgWillOverride){
+            const _prevFormat = document.getElementById('formatType').value;
             document.getElementById('formatType').value='flatCsv'; toggleCsvOptions();
             document.getElementById('csvHasHeader').checked=cfg.hasHeader||false;
             document.getElementById('csvManualHeaders').value=cfg.manualHeaders||'';
             if(cfg.tsFormat) document.getElementById('csvTsFormat').value=cfg.tsFormat;
+            logDebug('import', '  FORMAT OVERRIDE: "' + _prevFormat + '" → "flatCsv"'
+                + '  hasHeader=' + (cfg.hasHeader||false)
+                + '  manualHeaders="' + (cfg.manualHeaders||'') + '"');
+            // [DBG-A] Warn if the format override is potentially wrong
+            if (Object.keys(rawFilesStore).length > 0) {
+                const _firstFile = Object.keys(rawFilesStore)[0];
+                const _detectedFmt = detectFileFormat(rawFilesStore[_firstFile]);
+                if (_detectedFmt !== 'flatCsv') {
+                    logDebug('warn', '[DBG-A] FORMAT MISMATCH after importRules!'
+                        + ' Rule JSON forced formatType="flatCsv"'
+                        + ' but auto-detect of "' + _firstFile + '" suggests "' + _detectedFmt + '".');
+                    logDebug('warn', '  If this is wrong: change Parser Mode dropdown manually before clicking Initialize Analysis.');
+                }
+            }
+        } else {
+            logDebug('import', '  csvHeaderConfig conditions not met — formatType NOT changed (remains "'
+                + document.getElementById('formatType').value + '").');
         }
+
         logAction('Import: '+ruleQueue.length+" rule(s) from '"+rfn+"'.");
         const badge=rfn+'  ('+ruleQueue.length+' rule'+(ruleQueue.length!==1?'s':'')+')';
         document.getElementById('rulesFileName').textContent=badge; document.getElementById('rulesFileInfo').style.display='block';
         document.getElementById('mcRulesFileName').textContent=badge; document.getElementById('mcRulesFileInfo').style.display='block';
         renderQueue(); renderMcQueue();
-        // Trigger dashboard — outside try/catch so real errors surface properly
+
+        // [DBG-A] State after import
+        logDebug('import', '=== importRules END ===');
+        logDebug('import', '  AFTER — formatType="' + document.getElementById('formatType').value + '"'
+            + '  csvHasHeader=' + document.getElementById('csvHasHeader').checked
+            + '  manualHeaders="' + (document.getElementById('csvManualHeaders').value||'(empty)') + '"');
+
         const fk=Object.keys(parsedFilesStore);
         if(fk.length===1){logAction('Auto-binding.'); selectFile(fk[0],0);}
         else if(activeLogData.length) generateDashboard();
@@ -4212,6 +5177,11 @@ async function handlePatternUpload(input) {
     document.getElementById('kpiPattern').value=line;
     if(line.includes(':')){ const p=line.split(':'); logAction("Pattern for App '"+p[0].trim()+"' loaded."); }
     else logAction("Pattern '"+line+"' loaded.");
+    // [DBG-A] Show format state when pattern triggers re-parse
+    logDebug('format', '[handlePatternUpload] pattern="' + line + '"  will re-parse='
+        + (Object.keys(rawFilesStore).length > 0)
+        + '  currentFormatType="' + document.getElementById('formatType').value + '"'
+        + '  _profileAlreadySelected=' + _profileAlreadySelected);
     if(Object.keys(rawFilesStore).length>0) processFilesFromUI();
 }
 
@@ -4329,7 +5299,17 @@ function toggleCsvOptions() {
 // BOOT
 // =============================================================================
 window.onload = () => {
-    logAction('System: Tool v2.2.0 loaded.');
+    logAction('System: Tool v2.2.0-DEBUG loaded.');
+    logAction('Verbose logging: ' + (VERBOSE_LOGGING ? 'ON — detailed trace active. Filter: ⋯ Verbose' : 'OFF — set VERBOSE_LOGGING=true in source to enable'));
+    // Update legend badge
+    var _vBadge = document.getElementById('verbose-legend-badge');
+    if (_vBadge) {
+        _vBadge.textContent = 'VERBOSE: ' + (VERBOSE_LOGGING ? 'ON' : 'OFF');
+        _vBadge.style.color = VERBOSE_LOGGING ? '#00ff88' : '#888';
+        _vBadge.style.borderColor = VERBOSE_LOGGING ? '#00ff88' : '#555';
+    }
+    logDebug('format', 'Debug build active. All parser, format, header, chart, and import events will be logged with [DBG:*] prefix.');
+    logDebug('format', 'Console colour guide: GOLD=format/profile  CYAN=headers/cols  LIME=parse rows  ORANGE=chart  VIOLET=import/reset  RED=anomaly');
     // PDF modal button wiring
     document.getElementById('pdf-btn-full').addEventListener('click', () => _runPdfExport(true));
     document.getElementById('pdf-btn-current').addEventListener('click', () => _runPdfExport(false));

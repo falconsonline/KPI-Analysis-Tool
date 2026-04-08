@@ -1,0 +1,3283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KPI Tool — Validation Test Suite</title>
+<link rel="icon" href="data:,">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --green:#3fb950; --red:#f85149; --yellow:#d29922; --blue:#58a6ff; --cyan:#79c0ff; --text:#e6edf3; --muted:#8b949e; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',monospace;background:var(--bg);color:var(--text);padding:20px;}
+  h1{font-size:1.4em;color:var(--blue);margin-bottom:4px;}
+  .subtitle{color:var(--muted);font-size:.85em;margin-bottom:20px;}
+  .config-bar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+  .config-bar label{font-size:.78em;color:var(--muted);display:block;margin-bottom:4px;}
+  .config-bar input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:4px;font-size:.85em;width:300px;}
+  .btn{padding:8px 18px;border-radius:6px;border:none;font-weight:700;cursor:pointer;font-size:.85em;transition:.15s;}
+  .btn-primary{background:var(--blue);color:#000;}.btn-primary:hover{background:var(--cyan);}
+  .btn-secondary{background:var(--border);color:var(--text);}.btn-secondary:hover{background:#444c56;}
+  #prog{width:100%;height:4px;background:var(--border);border-radius:2px;margin-bottom:12px;display:none;}
+  #prog-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .3s;}
+  #summary{display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px 20px;margin-bottom:20px;display:flex;gap:30px;align-items:center;flex-wrap:wrap;}
+  .stat{text-align:center;}.stat-num{font-size:1.8em;font-weight:700;}.stat-lbl{font-size:.72em;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+  .stat-num.pass{color:var(--green);}.stat-num.fail{color:var(--red);}.stat-num.warn{color:var(--yellow);}.stat-num.info{color:var(--blue);}
+  #results{display:flex;flex-direction:column;gap:16px;}
+  .rcard{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .rcard.pass{border-left:4px solid var(--green);}.rcard.fail{border-left:4px solid var(--red);}.rcard.warn{border-left:4px solid var(--yellow);}
+  .rcard-hdr{padding:12px 18px;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);cursor:pointer;}
+  .rcard-hdr:hover{background:rgba(255,255,255,.05);}
+  .rcard-title{font-weight:700;font-size:1em;color:var(--cyan);}
+  .rcard-meta{font-size:.75em;color:var(--muted);margin-top:2px;}
+  .badge{padding:3px 10px;border-radius:12px;font-size:.72em;font-weight:700;}
+  .badge.pass{background:rgba(63,185,80,.18);color:var(--green);}.badge.fail{background:rgba(248,81,73,.18);color:var(--red);}.badge.warn{background:rgba(210,153,34,.18);color:var(--yellow);}
+  .rcard-body{display:none;padding:18px;border-top:1px solid var(--border);}
+  .rcard-body.open{display:block;}
+  .section-lbl{font-size:.75em;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+  .scores-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-bottom:14px;}
+  .score-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:10px 14px;}
+  .score-app{font-size:.74em;color:var(--muted);}.score-pct{font-size:1.5em;font-weight:700;}
+  .score-pct.top{color:var(--green);}.score-pct.mid{color:var(--yellow);}.score-pct.low{color:var(--red);}
+  .score-bar{height:4px;border-radius:2px;background:var(--border);margin-top:6px;}
+  .score-bar-fill{height:100%;border-radius:2px;}
+  .checks{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+  .chk{display:flex;gap:10px;align-items:flex-start;font-size:.82em;padding:6px 10px;border-radius:5px;background:rgba(255,255,255,.02);}
+  .chk-icon{font-size:1em;flex-shrink:0;margin-top:1px;}.chk-name{color:var(--muted);width:210px;flex-shrink:0;}.chk-val{flex:1;font-family:monospace;}
+  .chk.pass .chk-icon{color:var(--green);}.chk.fail .chk-icon{color:var(--red);}.chk.warn .chk-icon{color:var(--yellow);}.chk.info .chk-icon{color:var(--blue);}
+  .comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:14px;}
+  .comp-tile{background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);border-radius:6px;padding:8px 12px;font-size:.78em;}
+  .comp-key{color:var(--cyan);font-weight:700;margin-bottom:4px;}.comp-info{color:var(--muted);}
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:14px;}
+  .chart-wrap{background:#fff;border-radius:6px;padding:8px;}
+  .chart-wrap canvas{width:100%!important;height:130px!important;}
+  .log-box{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:10px;font-family:monospace;font-size:.72em;max-height:120px;overflow-y:auto;}
+  .le{margin-bottom:3px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+  .le.ok{color:var(--green);}.le.err{color:var(--red);}.le.info{color:var(--blue);}.le.warn{color:var(--yellow);}
+  hr{border:none;border-top:1px solid var(--border);margin:12px 0;}
+  #status{font-size:.82em;color:var(--muted);padding:6px 0;}
+</style>
+</head>
+<body>
+
+<h1>🧪 KPI Tool — Validation Test Suite</h1>
+<p class="subtitle">Automated validation: profile matching · key detection · component grouping · KPI mapping</p>
+
+<div class="config-bar">
+  <div><label>MasterConfig URL</label><input id="cfgUrl" value="/MasterConfig.json"></div>
+  <div><label>Tool URL (for scoring functions)</label><input id="toolUrl" value="/KPI-Analysis-Tool-debug.html"></div>
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    <label style="font-size:.78em;color:var(--muted);">Base Directory URL <small style="color:#444c56;">(optional override — e.g. /myproject/)</small></label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input id="baseDir" value="" placeholder="e.g. /mydata/ or http://localhost:9090/" style="width:260px;">
+      <label style="background:#30363d;color:#e6edf3;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:.78em;white-space:nowrap;border:1px solid #444c56;" title="Upload a local folder containing MasterConfig.json and DataFile CSVs">
+        📁 Upload Folder
+        <input type="file" id="dirUpload" webkitdirectory multiple accept=".json,.csv,.txt,.log,.xls,.xlsx" style="display:none" onchange="handleDirUpload(this)">
+      </label>
+      <span id="dir-badge" style="font-size:.75em;color:#3fb950;"></span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:flex-end;">
+    <button class="btn btn-primary" onclick="runAll()">▶ Run All Tests</button>
+    <button class="btn btn-secondary" onclick="clearAll()">✕ Clear</button>
+    <button class="btn btn-secondary" onclick="exportReport()">⬇ HTML</button>
+    <button class="btn btn-secondary" onclick="exportXLSX()">📊 XLSX Report</button>
+    <button class="btn btn-secondary" style="background:#1f4e79;color:#79c0ff;border:1px solid #58a6ff;" onclick="openConfigValidator()">⚙ Config Validator</button>
+  </div>
+</div>
+
+<div id="prog"><div id="prog-fill" style="width:0%"></div></div>
+<div id="status"></div>
+
+<div id="summary" style="display:none">
+  <div class="stat"><div class="stat-num pass" id="s-pass">0</div><div class="stat-lbl">Passed</div></div>
+  <div class="stat"><div class="stat-num fail" id="s-fail">0</div><div class="stat-lbl">Failed</div></div>
+  <div class="stat"><div class="stat-num warn" id="s-warn">0</div><div class="stat-lbl">Warnings</div></div>
+  <div class="stat"><div class="stat-num info" id="s-files">0</div><div class="stat-lbl">Files</div></div>
+  <div class="stat"><div class="stat-num info" id="s-time">—</div><div class="stat-lbl">Duration</div></div>
+</div>
+<div id="results"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     CONFIG VALIDATOR MODAL
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="cv-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;overflow-y:auto;padding:20px;">
+<div style="max-width:900px;margin:0 auto;background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid #30363d;padding-bottom:12px;">
+    <div>
+      <h2 style="color:#58a6ff;margin:0;font-size:1.2em;">⚙ Config Validator</h2>
+      <div style="color:#8b949e;font-size:.8em;margin-top:3px;">Validate or generate MasterConfig profile for a data file</div>
+    </div>
+    <button onclick="closeConfigValidator()" style="background:none;border:none;color:#8b949e;font-size:1.4em;cursor:pointer;padding:4px 8px;">✕</button>
+  </div>
+
+  <!-- Step 1: File input -->
+  <div id="cv-step1">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:.78em;color:#8b949e;display:block;margin-bottom:4px;">Data File</label>
+        <div style="display:flex;gap:6px;">
+          <select id="cv-file-sel" style="flex:1;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:6px 8px;border-radius:4px;font-size:.85em;">
+            <option value="">— select existing file —</option>
+          </select>
+          <label style="background:#30363d;color:#e6edf3;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:.82em;white-space:nowrap;">
+            📂 Upload
+            <input type="file" id="cv-file-upload" accept=".csv,.log,.txt" style="display:none" onchange="cvHandleUpload(this)">
+          </label>
+        </div>
+        <div id="cv-file-name" style="font-size:.75em;color:#3fb950;margin-top:4px;"></div>
+      </div>
+      <div>
+        <label style="font-size:.78em;color:#8b949e;display:block;margin-bottom:4px;">Header File (optional — for MC files)</label>
+        <div style="display:flex;gap:6px;">
+          <select id="cv-hdr-sel" style="flex:1;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:6px 8px;border-radius:4px;font-size:.85em;">
+            <option value="">— none —</option>
+          </select>
+          <label style="background:#30363d;color:#e6edf3;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:.82em;white-space:nowrap;">
+            📂 Upload
+            <input type="file" id="cv-hdr-upload" accept=".csv,.txt" style="display:none" onchange="cvHandleHdrUpload(this)">
+          </label>
+        </div>
+        <div id="cv-hdr-name" style="font-size:.75em;color:#3fb950;margin-top:4px;"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-primary" onclick="cvAnalyse()" style="flex:1;">🔍 Analyse File</button>
+    </div>
+    <div id="cv-step1-status" style="font-size:.8em;color:#8b949e;margin-top:8px;"></div>
+  </div>
+
+  <!-- Step 2: Results -->
+  <div id="cv-step2" style="display:none;margin-top:16px;">
+    <!-- Profile match indicator -->
+    <div id="cv-match-banner" style="border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:.85em;"></div>
+
+    <!-- Mode tabs -->
+    <div style="display:flex;gap:0;margin-bottom:0;border-bottom:1px solid #30363d;">
+      <button id="cv-tab-validate" onclick="cvShowTab('validate')" style="padding:8px 18px;background:none;border:none;border-bottom:2px solid #58a6ff;color:#58a6ff;cursor:pointer;font-weight:700;font-size:.85em;">✅ Validate Config</button>
+      <button id="cv-tab-suggest" onclick="cvShowTab('suggest')" style="padding:8px 18px;background:none;border:none;border-bottom:2px solid transparent;color:#8b949e;cursor:pointer;font-size:.85em;">💡 Suggest Config</button>
+      <button id="cv-tab-review" onclick="cvShowTab('review')" style="padding:8px 18px;background:none;border:none;border-bottom:2px solid transparent;color:#8b949e;cursor:pointer;font-size:.85em;">🔎 Review All Profiles</button>
+    </div>
+
+    <!-- VALIDATE tab -->
+    <div id="cv-pane-validate" style="padding-top:14px;">
+      <div id="cv-val-checks" style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;"></div>
+      <div id="cv-val-kpi-table" style="margin-bottom:14px;"></div>
+      <div id="cv-val-gaps" style="margin-bottom:14px;"></div>
+      <div id="cv-val-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #30363d;"></div>
+    </div>
+
+    <!-- SUGGEST tab -->
+    <div id="cv-pane-suggest" style="display:none;padding-top:14px;">
+      <div style="margin-bottom:10px;padding:10px;background:rgba(88,166,255,.07);border-radius:6px;font-size:.82em;color:#8b949e;">
+        <strong style="color:#58a6ff;">Suggested Configuration</strong> — based on file format and detected structure.
+        Review, edit the JSON, then save to add this profile to MasterConfig.
+      </div>
+      <!-- Inline header input for MC files without header -->
+      <div id="cv-hdr-input-section" style="display:none;margin-bottom:10px;">
+        <label style="font-size:.78em;color:#8b949e;display:block;margin-bottom:4px;">Header Line(s) (one per component, CSV format with Name(Value) annotations)</label>
+        <textarea id="cv-hdr-textarea" rows="4" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:8px;border-radius:4px;font-family:monospace;font-size:.78em;" placeholder="Date,Time,Seq,Type(1),CompId(75),ProbeIPAddr(XXX),MetricA,MetricB"></textarea>
+        <button onclick="cvRegenerateFromHeaders()" style="margin-top:6px;padding:5px 12px;background:#1f4e79;border:1px solid #58a6ff;color:#79c0ff;border-radius:4px;cursor:pointer;font-size:.8em;">↻ Regenerate from headers</button>
+      </div>
+      <div style="position:relative;">
+        <textarea id="cv-json-editor" rows="20" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:10px;border-radius:4px;font-family:monospace;font-size:.78em;"></textarea>
+        <button onclick="cvCopyJson()" style="position:absolute;top:6px;right:6px;padding:3px 8px;background:#30363d;border:none;color:#8b949e;border-radius:4px;cursor:pointer;font-size:.75em;">Copy</button>
+      </div>
+      <div id="cv-sug-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
+    </div>
+
+    <!-- REVIEW ALL PROFILES tab -->
+    <div id="cv-pane-review" style="display:none;padding-top:14px;">
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div style="font-size:.82em;color:#8b949e;flex:1;">Audits all profiles in MasterConfig — finds KPI_N tokens where header names are available, missing overlay sections, and other corrections.</div>
+        <button onclick="cvRunReview()" style="padding:6px 14px;background:#1f4e79;border:1px solid #58a6ff;color:#79c0ff;border-radius:5px;cursor:pointer;font-size:.82em;">🔄 Run Review</button>
+        <button id="cv-review-save-btn" onclick="cvSaveReviewedConfig()" style="display:none;padding:6px 14px;background:#1a3a1a;border:1px solid #3fb950;color:#3fb950;border-radius:5px;cursor:pointer;font-size:.82em;">💾 Save Updated Config</button>
+      </div>
+      <div id="cv-review-summary" style="margin-bottom:10px;"></div>
+      <div id="cv-review-body" style="display:flex;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;padding-right:4px;"></div>
+    </div>
+
+  </div>
+
+</div>
+</div>
+
+<script>
+// ── Globals ─────────────────────────────────────────────────────────────────
+let _w = null; // iframe window — loaded once, reset between tests
+let _uploadedFiles = {}; // {filename: textContent} — files from folder upload
+let _uploadedConfig = null; // parsed MasterConfig from uploaded folder
+let _iframe = null;
+
+// ── Load iframe once ─────────────────────────────────────────────────────────
+function loadIframe() {
+  return new Promise((resolve, reject) => {
+    if (_iframe) { _iframe.remove(); _w = null; }
+    _iframe = document.createElement('iframe');
+    _iframe.src = document.getElementById('toolUrl').value;
+    _iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;';
+    document.body.appendChild(_iframe);
+    const timeout = setTimeout(() => reject('Tool iframe timeout (10s)'), 10000);
+    _iframe.onload = () => {
+      clearTimeout(timeout);
+      try {
+        _w = _iframe.contentWindow;
+        const needed = ['detectFileFormat','buildFileFingerprint','scoreProfile',
+                        'autoMatchProfile','_profileMinCols','parseAnnotatedHeaders',
+                        'parseMcHeaderCol','processFilesFromUI','softReset'];
+        const missing = needed.filter(f => typeof _w[f] !== 'function');
+        if (missing.length) { reject('Missing: ' + missing.join(', ')); return; }
+        resolve(_w);
+      } catch(e) { reject('iframe access error: ' + e.message); }
+    };
+    _iframe.onerror = () => reject('iframe load error');
+  });
+}
+
+// ── Patch iframe functions to latest versions ────────────────────────────────
+// Applied after iframe loads — ensures fixes are active even if the served
+// KPI-Analysis-Tool-debug.html is an older version.
+function patchIframe(w) {
+  // ── Fix 1: buildFileFingerprint — use pipe delimiter for logPipe format ──
+  // Without this, DBWriter logPipe files get col0=categorical instead of date
+  // so DBWriter never scores >=90% and always shows the manual confirm modal.
+  const origBFF = w.buildFileFingerprint;
+  w.buildFileFingerprint = function(rawText) {
+    const result = origBFF.call(w, rawText);
+    if (!result) return result;
+    const fmt = w.detectFileFormat(rawText);
+    if (fmt !== 'logPipe') return result;
+    // Re-run field classification with pipe delimiter
+    const allLines = rawText.split(/\r?\n/).map(l=>l.trim()).filter(l=>l!=='');
+    const dataLines = allLines;
+    const sampleRows = dataLines.slice(0,20).map(l=>l.split('|').map(c=>c.trim()));
+    const columnCount = Math.max(...sampleRows.map(r=>r.length),0);
+    const reDate = /(^(\w{3}\s+)?\w{3}\s+\d{1,2}$)|(^\d{1,4}[-\/]\w{1,3}[-\/]\d{2,4}$)|(^\d{1,2}-\w{3}-\d{2,4}$)/i;
+    const reTime = /^\d{2}:\d{2}/;
+    const fieldTypes = {}, distinctCounts = {}, sampleValues = {};
+    for (let c=0; c<columnCount && c<10; c++) {
+      const vals = sampleRows.map(r=>(r[c]||'').trim()).filter(v=>v);
+      sampleValues[c] = vals;
+      const distinct = new Set(vals);
+      distinctCounts[c] = distinct.size;
+      const numCount = vals.filter(v=>!isNaN(Number(v))).length;
+      if (c===0 && vals.some(v=>reDate.test(v))) fieldTypes[c]='date';
+      else if (c===1 && vals.some(v=>reTime.test(v))) fieldTypes[c]='time';
+      else if (distinct.size > vals.length*0.8 && numCount > vals.length*0.9) fieldTypes[c]='sequence';
+      else if (numCount===vals.length) fieldTypes[c]='numeric';
+      else fieldTypes[c]='categorical';
+    }
+    return { detectedFormat: fmt, columnCount, fieldTypes, headerNames: null, distinctCounts, sampleValues };
+  };
+
+  // ── Fix 3: detectKeyStructure — correct algorithm with consensus XXX ────
+  // Scan cols 3-7 only; col is XXX-excluded only if ALL header lines vote XXX.
+  // (single-vote exclusion wrongly blocks col5 for iCampaign InterfaceName(XXX))
+  w.detectKeyStructure = function(dataLines, headerKeys) {
+    const _delim = (dataLines.length > 0 && dataLines[0].includes('|') && dataLines[0].split('|').length >= 4) ? '|' : ',';
+    const sampleSize = Math.min(dataLines.length, 200);
+    const rows = [];
+    for (let i = 0; i < sampleSize; i++) {
+      const cols = dataLines[i].split(_delim).map(c => c.trim());
+      if (cols.length >= 4) rows.push(cols);
+    }
+    if (!rows.length) return { keyIndices:[3,4], dataStartIndex:5, keyLabels:['Type','CompId'] };
+    const totalRows = rows.length;
+    // Consensus XXX: count XXX votes and static votes per col (cols 3-7 only)
+    // Only exclude a col if ALL header lines that annotate it vote XXX
+    const xxxVotes = {}, staticVotes = {};
+    if (typeof w.mcHeaderFileLines !== 'undefined' && w.mcHeaderFileLines.length > 0) {
+      w.mcHeaderFileLines.forEach(function(hdrLine) {
+        hdrLine.split(',').forEach(function(col, ci) {
+          if (ci < 3 || ci > 7) return;
+          const m = col.trim().match(/\(([^)]+)\)$/);
+          if (!m) return;
+          if (m[1].trim().toUpperCase() === 'XXX') {
+            xxxVotes[ci] = (xxxVotes[ci] || 0) + 1;
+          } else {
+            staticVotes[ci] = (staticVotes[ci] || 0) + 1;
+          }
+        });
+      });
+    }
+    // Col is unanimously XXX only if it has XXX votes and zero static votes
+    const xxxCols = new Set(Object.keys(xxxVotes).filter(ci =>
+      xxxVotes[ci] > 0 && !(staticVotes[ci] > 0)
+    ).map(Number));
+    // Scan cols 3-7: low cardinality = component key
+    const keyIndices = [];
+    for (let c = 3; c <= 7; c++) {
+      if (xxxCols.has(c)) continue;
+      const vals = new Set();
+      rows.forEach(r => { const v=(r[c]||'').trim(); if(v) vals.add(v); });
+      const isKey = vals.size <= 30 && (vals.size / totalRows) < 0.3;
+      if (isKey) { keyIndices.push(c); }
+      else { if (keyIndices.length > 0) break; }
+    }
+    if (!keyIndices.length) keyIndices.push(3);
+    const dataStartIndex = keyIndices[keyIndices.length-1] + 1;
+    const keyLabels = keyIndices.map(function(ki) {
+      if (typeof w.mcHeaderFileLines !== 'undefined' && w.mcHeaderFileLines.length > 0) {
+        for (const hdrLine of w.mcHeaderFileLines) {
+          const cols = hdrLine.split(',').map(c=>c.trim());
+          if (cols[ki]) {
+            const m = cols[ki].match(/^(.+?)\(([^)]+)\)$/);
+            if (m) return m[1].trim();
+            return cols[ki];
+          }
+        }
+      }
+      return headerKeys && headerKeys[ki] ? headerKeys[ki].trim() : 'Field '+(ki+1);
+    });
+    return { keyIndices, dataStartIndex, keyLabels };
+  };
+
+  // ── Fix 2: parseAnnotatedHeaders — dataStart based on static keys only ───
+  // Without this, XXX cols push dataStartIndex too high → only 2 KPIs instead of 4.
+  w.parseAnnotatedHeaders = function(headerKeys, tsColCount) {
+    var keyIndices=[], keyLabels=[], cleanHeaders=[], instanceIdIndices=[];
+    headerKeys.forEach(function(h,i) {
+      if (i < tsColCount) { cleanHeaders.push(h); return; }
+      var parsed = w.parseMcHeaderCol(h);
+      if (parsed.label !== null) {
+        keyIndices.push(i); keyLabels.push(parsed.label); cleanHeaders.push(parsed.label);
+        if (parsed.val.toUpperCase()==='XXX') instanceIdIndices.push(i);
+      } else { cleanHeaders.push(h); }
+    });
+    if (keyIndices.length===0) return null;
+    var staticIdx = keyIndices.filter(function(ki){ return instanceIdIndices.indexOf(ki)<0; });
+    var lastStatic = staticIdx.length > 0 ? Math.max.apply(null,staticIdx) : Math.max.apply(null,keyIndices);
+    var dataStartIndex = lastStatic + 1;
+    return { keyIndices, keyLabels, dataStartIndex, cleanHeaders, instanceIdIndices };
+  };
+}
+
+// ── Reset iframe state between tests ─────────────────────────────────────────
+function resetIframe(w) {
+  try { w.softReset(); } catch(e) {}
+  // Belt-and-suspenders: directly clear everything that could pollute next test
+  w.rawFilesStore = {};
+  w.parsedFilesStore = {};
+  w.compIndexStore = {};
+  w.fileIndexMap = {};
+  w.activeLogData = [];
+  w.activeFileName = '';
+  w.ruleQueue = [];
+  w.mcHeaderFileLines = [];
+  w.mcKeyFieldIndices = [];
+  w.mcKeyFieldLabels = [];
+  w.mcDataStartIndex = 5;
+  w.mcInstanceIdIndices = [];
+  w.mcAnnotatedMode = false;
+  w.matchedProfile = null;
+  w.fileProfileMap = {};
+  w._profileAlreadySelected = false;
+  w.masterConfig = null;
+  // Explicitly reset format dropdown to auto
+  const _fmtEl = w.document.getElementById('formatType');
+  if (_fmtEl) _fmtEl.value = 'auto';
+}
+
+// ── Data file discovery ───────────────────────────────────────────────────────
+// ── Directory support helpers ──────────────────────────────────────────────────
+
+// Handle folder upload — reads all files and stores them in _uploadedFiles
+async function handleDirUpload(input) {
+  if (!input.files || !input.files.length) return;
+  _uploadedFiles = {};
+  _uploadedConfig = null;
+  let cfgCount = 0, dataCount = 0;
+
+  const reads = Array.from(input.files).map(file => new Promise((res, rej) => {
+    const reader = new FileReader();
+    const name = file.name;
+    reader.onload = e => {
+      _uploadedFiles[name] = e.target.result;
+      if (name.toLowerCase() === 'masterconfig.json') {
+        try { _uploadedConfig = JSON.parse(e.target.result); cfgCount++; } catch(err) {}
+      } else if (/\.(csv|txt|log|xls|xlsx)$/i.test(name)) {
+        dataCount++;
+      }
+      res();
+    };
+    reader.onerror = () => res(); // skip unreadable files
+    reader.readAsText(file);
+  }));
+  await Promise.all(reads);
+
+  const total = Object.keys(_uploadedFiles).length;
+  const badge = document.getElementById('dir-badge');
+  if (badge) {
+    badge.textContent = `✓ ${total} file(s): ${cfgCount ? '✅ MasterConfig' : '⚠ no MasterConfig'} · ${dataCount} data file(s)`;
+  }
+  if (_uploadedConfig) {
+    document.getElementById('cfgUrl').value = '(uploaded folder)';
+  }
+  console.log('[Dir Upload] ' + total + ' files loaded. Config=' + cfgCount + ' DataFiles=' + dataCount);
+}
+
+// Fetch a file: first check _uploadedFiles, then Base Directory, then default path
+async function fetchFile(name) {
+  // Priority 1: uploaded folder
+  if (_uploadedFiles[name] !== undefined) return _uploadedFiles[name];
+  // Priority 2: base directory URL override
+  const base = (document.getElementById('baseDir')?.value || '').trim().replace(/\/$/, '');
+  if (base) {
+    try {
+      const r = await fetch(base + '/' + name);
+      if (r.ok) return await r.text();
+    } catch(e) {}
+  }
+  // Priority 3: default server path
+  const r = await fetch('/' + name);
+  if (!r.ok) throw new Error(name + ' not found (HTTP ' + r.status + ')');
+  return r.text();
+}
+
+// Load MasterConfig — from upload, base dir, or default
+async function loadMasterConfig() {
+  if (_uploadedConfig) return _uploadedConfig;
+  const url = document.getElementById('cfgUrl').value.trim();
+  if (url === '(uploaded folder)' && _uploadedConfig) return _uploadedConfig;
+  const r = await fetch(url || '/MasterConfig.json');
+  if (!r.ok) throw new Error('Cannot load MasterConfig from ' + url);
+  // Get raw text so we can apply the auto-fix for missing commas in JSON arrays.
+  // Handles both space and tab indentation between consecutive string elements.
+  const raw = await r.text();
+  // Match: closing " followed by only whitespace/newlines then opening " — missing comma between JSON strings
+  const fixed = raw.replace(/"([ \t]*\r?\n[ \t]*)"(?=[A-Za-z\/])/g, '",\n"');
+  try {
+    return JSON.parse(fixed);
+  } catch(e) {
+    // Re-throw with position info from the fixed text
+    throw new Error(e.message);
+  }
+}
+
+async function discoverDataFiles() {
+  // Uploaded folder: return DataFile-named files
+  if (Object.keys(_uploadedFiles).length > 0) {
+    return Object.keys(_uploadedFiles).filter(n => n.toLowerCase().includes('datafile'));
+  }
+  // Base directory: fetch index and parse links
+  const base = (document.getElementById('baseDir')?.value || '').trim().replace(/\/$/, '');
+  if (base) {
+    try {
+      const r = await fetch(base + '/');
+      const text = await r.text();
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      return Array.from(doc.querySelectorAll('a'))
+        .map(a => a.textContent.trim())
+        .filter(n => n && n.toLowerCase().includes('datafile'));
+    } catch(e) {}
+  }
+  // Default: hosted server
+  try {
+    const r = await fetch('/');
+    const text = await r.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    return Array.from(doc.querySelectorAll('a'))
+      .map(a => a.textContent.trim())
+      .filter(n => n && n.toLowerCase().includes('datafile'));
+  } catch(e) { return []; }
+}
+
+async function cvDiscoverFiles() {
+  // Uploaded folder: all data files
+  if (Object.keys(_uploadedFiles).length > 0) {
+    return Object.keys(_uploadedFiles).filter(n => /\.(csv|log|txt|xls|xlsx)$/i.test(n));
+  }
+  // Base directory
+  const base = (document.getElementById('baseDir')?.value || '').trim().replace(/\/$/, '');
+  if (base) {
+    try {
+      const r = await fetch(base + '/');
+      const text = await r.text();
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      return Array.from(doc.querySelectorAll('a'))
+        .map(a => a.textContent.trim())
+        .filter(n => n && /\.(csv|log|txt|xls|xlsx)$/i.test(n));
+    } catch(e) {}
+  }
+  // Default server
+  try {
+    const r = await fetch('/');
+    const text = await r.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    return Array.from(doc.querySelectorAll('a'))
+      .map(a => a.textContent.trim())
+      .filter(n => n && /\.(csv|log|txt|xls|xlsx)$/i.test(n));
+  } catch(e) { return []; }
+}
+
+// ── Score all profiles ────────────────────────────────────────────────────────
+function scoreAllProfiles(raw, cfg, w) {
+  const fp = w.buildFileFingerprint(raw);
+  const fmt = w.detectFileFormat(raw);
+  fp.detectedFormat = fmt;
+  return cfg.profiles.map(p => ({ profile: p, score: w.scoreProfile(p, fp) }))
+    .sort((a,b) => b.score - a.score);
+}
+
+// ── Run parse and extract results ─────────────────────────────────────────────
+async function runParse(filename, raw, cfg, w) {
+  // Set up state
+  w.masterConfig = cfg;
+  w.rawFilesStore = {};
+  w.rawFilesStore[filename] = raw;
+
+  // Run processFilesFromUI
+  let parseError = null;
+  try { w.processFilesFromUI(); }
+  catch(e) { parseError = e.message; }
+
+  // Wait for async operations (profile modal auto-apply etc.)
+  await new Promise(r => setTimeout(r, 500));
+
+  // If modal appeared, auto-select the best profile and apply
+  const modal = w.document.getElementById('profile-modal');
+  if (modal && modal.classList.contains('active')) {
+    // Trust the pre-selected profile (already set to highest scoring match)
+    // Just click Apply — don't override the selection
+    try { w.document.getElementById('profile-btn-apply').click(); }
+    catch(e) {}
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  const fmt = w.detectFileFormat(raw);
+  const isMC = fmt === 'multiComp';
+
+  // Extract component data from the right store
+  let compIndexStore = {};
+  let parsedStore = {};
+  let kpiNames = {};
+
+  if (isMC) {
+    compIndexStore = JSON.parse(JSON.stringify(w.compIndexStore || {}));
+  } else {
+    // logPipe / flatCsv: data is in parsedFilesStore
+    parsedStore = JSON.parse(JSON.stringify(w.parsedFilesStore || {}));
+    // Also check activeLogData as fallback
+    if (!Object.keys(parsedStore).length && w.activeLogData && w.activeLogData.length) {
+      parsedStore[filename] = w.activeLogData.slice(0, 5000);
+    }
+  }
+
+  // Collect KPI friendly names
+  try {
+    (w.mcKpiNames || []).forEach((name, i) => { kpiNames['KPI_'+(i+1)] = name; });
+    Object.keys(w.mcHeaderStore || {}).forEach(k => {
+      const entry = w.mcHeaderStore[k];
+      if (entry && entry.tokenNameMap) Object.assign(kpiNames, entry.tokenNameMap);
+    });
+    // For flatCsv/logPipe, available tokens come from availableTokens
+    (w.availableTokens || []).forEach(t => { if (!kpiNames[t]) kpiNames[t] = t; });
+  } catch(e) {}
+
+  // Capture mcHeaderStore for per-component KPI name validation
+  let mcHdrStore = {};
+  try { mcHdrStore = JSON.parse(JSON.stringify(w.mcHeaderStore || {})); } catch(e) {}
+
+  // ── Trigger dashboard generation to create actual charts ─────────────────
+  let chartResults = [];
+  let ruleQueueSnapshot = [];
+  let dashboardError = null;
+  try {
+    // Bind data
+    if (!isMC) {
+      const fkeys = Object.keys(w.parsedFilesStore || {});
+      if (fkeys.length === 1) {
+        w.selectFile(fkeys[0], 0);
+      } else if (fkeys.length > 1) {
+        w.mergeAllAndSelect();
+      }
+    } else {
+      // For MC: make sure activeLogData is set so generateDashboard works
+      // selectFile expects a parsedFilesStore entry — for MC use first compKey data
+      const ckeys = Object.keys(w.compIndexStore || {});
+      if (ckeys.length > 0) {
+        // generateDashboard for MC reads from compIndexStore directly
+        // Just ensure selectedCompKeys is set if needed
+        if (w.activeCompKeys === undefined || !w.activeCompKeys?.length) {
+          // Set the selected component groups to all
+          const mcSel = w.document.querySelector('#mcCompSelect');
+          if (mcSel) {
+            Array.from(mcSel.options).forEach(o => { o.selected = true; });
+          }
+        }
+      }
+    }
+    await new Promise(r => setTimeout(r, 300));
+    // If ruleQueue still empty, try loading from profile directly
+    // (handles 'rwules' key and other profile variants the tool may not auto-load)
+    if (!w.ruleQueue?.length && w.matchedProfile) {
+      const pRules = w.matchedProfile.rules || w.matchedProfile.rwules || [];
+      if (pRules.length) {
+        pRules.forEach(function(ruleDef) {
+          const rule = Object.assign({}, ruleDef);
+          rule._sourceProfile = w.matchedProfile.name;
+          rule._profileLoaded = true;
+          if (!rule._mc && w.matchedProfile.format === 'multiComp') rule._mc = true;
+          w.ruleQueue.push(rule);
+        });
+      }
+    }
+    // Resize iframe to real dimensions BEFORE generateDashboard so charts render properly
+    const _activeIframe = (w === _cvW && _cvIframe) ? _cvIframe : _iframe;
+    if (_activeIframe) _activeIframe.style.cssText = 'position:fixed;left:0px;top:0px;width:960px;height:600px;z-index:-1;opacity:0.01;';
+    await new Promise(r => setTimeout(r, 200));
+
+    // Capture ruleQueue NOW (after profile applied and data bound)
+    ruleQueueSnapshot = JSON.parse(JSON.stringify(w.ruleQueue || []));
+    // Disable Chart.js animation so canvases are fully painted synchronously
+    try { if (w.Chart && w.Chart.defaults) w.Chart.defaults.animation = false; } catch(e) {}
+    // Generate dashboard
+    if (w.ruleQueue && w.ruleQueue.length > 0) {
+      w.generateDashboard();
+      // Wait for Chart.js to finish rendering — 2500ms covers all dataset sizes
+      await new Promise(r => setTimeout(r, 2500));
+
+      // Resize iframe to real dimensions BEFORE generating charts
+      // Charts must be created in a sized container or canvas stays 0-width
+      const _origStyle = _activeIframe ? _activeIframe.getAttribute('style') : null;
+      if (_activeIframe) _activeIframe.style.cssText = 'position:fixed;left:0px;top:0px;width:960px;height:600px;z-index:-1;opacity:0.01;';
+      await new Promise(r => setTimeout(r, 200)); // let browser lay out at new size
+
+      // Capture chart snapshots — capture canvas AS-IS (already rendered at correct size)
+      // DO NOT resize — the chart is already rendered correctly in the 960x600 iframe.
+      // Resizing and re-rendering takes too long and produces partial images.
+      const _origStyle2 = _activeIframe ? _activeIframe.getAttribute('style') : null;
+      chartResults = (w.chartInstances || []).map((chart, ci) => {
+        const wrapper = chart.canvas?.closest('.chart-wrapper');
+        const title = wrapper?.querySelector('h3')?.textContent || ('Chart-'+ci);
+        const datasets = chart.data.datasets.map(ds => ({
+          label: ds.label,
+          pointCount: (ds.data||[]).filter(v=>v!==null&&v!==undefined).length,
+          hasData: (ds.data||[]).some(v=>v!==null&&v!==undefined&&v!==0)
+        }));
+        // Capture the fully-rendered canvas directly — no resize needed
+        let snapshot = null;
+        try {
+          // Use canvas.toDataURL() directly — it captures current pixel buffer
+          snapshot = chart.canvas.toDataURL('image/png');
+        } catch(e) {
+          try { snapshot = chart.toBase64Image('image/png', 1.0); } catch(e2) {}
+        }
+        const isBlank = !snapshot || snapshot.length < 500;
+        return { title, datasetCount: datasets.length, datasets, snapshot: isBlank ? null : snapshot, canvasId: chart.canvas?.id };
+      });
+
+      // Restore iframe to offscreen
+      if (_activeIframe && _origStyle2 != null) _activeIframe.setAttribute('style', _origStyle2);
+    }
+  } catch(e) { dashboardError = e.message; }
+
+  return {
+    parseError, dashboardError,
+    fmt, isMC,
+    compIndexStore, parsedStore, kpiNames, mcHdrStore,
+    ruleQueueSnapshot, chartResults,
+    mcKeyFieldIndices: w.mcKeyFieldIndices || [],
+    mcKeyFieldLabels: w.mcKeyFieldLabels || [],
+    mcDataStartIndex: w.mcDataStartIndex || 5,
+    mcHeaderFileLines: (w.mcHeaderFileLines || []).slice(),
+    fileProfileMap: JSON.parse(JSON.stringify(w.fileProfileMap || {})),
+    bailoutFired: (w.document.querySelector('.log-entry') ?
+      Array.from(w.document.querySelectorAll('.log-entry'))
+        .some(e => e.textContent.includes('cardinality') || e.textContent.includes('Parse aborted') || e.textContent.includes('BAIL')) : false),
+    logEntries: w.document.querySelectorAll ?
+      Array.from(w.document.querySelectorAll('.log-entry')).slice(-20).map(e=>e.textContent) : [],
+    // ── Overlay field separation state ───────────────────────────────────────
+    mcOverlayFieldNames: w.mcOverlayFieldNames ? [...w.mcOverlayFieldNames] : [],
+    // Trigger overlay selector to get its options (enables/disables checkbox first)
+    kpiSelectorOptions: (() => {
+      try {
+        const sk = w.document.getElementById('selMcKpi');
+        return Array.from(sk?.options||[]).map(o=>({raw:o.value, display:o.textContent}));
+      } catch(e) { return []; }
+    })(),
+    overlaySelectorOptions: (() => {
+      try {
+        // Temporarily enable overlay mode to populate the selector
+        const cb = w.document.getElementById('mcOverlay');
+        if (cb && !cb.checked) {
+          cb.checked = true;
+          if (typeof w.toggleOverlayKey === 'function') w.toggleOverlayKey();
+          else if (typeof w.populateOverlayKeySelect === 'function') w.populateOverlayKeySelect();
+        }
+        const sk = w.document.getElementById('selOverlayKey');
+        return Array.from(sk?.options||[]).map(o=>({raw:o.value, display:o.textContent}));
+      } catch(e) { return []; }
+    })()
+  };
+}
+
+// ── Per-file validation ───────────────────────────────────────────────────────
+async function validateFile(filename, raw, cfg, w, log) {
+  const checks = [];
+  let overallStatus = 'pass';
+  const chk = (name, status, value, detail='') => {
+    checks.push({ name, status, value, detail });
+    if (status === 'fail') overallStatus = 'fail';
+    else if (status === 'warn' && overallStatus !== 'fail') overallStatus = 'warn';
+  };
+
+  // T1: File loaded
+  const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+  chk('File loaded', 'pass', lines.length + ' rows', filename);
+  log('Loaded ' + lines.length + ' rows', 'ok');
+
+  // T2: Format detection
+  const fmt = w.detectFileFormat(raw);
+  const fp = w.buildFileFingerprint(raw);
+  fp.detectedFormat = fmt;
+  chk('Format detected', 'pass', fmt,
+    'cols=' + fp.columnCount + '  col0=' + fp.fieldTypes[0] + '  col1=' + fp.fieldTypes[1]);
+  log('Format: ' + fmt + '  col0=' + fp.fieldTypes[0] + '  col1=' + fp.fieldTypes[1], 'info');
+
+  // T3: Profile scoring
+  const scored = scoreAllProfiles(raw, cfg, w);
+  const top = scored[0];
+  const topPct = (top.score*100).toFixed(0);
+  scored.forEach(s => log(s.profile.app + ': ' + (s.score*100).toFixed(0) + '%', 'info'));
+  const scoreStatus = top.score >= 0.80 ? 'pass' : top.score >= 0.60 ? 'warn' : 'fail';
+  chk('Profile matched', scoreStatus,
+    top.profile.app + ': ' + top.profile.name + ' (' + topPct + '%)',
+    top.score >= 0.80 ? 'Auto-applies (≥80%)' : top.score >= 0.60 ? 'Needs manual confirm (60–89%)' : 'No confident match (<60%)');
+  log('Top: ' + top.profile.app + ' @ ' + topPct + '%', top.score >= 0.80 ? 'ok' : 'warn');
+
+  // T4: Annotation match (multiComp profiles only)
+  if (top.profile.headers && top.profile.headers.mcHeaderFile) {
+    let hits = 0, total = 0;
+    const detail = [];
+    top.profile.headers.mcHeaderFile.forEach((hdrLine, li) => {
+      hdrLine.split(',').forEach((col, ci) => {
+        const p = w.parseMcHeaderCol(col.trim());
+        if (!p.label) return;
+        const av = p.val.trim();
+        if (av.toUpperCase() === 'XXX') return;
+        total++;
+        const hit = (fp.sampleValues[ci]||[]).some(v => v.trim() === av);
+        if (hit) hits++;
+        detail.push('L'+li+' col'+ci+'='+av+(hit?'✓':'✗'));
+      });
+    });
+    if (total > 0) {
+      chk('Annotation values', hits===total?'pass':hits>0?'warn':'fail',
+        hits+'/'+total+' static annotations match', detail.join('  '));
+      log('Annotations: '+hits+'/'+total+' hits', hits===total?'ok':'warn');
+    }
+  }
+
+  // T5: Key structure
+  const hdrLines = (top.profile.headers && top.profile.headers.mcHeaderFile) || [];
+  const savedHdrs = w.mcHeaderFileLines;
+  w.mcHeaderFileLines = hdrLines;
+  let keyResult;
+  try { keyResult = w.detectKeyStructure(raw.split(/\r?\n/).filter(l=>l.trim()), null); }
+  catch(e) { keyResult = { error: e.message }; }
+  w.mcHeaderFileLines = savedHdrs;
+
+  if (keyResult.error) {
+    chk('Key structure', 'fail', 'ERROR: ' + keyResult.error);
+  } else {
+    chk('Key structure', 'pass',
+      'keyIndices=['+keyResult.keyIndices.join(',')+'] dataStart='+keyResult.dataStartIndex,
+      (hdrLines.length ? 'Annotation-path' : 'Statistical-path') + '  labels=[' + (keyResult.keyLabels||[]).join(',')+']');
+    log('Keys=['+keyResult.keyIndices+'] dataStart='+keyResult.dataStartIndex, 'ok');
+  }
+
+  // T6: Run full parse
+  log('Running full parse…', 'info');
+  const parsed = await runParse(filename, raw, cfg, w);
+
+  if (parsed.bailoutFired) {
+    chk('Parse bail-out', 'warn', 'Bail-out triggered (sequence-number key detected)', 'Load MasterConfig first to prevent this');
+    log('BAIL-OUT: cardinality check fired', 'warn');
+  }
+
+  if (parsed.parseError) {
+    chk('Parse execution', 'fail', 'ERROR: ' + parsed.parseError);
+    log('Parse error: ' + parsed.parseError, 'err');
+  }
+
+  // T7: Component groups
+  const isMC = fmt === 'multiComp';
+  if (isMC) {
+    const compKeys = Object.keys(parsed.compIndexStore);
+    log('Component groups: ' + compKeys.length + ' → [' + compKeys.join(', ') + ']', compKeys.length > 0 ? 'ok' : 'err');
+    if (compKeys.length === 0) {
+      chk('Component groups', 'fail', '0 groups found',
+        parsed.mcKeyFieldIndices.length === 0 ? 'mcKeyFieldIndices=[] — MasterConfig may need loading first' :
+        'mcKeyFieldIndices='+JSON.stringify(parsed.mcKeyFieldIndices)+' but no data parsed');
+    } else if (compKeys.length > 500) {
+      chk('Component groups', 'fail', compKeys.length + ' groups — sequence-number as key!', '');
+    } else {
+      chk('Component groups', 'pass',
+        compKeys.length + ' group(s): [' + compKeys.slice(0,6).join(', ') + (compKeys.length>6?'…':'')+']',
+        'mcKeyFieldLabels=[' + parsed.mcKeyFieldLabels.join(',')+'] dataStart='+parsed.mcDataStartIndex);
+      compKeys.forEach(k => {
+        const r0 = parsed.compIndexStore[k]?.[0];
+        log('  ['+k+']: '+parsed.compIndexStore[k].length+' rows, tokens=[' + (r0?Object.keys(r0.tokens).join(','):'') + ']', 'ok');
+      });
+    }
+    // T8: KPI tokens
+    const compKeys2 = Object.keys(parsed.compIndexStore);
+    if (compKeys2.length > 0) {
+      const tokenCounts = compKeys2.map(k => (parsed.compIndexStore[k]?.[0] ? Object.keys(parsed.compIndexStore[k][0].tokens).length : 0));
+      const minT = Math.min(...tokenCounts), maxT = Math.max(...tokenCounts);
+      chk('KPI tokens/component', minT > 0 ? 'pass' : 'fail',
+        minT + (minT!==maxT?'–'+maxT:'') + ' KPIs per component',
+        'names: ' + Object.values(parsed.kpiNames).slice(0,6).join(', ') + (Object.keys(parsed.kpiNames).length>6?'…':''));
+    }
+  } else {
+    // flatCsv / logPipe
+    const parseKeys = Object.keys(parsed.parsedStore);
+    const totalRows = parseKeys.reduce((s,k) => s + (Array.isArray(parsed.parsedStore[k]) ? parsed.parsedStore[k].length : 0), 0);
+    log('Parsed rows: ' + totalRows + ' in ' + parseKeys.length + ' file(s)', totalRows > 0 ? 'ok' : 'err');
+    if (totalRows === 0) {
+      chk('Data parsed', 'fail', '0 rows extracted', 'Check format detection and pattern filter');
+    } else {
+      const sampleTokens = parseKeys.length > 0 && parsed.parsedStore[parseKeys[0]]?.[0] ?
+        Object.keys(parsed.parsedStore[parseKeys[0]][0].tokens) : [];
+      chk('Data parsed', 'pass', totalRows + ' rows, ' + sampleTokens.length + ' KPI tokens/row',
+        'tokens: ' + sampleTokens.slice(0,6).join(', ') + (sampleTokens.length>6?'…':''));
+      sampleTokens.slice(0,4).forEach(t => log('  token: ' + t, 'info'));
+    }
+  }
+
+  // T9: Freeze risk
+  const groupCount = isMC ? Object.keys(parsed.compIndexStore).length : 1;
+  if (groupCount > 500) chk('Freeze risk', 'fail', groupCount + ' groups — will freeze UI', '');
+  else if (groupCount > 50) chk('Freeze risk', 'warn', groupCount + ' groups — high but within limit', '');
+  else chk('Freeze risk', 'pass', groupCount + ' group(s) — safe', '');
+
+  // ── T10-T12: MC Component KPI Validation ─────────────────────────────────
+  let mcKpiValidation = [];
+  let mcKpiGaps = [];
+  if (isMC && Object.keys(parsed.compIndexStore).length > 0) {
+    const mcHdrStore = parsed.mcHdrStore || {};
+    const prof = top.profile;
+    const kIdx  = parsed.mcKeyFieldIndices || [];
+    const dSt   = parsed.mcDataStartIndex  || 5;
+
+    // Helper: find best-matching header line for a component key
+    // Uses annotation-based matching (mirrors _processMcHeaderLines in the tool):
+    // extracts non-XXX annotated column values directly from the header line,
+    // then compares them against the component key parts in order.
+    // This is robust regardless of which kIdx the data-detection produced.
+    function findBestHdr(ck) {
+      const parts = ck.split('|');
+      let best = null, bestScore = -1;
+      (prof.headers?.mcHeaderFile || []).forEach((line, li) => {
+        const cols = line.split(',').map(c=>c.trim());
+        // Scan header: collect static (non-XXX) key values AND count XXX wildcard positions
+        // between the static keys (these match any instance-specific value in the component key)
+        const staticVals = [];
+        let xxxCount = 0;
+        let inKeyZone = false;
+        for (let ci = 0; ci < cols.length; ci++) {
+          const col = cols[ci];
+          const mv = col.match(/^(.+?)\(([^)]+)\)$/);
+          if (!mv) {
+            if (inKeyZone) break; // first non-annotated col after keys = data start
+            continue; // date/time/seq cols before keys
+          }
+          inKeyZone = true;
+          const val = mv[2].trim();
+          if (val.toUpperCase() === 'XXX') { xxxCount++; continue; } // wildcard — matches any value
+          staticVals.push(val);
+        }
+        if (staticVals.length === 0) return;
+        // Match static parts first (in order), remaining parts are covered by XXX wildcards
+        let ok = true, score = 0, pi = 0;
+        for (let si = 0; si < staticVals.length; si++) {
+          if (pi >= parts.length) { ok = false; break; }
+          if (staticVals[si] === parts[pi]) { score += 10; pi++; }
+          else { ok = false; break; }
+        }
+        // Remaining parts (after static matches) must be <= xxxCount (wildcard slots)
+        const remaining = parts.length - pi;
+        if (ok && remaining > xxxCount) ok = false;
+        if (ok && score > bestScore) { bestScore=score; best={li,line,cols,score}; }
+      });
+      return best;
+    }
+
+    const compKeys = Object.keys(parsed.compIndexStore).sort();
+    compKeys.forEach(ck => {
+      const entry    = mcHdrStore[ck] || {};
+      const kpiNames = entry.kpiNames  || [];
+      const rows     = parsed.compIndexStore[ck];
+      const r0       = rows?.[0];
+      const toolToks = r0 ? Object.keys(r0.tokens) : [];
+      const named    = kpiNames.filter(n=>n&&!n.startsWith('KPI_')).length;
+
+      const hdr = findBestHdr(ck);
+      const cfgKPIs = hdr
+        ? hdr.cols.slice(dSt).map(c=>{ const m=c.match(/^(.+?)\(([^)]+)\)$/); return m?m[1].trim():c; }).filter(n=>n)
+        : [];
+
+      const perKpi = toolToks.map((tok,i) => ({
+        pos: i+1, token: tok,
+        toolName: kpiNames[i] || '(unnamed)',
+        cfgName:  cfgKPIs[i]  || '(missing in config)',
+        match: (kpiNames[i]||'') !== '' && (kpiNames[i]||'') === (cfgKPIs[i]||'')
+      }));
+      const overlayToks = Object.entries(r0?.tokens||{})
+        .filter(([,v])=>typeof v==='string'&&isNaN(Number(v))&&v!=='')
+        .map(([k])=>kpiNames[parseInt(k.replace('KPI_',''))-1]||k);
+
+      const mismatched = perKpi.filter(k=>!k.match);
+      const status = !hdr                         ? '❌ NO_HEADER'
+                   : toolToks.length!==cfgKPIs.length ? '⚠ COUNT_MISMATCH'
+                   : mismatched.length>0          ? '⚠ NAME_MISMATCH'
+                   : '✅ PASS';
+
+      // Build sample rows for ALL non-PASS statuses — reconstruct full column layout
+      let sampleRows = [];
+      let hdrMatchAttempts = []; // why each header line failed (NO_HEADER only)
+      if (rows && rows.length > 0) {
+        const keyParts = ck.split('|');
+        for (let si = 0; si < Math.min(2, rows.length); si++) {
+          const sr = rows[si];
+          const [srDate, srTime] = (sr.timestamp||'?,?').split(',');
+          const tokenVals = Object.values(sr.tokens||{});
+          // Place every column at its actual position using kIdx/dSt
+          const totalCols = dSt + tokenVals.length;
+          const colArr = new Array(totalCols).fill('?');
+          colArr[0] = srDate||'?'; colArr[1] = srTime||'?';
+          kIdx.forEach((ki, i) => { if (ki < totalCols) colArr[ki] = keyParts[i] !== undefined ? keyParts[i] : '?'; });
+          tokenVals.forEach((tv, i) => { colArr[dSt + i] = tv; });
+          sampleRows.push(colArr.join(','));
+        }
+      }
+      // For NO_HEADER: additionally build header match diagnostic
+      if (!hdr && rows && rows.length > 0) {
+        const keyParts = ck.split('|');
+        // Why each config header line failed to match this component
+        // Use annotation-based matching (same as findBestHdr fix above)
+        (prof.headers?.mcHeaderFile || []).forEach((line, li) => {
+          const cols = line.split(',').map(c=>c.trim());
+          const staticVals = [], xxxFields = [];
+          let dsi = cols.length;
+          for (let ci = 0; ci < cols.length; ci++) {
+            const col = cols[ci];
+            const mv = col.match(/^(.+?)\(([^)]+)\)$/);
+            if (!mv) { if (staticVals.length > 0) { dsi = ci; break; } continue; }
+            const val = mv[2].trim(), label = mv[1].trim();
+            if (val.toUpperCase() === 'XXX') { xxxFields.push(label); continue; }
+            staticVals.push({val, label, ci});
+          }
+          const reasons = [];
+          let matchOk = true;
+          if (staticVals.length === 0) {
+            reasons.push('No annotated key columns found in header line');
+            matchOk = false;
+          } else {
+            // Match static values first, then treat remaining parts as wildcard (XXX) matches
+            let pi = 0;
+            for (let si = 0; si < staticVals.length; si++) {
+              if (pi >= keyParts.length) break;
+              if (staticVals[si].val === keyParts[pi]) { reasons.push(staticVals[si].label+'('+staticVals[si].val+') ✓'); pi++; }
+              else { reasons.push(staticVals[si].label+'('+staticVals[si].val+') ≠ "'+keyParts[pi]+'"'); matchOk=false; break; }
+            }
+            if (matchOk) {
+              const remaining = keyParts.length - pi;
+              if (remaining > 0 && xxxFields.length >= remaining) {
+                reasons.push('['+keyParts.slice(pi).join(', ')+'] matched by XXX wildcard(s): ['+xxxFields.join(', ')+'] ✓');
+              } else if (remaining > 0) {
+                reasons.push(remaining+' key part(s) unmatched — only '+xxxFields.length+' XXX wildcard slot(s) available');
+                matchOk = false;
+              }
+            }
+          }
+          hdrMatchAttempts.push({ li, linePreview: line.substring(0,70), reasons, matchOk });
+        });
+      }
+
+      const v = { key:ck, rows:rows?.length, hdrLine:hdr?'L'+hdr.li:'—',
+                  toolCount:toolToks.length, cfgCount:cfgKPIs.length,
+                  named, perKpi, mismatched, overlayToks,
+                  kpiNames:kpiNames.slice(0,8), cfgKPIs:cfgKPIs.slice(0,8), status,
+                  sampleRows, hdrMatchAttempts };
+      mcKpiValidation.push(v);
+
+      if (status !== '✅ PASS') {
+        const gap = { key:ck, status, toolCount:toolToks.length, cfgCount:cfgKPIs.length, sampleRows, hdrMatchAttempts };
+        if (!hdr) gap.finding = 'No matching header line in MasterConfig — add header for RecordType('+ck.split('|')[0]+')|AppId('+ck.split('|')[1]+')|KPIGroup('+ck.split('|')[2]+')';
+        else if (toolToks.length > cfgKPIs.length) gap.finding = 'Config header defines '+cfgKPIs.length+' KPI names but data has '+toolToks.length+' columns — add '+(toolToks.length-cfgKPIs.length)+' KPI name(s) to header line L'+hdr.li;
+        else if (toolToks.length < cfgKPIs.length) gap.finding = 'Config header defines '+cfgKPIs.length+' KPI names but data only has '+toolToks.length+' columns — remove '+(cfgKPIs.length-toolToks.length)+' KPI name(s) from header line L'+hdr.li;
+        else gap.finding = mismatched.map(m=>'pos '+m.pos+': tool="'+m.toolName+'" cfg="'+m.cfgName+'"').join('; ');
+        gap.mismatched = mismatched.slice(0,5);
+        mcKpiGaps.push(gap);
+      }
+
+      log('['+ck+'] '+status+' tool='+toolToks.length+' cfg='+cfgKPIs.length+(hdr?' hdr=L'+hdr.li:' NO_HDR'), status==='✅ PASS'?'ok':status.startsWith('❌')?'err':'warn');
+    });
+
+    // T10: MC component count vs header line coverage
+    const noHdr = mcKpiValidation.filter(v=>v.status==='❌ NO_HEADER').length;
+    chk('MC header coverage', noHdr===0 ? 'pass' : 'fail',
+      noHdr===0 ? 'All '+compKeys.length+' components have a matching header line'
+                : noHdr+' component(s) have NO matching header line',
+      noHdr>0 ? mcKpiValidation.filter(v=>v.status==='❌ NO_HEADER').map(v=>v.key).join(', ') : '');
+
+    // T11: KPI count match (tool tokens == config header KPIs)
+    const countMismatch = mcKpiValidation.filter(v=>v.status==='⚠ COUNT_MISMATCH').length;
+    chk('MC KPI count match', countMismatch===0 ? 'pass' : 'warn',
+      countMismatch===0 ? 'All components: tool KPI count matches config'
+                        : countMismatch+' component(s) have count mismatch',
+      countMismatch>0 ? mcKpiValidation.filter(v=>v.status==='⚠ COUNT_MISMATCH')
+          .map(v=>v.key+' tool='+v.toolCount+' cfg='+v.cfgCount).join('; ') : '');
+
+    // T12: KPI naming (all KPIs named, no generic KPI_N)
+    const unnamed = mcKpiValidation.filter(v=>v.named < v.toolCount);
+    const unnamedTotal = mcKpiValidation.reduce((s,v)=>s+Math.max(0,v.toolCount-v.named),0);
+    chk('MC KPI naming', unnamed.length===0 ? 'pass' : 'warn',
+      unnamed.length===0 ? 'All KPIs have friendly names from config headers'
+                         : unnamedTotal+' unnamed KPI(s) across '+unnamed.length+' component(s)',
+      unnamed.length>0 ? unnamed.slice(0,4).map(v=>v.key+': '+(v.toolCount-v.named)+' unnamed').join('; ') : '');
+  }
+
+  // ── T13: Rules loaded from profile ──────────────────────────────────────
+  const ruleQ = parsed.ruleQueueSnapshot || [];
+  const profRules = top.profile.rules || top.profile.rwules || [];
+  if (profRules.length === 0) {
+    chk('Rules loaded', 'warn', '0 rules in MasterConfig profile',
+        'Add rules[] to the '+top.profile.app+' profile in MasterConfig.json');
+    log('No rules defined in MasterConfig for '+top.profile.app, 'warn');
+  } else {
+    const loadedCount = ruleQ.length;
+    chk('Rules loaded', loadedCount === profRules.length ? 'pass' : 'warn',
+        loadedCount+'/'+profRules.length+' rules loaded from profile',
+        profRules.map(r=>r.header).join(', '));
+    log('Rules: '+loadedCount+' loaded ('+profRules.map(r=>r.header).slice(0,3).join(', ')+'...)', loadedCount>0?'ok':'warn');
+  }
+
+  // ── T14: Dashboard charts generated ───────────────────────────────────────
+  const charts = parsed.chartResults || [];
+  if (parsed.dashboardError) {
+    chk('Charts generated', 'fail', 'Dashboard error: '+parsed.dashboardError, '');
+    log('Dashboard error: '+parsed.dashboardError, 'err');
+  } else if (ruleQ.length === 0) {
+    chk('Charts generated', 'warn', '0 charts — no rules to generate from', 'Add rules to MasterConfig profile');
+  } else if (charts.length === 0) {
+    chk('Charts generated', 'fail', '0 charts generated from '+ruleQ.length+' rules',
+        'Check data binding — selectFile/mergeAllAndSelect may not have found data');
+    log('Dashboard generated 0 charts', 'err');
+  } else {
+    const chartsWithData = charts.filter(c=>c.datasets.some(d=>d.hasData));
+    // Only FAIL if zero charts have data; WARN only if ALL charts are empty (not just some)
+    // Sparse data legitimately produces 0-value charts (e.g. DNS stats with no traffic)
+    const chartStatus = chartsWithData.length === ruleQ.length ? 'pass'
+                      : chartsWithData.length === 0 ? 'fail' : 'pass';
+    const chartDetail = chartsWithData.length < charts.length
+        ? charts.filter(c=>!c.datasets.some(d=>d.hasData)).map(c=>'"'+c.title+'" has all-zero data').join('; ')
+        : '';
+    chk('Charts generated', chartStatus,
+        charts.length+' chart(s) created, '+chartsWithData.length+' with data'+(chartDetail?' ('+chartDetail+')':''),
+        charts.map(c=>'"'+c.title+'" ('+c.datasetCount+' series)').join('; '));
+    charts.forEach(c => log('Chart: "'+c.title+'" '+c.datasetCount+' datasets, hasData='+c.datasets.some(d=>d.hasData), c.datasets.some(d=>d.hasData)?'ok':'warn'));
+  }
+
+  // ── T15: Chart-to-rule match validation ──────────────────────────────────
+  if (charts.length > 0 && profRules.length > 0) {
+    // Each rule must have a matching chart (title contains rule header)
+    const unmatched = profRules.filter(rule => {
+      return !charts.some(c => c.title && c.title.toLowerCase().includes(rule.header.toLowerCase()));
+    });
+    // Token match: only check non-KPI_N tokens (KPI_N are positional refs, not label names)
+    // For MC rules, tokens are KPI_1, KPI_7 etc → skip, check dataset count instead
+    let tokenMismatches = 0, tokenChecks = 0;
+    const tokenDetail = [];
+    ruleQ.forEach(rule => {
+      const matchingChart = charts.find(c => c.title && c.title.toLowerCase().includes(rule.header.toLowerCase()));
+      if (!matchingChart) return;
+      // For ratio rules, first token is the denominator (not plotted) — skip it
+      const ruleTokens = (rule.mode === 'ratio')
+          ? (rule.tokens||[]).slice(1)
+          : (rule.tokens||[]);
+      const checkableTokens = ruleTokens.filter(tok => !/^KPI_\d+$/.test(tok));
+      if (checkableTokens.length === 0) {
+        // MC rule with KPI_N tokens — verify dataset count matches token count instead
+        const expectedCount = (rule.tokens||[]).length;
+        const actualCount = matchingChart.datasetCount;
+        if (actualCount < expectedCount) {
+          tokenMismatches++;
+          tokenDetail.push(rule.header+': expected '+expectedCount+' datasets, got '+actualCount);
+        }
+      } else {
+        checkableTokens.forEach(tok => {
+          tokenChecks++;
+          const found = matchingChart.datasets.some(d => d.label && d.label.toLowerCase().includes(tok.toLowerCase()));
+          if (!found) { tokenMismatches++; tokenDetail.push(rule.header+': "'+tok+'" not in datasets'); }
+        });
+      }
+    });
+    // Status: FAIL only if rules have no chart; WARN if token count mismatches; PASS otherwise
+    const matchStatus = unmatched.length > 0 ? 'fail'
+                      : tokenMismatches > 0 ? 'warn' : 'pass';
+    chk('Chart-rule match', matchStatus,
+        (profRules.length - unmatched.length)+'/'+profRules.length+' rules have matching charts',
+        unmatched.length > 0 ? 'Missing charts for: '+unmatched.map(r=>r.header).join(', ')
+                              : tokenMismatches > 0 ? tokenDetail.slice(0,3).join('; ')
+                              : 'All rules matched with correct datasets');
+    log('Chart-rule match: '+unmatched.length+' unmatched, '+tokenMismatches+' dataset mismatches',
+        matchStatus==='pass'?'ok':matchStatus==='warn'?'warn':'err');
+  }
+
+  // ── T16: Overlay fields contain ONLY XXX-annotated columns ───────────────
+  // Overlay selector must show only Name(XXX) columns — not regular numeric KPI metrics.
+  // Applies to MC files only; skip for logPipe/flatCsv which have no overlay concept.
+  if (isMC) {
+    const overlayOpts = parsed.overlaySelectorOptions || [];
+    const overlayNames = parsed.mcOverlayFieldNames || [];
+    const hasOverlayDefined = overlayNames.length > 0;
+
+    if (!hasOverlayDefined) {
+      // No XXX fields in this file — overlay selector should show placeholder, not KPI metrics
+      const ovHasRealOptions = overlayOpts.length > 0 && !overlayOpts.some(o => o.display.includes('no XXX'));
+      chk('Overlay fields: XXX-only', ovHasRealOptions ? 'warn' : 'pass',
+          ovHasRealOptions
+            ? overlayOpts.length + ' option(s) in overlay but no XXX fields registered — possible leak'
+            : 'No XXX overlay fields in this file (placeholder shown)',
+          overlayNames.length === 0 ? 'Header has no Name(XXX) annotations' : '');
+      log('T16: No XXX overlay fields defined for this file', 'ok');
+    } else {
+      // XXX fields exist — check overlay options vs names present in SELECTED component's tokens
+      // (not all registered names — different components have different XXX fields)
+      const compKeys = Object.keys(parsed.compIndexStore || {});
+      const firstComp = compKeys[0];
+      const compTokenKeys = firstComp
+          ? Object.keys((parsed.compIndexStore[firstComp]?.[0]?.tokens) || {}) : [];
+      // Only check overlay names that actually exist in this component's tokens
+      const expectedInComp = overlayNames.filter(name =>
+          compTokenKeys.some(tk => tk === name ||
+              (parsed.kpiNames && parsed.kpiNames[tk] === name))
+      );
+      // T16 core check: nothing non-XXX should appear in the overlay selector
+      // Different components have different XXX subsets, so "missing" is expected/normal
+      const nonXxxInOverlay = overlayOpts.filter(o =>
+          !o.display.includes('no XXX') &&
+          !overlayNames.includes(o.raw) &&
+          !overlayNames.includes(o.display)
+      );
+      const ovShown = overlayOpts.filter(o => !o.display.includes('no XXX'));
+      // FAIL only if non-XXX fields snuck into overlay; PASS if overlay is clean
+      const ovStatus = nonXxxInOverlay.length > 0 ? 'fail' : 'pass';
+      chk('Overlay fields: XXX-only', ovStatus,
+          nonXxxInOverlay.length > 0
+            ? nonXxxInOverlay.length + ' non-XXX field(s) found in overlay selector'
+            : ovShown.length > 0
+              ? ovShown.length + ' overlay field(s) shown, all XXX: [' + ovShown.map(o=>o.display).join(', ') + ']'
+              : 'No XXX fields visible for selected component (placeholder shown)',
+          nonXxxInOverlay.length > 0
+            ? 'Non-XXX in overlay: [' + nonXxxInOverlay.map(o=>o.display).join(', ') + ']'
+            : 'All registered XXX fields: [' + overlayNames.join(', ') + ']');
+      log('T16 overlay: shown=' + ovShown.length + ', non-XXX-leaks=' + nonXxxInOverlay.length,
+          ovStatus==='pass'?'ok':'err');
+    }
+  }
+
+  // ── T17: KPI Metrics selector has NO XXX overlay fields ──────────────────
+  // The KPI Metrics selector must never contain Name(XXX) overlay-only fields.
+  // If it does, overlay fields are leaking into chart metric selection.
+  if (isMC) {
+    const kpiOpts  = parsed.kpiSelectorOptions || [];
+    const overlayNames = parsed.mcOverlayFieldNames || [];
+
+    if (overlayNames.length === 0) {
+      // No XXX fields → trivially pass (nothing to leak)
+      chk('KPI Metrics: no XXX fields', 'pass',
+          'No XXX overlay fields defined — KPI Metrics selector clean by default', '');
+      log('T17: No XXX fields to check against KPI Metrics selector', 'ok');
+    } else {
+      // Check if any overlay field appears in selMcKpi
+      const xxxInKpi = kpiOpts.filter(o =>
+          overlayNames.includes(o.raw) || overlayNames.includes(o.display)
+      );
+      const kpiStatus = xxxInKpi.length > 0 ? 'fail' : 'pass';
+      chk('KPI Metrics: no XXX fields', kpiStatus,
+          kpiStatus === 'pass'
+            ? kpiOpts.length + ' KPI metric(s) — none are XXX overlay fields ✓'
+            : xxxInKpi.length + ' XXX overlay field(s) found in KPI Metrics selector (should be in Overlay only)',
+          kpiStatus === 'fail'
+            ? 'XXX fields leaking into KPI Metrics: [' + xxxInKpi.map(o=>o.display).join(', ') + ']'
+            : 'KPI Metrics: [' + kpiOpts.slice(0,5).map(o=>o.display).join(', ') + (kpiOpts.length>5?'…':'') + ']');
+      log('T17 KPI Metrics: '+kpiOpts.length+' options, '+xxxInKpi.length+' XXX leaks',
+          kpiStatus==='pass'?'ok':'err');
+    }
+  }
+
+  return { filename, checks, logs: [], overallStatus, scored, fmt, isMC,
+           compIndexStore: parsed.compIndexStore, parsedStore: parsed.parsedStore,
+           kpiNames: parsed.kpiNames, fp,
+           mcKeyFieldLabels: parsed.mcKeyFieldLabels, mcDataStartIndex: parsed.mcDataStartIndex,
+           topProfile: top.profile, topScore: top.score, iframeLogs: parsed.logEntries,
+           mcKpiValidation, mcKpiGaps,
+           ruleQueueSnapshot: parsed.ruleQueueSnapshot || [],
+           chartResults: parsed.chartResults || [],
+           profRules: top.profile.rules || top.profile.rwules || [],
+           mcOverlayFieldNames: parsed.mcOverlayFieldNames || [],
+           kpiSelectorOptions: parsed.kpiSelectorOptions || [],
+           overlaySelectorOptions: parsed.overlaySelectorOptions || [] };
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+let _chartInstances = [];
+let _allResults = [];  // accumulated for XLSX export
+
+function renderCard(result, idx, logs) {
+  const { filename, checks, overallStatus, scored, fmt, isMC,
+          compIndexStore, parsedStore, kpiNames, topProfile, topScore, iframeLogs } = result;
+
+  const passN = checks.filter(c=>c.status==='pass').length;
+  const failN = checks.filter(c=>c.status==='fail').length;
+  const warnN = checks.filter(c=>c.status==='warn').length;
+  const badge = overallStatus==='pass' ? '✅ PASS' : overallStatus==='fail' ? '❌ FAIL' : '⚠ WARN';
+
+  const scoresHtml = scored.map(s => {
+    const pct = (s.score*100).toFixed(0);
+    const cls = s.score>=0.80?'top':s.score>=0.60?'mid':'low';
+    const clr = s.score>=0.80?'#3fb950':s.score>=0.60?'#d29922':'#f85149';
+    return `<div class="score-card">
+      <div class="score-app">${s.profile.app||s.profile.name}</div>
+      <div class="score-pct ${cls}">${pct}%</div>
+      <div style="font-size:.7em;color:#666;margin-top:1px">${s.profile.name}</div>
+      <div class="score-bar"><div class="score-bar-fill" style="width:${pct}%;background:${clr}"></div></div>
+    </div>`;
+  }).join('');
+
+  const checksHtml = checks.map(c => {
+    const icon = c.status==='pass'?'✓':c.status==='fail'?'✗':c.status==='warn'?'⚠':'ℹ';
+    return `<div class="chk ${c.status}">
+      <span class="chk-icon">${icon}</span>
+      <span class="chk-name">${c.name}</span>
+      <span class="chk-val">${c.value}${c.detail?'<br><span style="color:#666;font-size:.9em">'+c.detail+'</span>':''}</span>
+    </div>`;
+  }).join('');
+
+  // Components / rows
+  let dataHtml = '';
+  if (isMC) {
+    const compKeys = Object.keys(compIndexStore);
+    if (compKeys.length) {
+      const tilesHtml = compKeys.slice(0,8).map(k => {
+        const r0 = compIndexStore[k]?.[0];
+        const tokens = r0 ? Object.keys(r0.tokens) : [];
+        const friendlyNames = tokens.map(t => kpiNames[t]||t).slice(0,4);
+        return `<div class="comp-tile">
+          <div class="comp-key">[${k}]</div>
+          <div class="comp-info">${compIndexStore[k].length} rows</div>
+          <div class="comp-info">${friendlyNames.join(', ')}${tokens.length>4?'…':''}</div>
+        </div>`;
+      }).join('') + (compKeys.length>8?`<div class="comp-tile"><div class="comp-key">…+${compKeys.length-8} more</div></div>`:'');
+      dataHtml += `<hr><div class="section-lbl">Component Groups</div><div class="comp-grid">${tilesHtml}</div>`;
+
+      // Mini charts (up to 4)
+      const chartKeys = compKeys.slice(0,4);
+      const chartsHtml = chartKeys.map((k,ci) =>
+        `<div><div style="font-size:.75em;color:#888;margin-bottom:4px">[${k}] — ${compIndexStore[k].length} rows</div>
+        <div class="chart-wrap"><canvas id="chrt-${idx}-${ci}" height="130"></canvas></div></div>`
+      ).join('');
+      if (chartsHtml) {
+        dataHtml += `<hr><div class="section-lbl">KPI Snapshots</div><div class="charts-grid">${chartsHtml}</div>`;
+      }
+
+      // ── MC KPI Validation table ─────────────────────────────────────────
+      const kpiVal = result.mcKpiValidation || [];
+      if (kpiVal.length > 0) {
+        const passV=kpiVal.filter(v=>v.status==='✅ PASS').length;
+        const rows=kpiVal.map(v=>{
+          const stc=v.status==='✅ PASS'?'#3fb950':v.status.startsWith('❌')?'#f85149':'#d29922';
+          const kpiSamp=v.kpiNames.slice(0,4).join(', ')+(v.kpiNames.length>4?'…':'');
+          const sampleHtml = (v.status!=='✅ PASS')
+            ? (() => {
+                let d = '';
+                const isNoHdr = v.status === '❌ NO_HEADER';
+                const isMismatch = v.status === '⚠ COUNT_MISMATCH' || v.status === '⚠ NAME_MISMATCH';
+                // NO_HEADER: match attempt diagnostic
+                if (isNoHdr && v.hdrMatchAttempts?.length) {
+                  d += '<div style="margin-top:4px;padding:4px 6px;background:#0a0e14;border-radius:3px;border-left:2px solid #d29922;font-size:.72em;">';
+                  d += '<div style="color:#d29922;margin-bottom:2px;font-weight:700;">Why no header matched:</div>';
+                  d += v.hdrMatchAttempts.map(a=>
+                    `<div style="margin-bottom:2px;"><span style="color:#6e7681">L${a.li}:</span> `+
+                    a.reasons.map(r=>`<span style="color:${r.includes('✓')?'#3fb950':r.includes('≠')||r.includes('missing')?'#f85149':'#d29922'}">${r}</span>`).join(' ')+'</div>'
+                  ).join('');
+                  d += '</div>';
+                }
+                // COUNT/NAME MISMATCH: show config KPI names for comparison
+                if (isMismatch && v.cfgKPIs?.length) {
+                  d += '<div style="margin-top:4px;padding:4px 6px;background:#0a0e14;border-radius:3px;border-left:2px solid #d29922;font-size:.72em;">';
+                  d += `<div style="color:#d29922;margin-bottom:2px;font-weight:700;">${v.hdrLine} defines ${v.cfgCount} KPI(s) in config:</div>`;
+                  d += `<div style="color:#8b949e;font-family:monospace;word-break:break-all">${v.cfgKPIs.join(', ')}</div>`;
+                  d += '</div>';
+                }
+                // Sample data rows for all non-PASS
+                if (v.sampleRows?.length) {
+                  d += '<div style="margin-top:3px;padding:4px 6px;background:#0d1117;border-radius:3px;border-left:2px solid #58a6ff;font-family:monospace;font-size:.72em;color:#8b949e;word-break:break-all">';
+                  d += `<div style="color:#58a6ff;margin-bottom:2px;">${isNoHdr?'Sample rows:':'Sample data ('+v.toolCount+' KPI columns detected):'}</div>`;
+                  d += v.sampleRows.map((s,i)=>'<div style="color:#6e7681;font-size:.85em;">row '+(i+1)+':</div><div>'+s+'</div>').join('');
+                  if (isNoHdr) d += '<div style="color:#58a6ff;font-size:.78em;margin-top:3px;">↑ Add a header line matching these key positions</div>';
+                  if (isMismatch) d += `<div style="color:#d29922;font-size:.78em;margin-top:3px;">Data: ${v.toolCount} KPIs · Config: ${v.cfgCount} KPIs</div>`;
+                  d += '</div>';
+                }
+                return d;
+              })()
+            : '';
+          const gap=v.status!=='✅ PASS'?`<br><span style="color:#d29922;font-size:.78em">${
+            v.status==='❌ NO_HEADER'?'Add header line to MasterConfig':
+            v.toolCount>(v.cfgCount||0)?'Config too short — add '+(v.toolCount-(v.cfgCount||0))+' KPI(s) to '+v.hdrLine:
+            v.toolCount<(v.cfgCount||0)?'Config too long — remove '+((v.cfgCount||0)-v.toolCount)+' KPI(s) from '+v.hdrLine:
+            (v.mismatched?.length||0)+' name mismatch(es) at '+(v.mismatched||[]).slice(0,2).map(m=>'pos'+m.pos).join(',')
+          }</span>${sampleHtml}`:'';
+          return `<tr style="border-bottom:1px solid #30363d">
+            <td style="padding:4px 8px;font-family:monospace;font-size:.78em;color:#79c0ff">${v.key}</td>
+            <td style="padding:4px 8px;text-align:center;font-weight:700;color:${stc}">${v.status}</td>
+            <td style="padding:4px 8px;text-align:center;color:#8b949e">${(v.rows||0).toLocaleString()}</td>
+            <td style="padding:4px 8px;text-align:center">${v.toolCount}</td>
+            <td style="padding:4px 8px;text-align:center">${v.cfgCount||'—'}</td>
+            <td style="padding:4px 8px;text-align:center;color:#8b949e">${v.hdrLine}</td>
+            <td style="padding:4px 8px;font-size:.74em;color:#8b949e;max-width:240px">${kpiSamp}${gap}</td>
+          </tr>`;
+        }).join('');
+        dataHtml += `<hr>
+          <div class="section-lbl">MC Component KPI Validation (${passV}/${kpiVal.length} pass)</div>
+          <div style="overflow-x:auto;margin-bottom:10px">
+          <table style="width:100%;border-collapse:collapse;font-size:.82em">
+            <thead><tr style="background:rgba(255,255,255,.05);text-align:left">
+              <th style="padding:5px 8px">Component Key</th><th style="padding:5px 8px">Status</th>
+              <th style="padding:5px 8px">Rows</th><th style="padding:5px 8px">Tool</th>
+              <th style="padding:5px 8px">Config</th><th style="padding:5px 8px">Hdr</th>
+              <th style="padding:5px 8px">KPI Sample / Finding</th>
+            </tr></thead><tbody>${rows}</tbody>
+          </table></div>`;
+
+        // Gaps section
+        const gaps=result.mcKpiGaps||[];
+        if(gaps.length>0){
+          const gRows=gaps.map(g=>{
+            const sampleRec = (g.status==='❌ NO_HEADER')
+              ? (() => {
+                  let html2 = '<div style="margin-top:5px;font-size:.75em;">';
+                  // Why existing headers didn't match
+                  if (g.hdrMatchAttempts?.length) {
+                    html2 += '<div style="padding:4px 8px;background:#0a0e14;border-radius:4px;border-left:2px solid #444;margin-bottom:4px;">';
+                    html2 += '<div style="color:#d29922;margin-bottom:3px;font-weight:700;">Why existing headers did not match:</div>';
+                    html2 += g.hdrMatchAttempts.map(a=>
+                      `<div style="margin-bottom:3px;padding:3px 6px;border-radius:3px;background:${a.matchOk?'rgba(63,185,80,.06)':'rgba(248,81,73,.06)'}">` +
+                      `<span style="color:#6e7681">L${a.li}:</span> <span style="color:#8b949e;font-family:monospace;">${a.linePreview}…</span><br>` +
+                      `<span style="padding-left:8px;">${a.reasons.map(r=>`<span style="color:${r.includes('✓')?'#3fb950':r.includes('≠')||r.includes('missing')?'#f85149':'#d29922'}">${r}</span>`).join(' → ')}</span>` +
+                      `</div>`).join('');
+                    html2 += '</div>';
+                  }
+                  // Sample data rows
+                  if (g.sampleRows?.length) {
+                    html2 += '<div style="padding:4px 8px;background:#0a0e14;border-radius:4px;border-left:2px solid #58a6ff;">';
+                    html2 += '<div style="color:#58a6ff;margin-bottom:3px;">Sample data rows (use to write a matching header):</div>';
+                    html2 += g.sampleRows.map((s,i)=>`<div style="color:#8b949e;font-family:monospace;margin-bottom:2px;"><span style="color:#6e7681">row ${i+1}:</span> <span style="color:#ccc">${s}</span></div>`).join('');
+                    html2 += '<div style="color:#79c0ff;margin-top:3px;">Format: Date,Time,Seq,<span style="color:#d29922">key1(val),key2(val)</span>,<span style="color:#3fb950">KPIName1,KPIName2,…</span></div>';
+                    html2 += '</div>';
+                  }
+                  html2 += '</div>';
+                  return html2;
+                })() : '';
+            return `<div style="padding:7px 12px;border-bottom:1px solid #30363d;font-size:.79em">
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <span style="color:${g.status.startsWith('❌')?'#f85149':'#d29922'};font-weight:700;white-space:nowrap">${g.status}</span>
+                <span style="color:#79c0ff;font-family:monospace;white-space:nowrap">${g.key}</span>
+                <span style="color:#8b949e;flex:1">${g.finding||''}</span>
+              </div>${sampleRec}
+            </div>`;
+          }).join('');
+          dataHtml+=`<div class="section-lbl" style="margin-top:12px">🔍 Gaps &amp; Findings (${gaps.length})</div>
+            <div style="background:rgba(255,255,255,.02);border:1px solid #30363d;border-radius:6px">${gRows}</div>`;
+        }
+      }
+
+      // ── Generated Chart Snapshots ───────────────────────────────────────
+      const chartRes = result.chartResults || [];
+      if (chartRes.length > 0) {
+        const chartGridHtml = chartRes.map((c,ci) => {
+          const hasData = c.datasets.some(d=>d.hasData);
+          const borderClr = hasData ? '#3fb950' : '#f85149';
+          const snap = (c.snapshot && c.snapshot.length > 200) ? `<img src="${c.snapshot}" style="width:100%;border-radius:4px;border:1px solid #30363d">` : `<div style="height:60px;display:flex;align-items:center;justify-content:center;color:#666;font-size:.8em;background:#111;border-radius:4px">${c.datasetCount} dataset(s) — snapshot not available</div>`;
+          const dsInfo = c.datasets.slice(0,4).map(d=>`<span style="font-size:.7em;color:#8b949e">${d.label.substring(0,25)}(${d.pointCount}pts)</span>`).join(', ');
+          return `<div style="border:1px solid ${borderClr};border-radius:6px;padding:8px;background:rgba(255,255,255,.02)">
+            <div style="font-size:.78em;font-weight:700;color:#79c0ff;margin-bottom:6px">${c.title}</div>
+            ${snap}
+            <div style="margin-top:4px">${dsInfo}${c.datasetCount>4?'…':''}</div>
+          </div>`;
+        }).join('');
+        dataHtml += `<hr><div class="section-lbl">📊 Generated Charts (${chartRes.length}) — Rule Validation</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:10px">${chartGridHtml}</div>`;
+      } else if ((result.profRules||[]).length > 0) {
+        dataHtml += `<hr><div class="section-lbl">📊 Generated Charts</div>
+          <div style="padding:10px;color:#d29922;font-size:.82em">⚠ No charts generated — check rule loading and data binding</div>`;
+      }
+
+      // MC KPI Validation detail table
+      const kpiVal2 = result.mcKpiValidation || [];
+      if (kpiVal2.length > 0) {
+        const passV = kpiVal2.filter(v=>v.status==='✅ PASS').length;
+        const rows = kpiVal2.map(v => {
+          const st = v.status==='✅ PASS'?'#3fb950':v.status.startsWith('❌')?'#f85149':'#d29922';
+          const kpiList = v.kpiNames.slice(0,4).join(', ')+(v.kpiNames.length>4?'…':'');
+          const cfgList = v.cfgKPIs.slice(0,4).join(', ')+(v.cfgKPIs.length>4?'…':'');
+          const sampleHtml2 = (v.status!=='✅ PASS' && v.sampleRows?.length)
+            ? '<div style="margin-top:5px;padding:5px 7px;background:#0d1117;border-radius:4px;border-left:2px solid #444;font-family:monospace;font-size:.71em;color:#8b949e;word-break:break-all">'
+              + '<div style="color:#6e7681;margin-bottom:3px;font-size:.85em;">Sample data rows (use to write the header):</div>'
+              + v.sampleRows.map((s,i)=>'<div style="margin-bottom:2px;color:#8b949e"><span style="color:#6e7681">row '+(i+1)+':</span> '+s.replace(/,/g,'<span style="color:#444">,</span>')+'</div>').join('')
+              + '<div style="color:#58a6ff;font-size:.8em;margin-top:4px;">Pattern: Date,Time,Seq,<span style="color:#d29922">key1,key2,…</span>,<span style="color:#3fb950">KPI_name1,KPI_name2,…</span></div></div>'
+            : '';
+          const gap = v.status!=='✅ PASS' ? `<br><span style="color:#d29922;font-size:.8em">
+            ${v.status==='❌ NO_HEADER'?'No matching header line in MasterConfig':
+              v.toolCount>v.cfgCount?'Config header too short: add '+(v.toolCount-v.cfgCount)+' KPI name(s) to '+v.hdrLine:
+              v.toolCount<v.cfgCount?'Config header too long: remove '+(v.cfgCount-v.toolCount)+' KPI name(s) from '+v.hdrLine:
+              v.mismatched?.length+' name mismatch(es)'}
+          </span>${sampleHtml2}` : '';
+          return `<tr style="border-bottom:1px solid #30363d">
+            <td style="padding:4px 8px;font-family:monospace;font-size:.78em">${v.key}</td>
+            <td style="padding:4px 8px;text-align:center;color:${st}">${v.status}</td>
+            <td style="padding:4px 8px;text-align:center">${v.rows?.toLocaleString()}</td>
+            <td style="padding:4px 8px;text-align:center">${v.toolCount}</td>
+            <td style="padding:4px 8px;text-align:center">${v.cfgCount||'—'}</td>
+            <td style="padding:4px 8px;font-size:.75em;color:#8b949e;max-width:220px;overflow:hidden">${v.hdrLine} ${kpiList}${gap}</td>
+          </tr>`;
+        }).join('');
+        dataHtml += `<hr>
+          <div class="section-lbl">MC Component KPI Validation (${passV}/${kpiVal2.length} pass)</div>
+          <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:.82em">
+            <thead><tr style="background:rgba(255,255,255,.04);text-align:left">
+              <th style="padding:5px 8px">Component Key</th>
+              <th style="padding:5px 8px">Status</th>
+              <th style="padding:5px 8px">Rows</th>
+              <th style="padding:5px 8px">Tool KPIs</th>
+              <th style="padding:5px 8px">Config KPIs</th>
+              <th style="padding:5px 8px">Header / KPI Sample + Finding</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>`;
+
+        // Gaps section
+        const gaps = result.mcKpiGaps || [];
+        if (gaps.length > 0) {
+          const gapRows = gaps.map(g=>`<div style="padding:6px 10px;border-bottom:1px solid #30363d;font-size:.8em">
+            <span style="color:${g.status.startsWith('❌')?'#f85149':'#d29922'};font-weight:700">${g.status}</span>
+            <span style="color:#79c0ff;margin:0 8px;font-family:monospace">${g.key}</span>
+            <span style="color:#8b949e">${g.finding}</span>
+          </div>`).join('');
+          dataHtml += `<hr><div class="section-lbl">🔍 Gaps &amp; Findings (${gaps.length})</div>
+            <div style="background:rgba(255,255,255,.02);border:1px solid #30363d;border-radius:6px">${gapRows}</div>`;
+        }
+      }
+    }
+  } else {
+    // flatCsv / logPipe — show first file's rows
+    const storeKey = Object.keys(parsedStore)[0];
+    const rows = parsedStore[storeKey] || [];
+    if (rows.length) {
+      const tokens = rows[0] ? Object.keys(rows[0].tokens) : [];
+      const friendlyTokens = tokens.map(t => kpiNames[t]||t).slice(0,8);
+      dataHtml += `<hr><div class="section-lbl">Parsed Data</div>
+        <div class="comp-tile" style="max-width:600px">
+          <div class="comp-key">${filename}</div>
+          <div class="comp-info">${rows.length} rows · ${tokens.length} KPIs/row</div>
+          <div class="comp-info">KPIs: ${friendlyTokens.join(', ')}${tokens.length>8?'…':''}</div>
+        </div>`;
+      // Mini chart from first file
+      dataHtml += `<div style="margin-top:10px"><div class="chart-wrap" style="max-width:600px"><canvas id="chrt-${idx}-0" height="130"></canvas></div></div>`;
+    }
+  }
+
+  // Logs
+  const logItemsHtml = [
+    ...logs.map(l => `<div class="le ${l.type}">${l.msg}</div>`),
+    ...iframeLogs.map(l => `<div class="le info" style="opacity:.6">${l}</div>`)
+  ].join('');
+
+  const card = document.createElement('div');
+  card.className = 'rcard ' + overallStatus;
+  card.innerHTML = `
+    <div class="rcard-hdr" onclick="toggleCard(${idx})">
+      <div>
+        <div class="rcard-title">${filename}</div>
+        <div class="rcard-meta">${passN} passed · ${failN} failed · ${warnN} warnings · format: ${fmt} · top: ${topProfile.app} (${(topScore*100).toFixed(0)}%)</div>
+      </div>
+      <span class="badge ${overallStatus}">${badge}</span>
+    </div>
+    <div class="rcard-body open" id="body-${idx}">
+      <div class="section-lbl">Profile Scores</div>
+      <div class="scores-grid">${scoresHtml}</div>
+      <hr><div class="section-lbl">Validation Checks</div>
+      <div class="checks">${checksHtml}</div>
+      ${dataHtml}
+      <hr><div class="section-lbl">Parse Log</div>
+      <div class="log-box">${logItemsHtml}</div>
+    </div>`;
+  document.getElementById('results').appendChild(card);
+
+  // Render charts after DOM
+  setTimeout(() => {
+    if (isMC) {
+      Object.keys(compIndexStore).slice(0,4).forEach((k,ci) => {
+        renderMiniChart(compIndexStore[k], kpiNames, `chrt-${idx}-${ci}`);
+      });
+    } else {
+      const storeKey = Object.keys(parsedStore)[0];
+      const rows = parsedStore[storeKey] || [];
+      if (rows.length) renderMiniChart(rows, kpiNames, `chrt-${idx}-0`);
+    }
+  }, 80);
+}
+
+function renderMiniChart(rows, kpiNames, canvasId) {
+  if (!rows || !rows.length) return;
+  const maxPts = 60;
+  const step = Math.max(1, Math.floor(rows.length / maxPts));
+  const sampled = rows.filter((_,i)=>i%step===0).slice(0,maxPts);
+  const labels = sampled.map(r => {
+    const ts = r.timestamp||'';
+    const p = ts.includes(',') ? ts.split(',') : ts.split('|');
+    return (p[1]||p[0]||'').substring(0,5);
+  });
+  const tokens = Object.keys(rows[0].tokens);
+  const numTokens = tokens.filter(t => {
+    const v = rows[0].tokens[t];
+    return typeof v==='number' || (!isNaN(Number(v)) && v!=='' && !String(v).includes(':') && !String(v).includes('.') || typeof v==='number');
+  }).slice(0,3);
+  if (!numTokens.length) return;
+  const colors = ['#2563eb','#16a34a','#ea580c'];
+  const inst = new Chart(document.getElementById(canvasId), {
+    type:'line',
+    data:{labels,datasets:numTokens.map((t,i)=>({
+      label:kpiNames[t]||t, data:sampled.map(r=>Number(r.tokens[t])||0),
+      borderColor:colors[i],borderWidth:1.5,pointRadius:0,tension:.1,fill:false
+    }))},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{labels:{color:'#444',font:{size:9},boxWidth:12}}},
+      scales:{x:{ticks:{color:'#888',font:{size:8},maxTicksLimit:8},grid:{color:'#eee'}},
+              y:{ticks:{color:'#888',font:{size:8}},grid:{color:'#eee'}}}}
+  });
+  _chartInstances.push(inst);
+}
+
+function toggleCard(idx) {
+  document.getElementById('body-'+idx)?.classList.toggle('open');
+}
+
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+function setProgress(pct) {
+  document.getElementById('prog').style.display = 'block';
+  document.getElementById('prog-fill').style.width = pct+'%';
+}
+
+// ── Main runner ───────────────────────────────────────────────────────────────
+async function runAll() {
+  const t0 = Date.now();
+  clearAll();
+  setProgress(5); setStatus('Loading MasterConfig…');
+
+  let cfg;
+  try {
+    let cfgRaw;
+    if (_uploadedConfig) {
+      cfg = _uploadedConfig;
+    } else {
+      cfgRaw = await fetchFile(document.getElementById('cfgUrl').value.replace(/^.*\/([^\/]+)$/, '$1').replace('(uploaded folder)', 'MasterConfig.json'));
+      // Try full URL if simple name fails (cfgUrl may be /path/MasterConfig.json)
+      if (!cfgRaw) cfgRaw = await fetch(document.getElementById('cfgUrl').value).then(r=>r.text());
+      // Auto-fix common JSON issue: missing comma between consecutive mcHeaderFile array elements
+      const cfgFixed = cfgRaw.replace(/"([ \t]*\r?\n[ \t]*)"(?=[A-Za-z\/])/g, '",\n"');
+      cfg = JSON.parse(cfgFixed);
+      if (cfgRaw !== cfgFixed) log('MasterConfig: Auto-fixed missing comma(s) between header lines', 'warn');
+    }
+  }
+  catch(e) {
+    // Fallback: load from cfgUrl directly
+    try {
+      const cfgRaw = await fetch(document.getElementById('cfgUrl').value).then(r=>r.text());
+      const cfgFixed = cfgRaw.replace(/"([ \t]*\r?\n[ \t]*)"(?=[A-Za-z\/])/g, '",\n"');
+      cfg = JSON.parse(cfgFixed);
+    } catch(e2) { setStatus('❌ MasterConfig: ' + e2); return; }
+  }
+
+  setProgress(10); setStatus('Discovering *DataFile.csv…');
+  const dataFiles = await discoverDataFiles();
+  if (!dataFiles.length) { setStatus('⚠ No *DataFile.csv found'); return; }
+
+  let pass=0, fail=0, warn=0;
+  for (let i=0; i<dataFiles.length; i++) {
+    const fname = dataFiles[i];
+    setProgress(15 + (i/dataFiles.length)*80);
+    setStatus(`Testing ${i+1}/${dataFiles.length}: ${fname}… (fresh iframe)`);
+
+    // Reload iframe completely for each test — prevents format/state pollution
+    // between logPipe → multiComp transitions (e.g. DBW → iCampaign)
+    let w;
+    try {
+      w = await loadIframe();
+      patchIframe(w);
+    } catch(e) {
+      document.getElementById('results').insertAdjacentHTML('beforeend',
+        `<div class="rcard fail"><div class="rcard-hdr"><div><div class="rcard-title">${fname}</div></div><span class="badge fail">❌ ERROR</span></div>
+        <div class="rcard-body open"><div class="checks"><div class="chk fail"><span class="chk-icon">✗</span><span class="chk-name">Iframe load</span><span class="chk-val">${e}</span></div></div></div></div>`);
+      fail++; continue;
+    }
+
+    const logs = [];
+    const log = (msg,type='info') => logs.push({msg,type});
+
+    try {
+      const raw = await fetchFile(fname);
+      const result = await validateFile(fname, raw, cfg, w, log);
+      result.logs = logs;
+      result.mcHeaderFileLines = (w.mcHeaderFileLines||[]).slice();
+      _allResults.push(result);
+      renderCard(result, i, logs);
+      if (result.overallStatus==='pass') pass++;
+      else if (result.overallStatus==='fail') fail++;
+      else warn++;
+    } catch(e) {
+      document.getElementById('results').insertAdjacentHTML('beforeend',
+        `<div class="rcard fail"><div class="rcard-hdr"><div><div class="rcard-title">${fname}</div></div><span class="badge fail">❌ ERROR</span></div>
+        <div class="rcard-body open"><div class="checks"><div class="chk fail"><span class="chk-icon">✗</span><span class="chk-name">Processing</span><span class="chk-val">${e.message||e}</span></div></div></div></div>`);
+      fail++;
+    }
+  }
+
+  setProgress(100);
+  document.getElementById('s-pass').textContent = pass;
+  document.getElementById('s-fail').textContent = fail;
+  document.getElementById('s-warn').textContent = warn;
+  document.getElementById('s-files').textContent = dataFiles.length;
+  document.getElementById('s-time').textContent = ((Date.now()-t0)/1000).toFixed(1)+'s';
+  document.getElementById('summary').style.display = 'flex';
+  setStatus('');
+  setTimeout(()=>document.getElementById('prog').style.display='none', 1000);
+}
+
+function clearAll() {
+  _chartInstances.forEach(c=>{ try{c.destroy();}catch(e){} });
+  _chartInstances = [];
+  _allResults = [];
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('status').textContent = '';
+  document.getElementById('prog-fill').style.width = '0%';
+  document.getElementById('summary').style.display = 'none';
+}
+
+function exportReport() {
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>KPI Test Report — ${new Date().toLocaleString()}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+    <style>body{font-family:monospace;background:#0d1117;color:#e6edf3;padding:20px;}
+    ${document.querySelector('style').textContent}<\/style>
+    <\/head><body>
+    <h1>KPI Tool — Test Report</h1>
+    <p style="color:#8b949e;margin-bottom:20px">Generated: ${new Date().toLocaleString()}</p>
+    <div id="results">${document.getElementById('results').innerHTML}</div>
+    <\/body><\/html>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  a.download = 'KPI-Test-Report-'+Date.now()+'.html';
+  a.click();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// XLSX REPORT EXPORT (SheetJS) — 7 sheets
+//   1. Summary          — per-file with MC KPI validation columns
+//   2. Test Results     — per-check test cases
+//   3. MC KPI Validation — per-component KPI count + name match
+//   4. Component Groups  — all MC groups with KPI names
+//   5. Gaps & Findings   — actionable MasterConfig corrections
+//   6. App Summary       — consolidated per-app
+//   7. Chart Snapshots   — base64 chart data
+// ─────────────────────────────────────────────────────────────────────────────
+function exportXLSX() {
+    if (!_allResults || !_allResults.length) { alert('Run tests first.'); return; }
+    const wb = XLSX.utils.book_new();
+    const ts = new Date().toLocaleString();
+
+    // ── Helper ──────────────────────────────────────────────────────────────
+    function _kpiRange(r) {
+        const isMC=r.fmt==='multiComp', ck=Object.keys(r.compIndexStore||{});
+        if(isMC&&ck.length){const c=ck.map(k=>r.compIndexStore[k]?.[0]?Object.keys(r.compIndexStore[k][0].tokens).length:0);const mn=Math.min(...c),mx=Math.max(...c);return mn===mx?String(mn):mn+'–'+mx;}
+        const sk=Object.keys(r.parsedStore||{})[0],r0=r.parsedStore?.[sk]?.[0];return r0?String(Object.keys(r0.tokens).length):'—';
+    }
+
+    // ── Sheet 1: Summary ────────────────────────────────────────────────────
+    const sumRows=[
+        ['KPI Tool Validation — Test Summary'],
+        ['Generated:',ts,'Tool:',document.getElementById('toolUrl').value],
+        ['MasterConfig:',document.getElementById('cfgUrl').value],
+        [],
+        ['App','File','Format','Score','Overall Status',
+         'Checks Passed','Checks Failed','Checks Warned',
+         'Component Groups','Total Rows','KPI Range','Auto-Applied',
+         'MC Hdr Coverage','MC KPI Count','MC KPI Naming']
+    ];
+    _allResults.forEach(r=>{
+        const isMC=r.fmt==='multiComp', ck=Object.keys(r.compIndexStore||{});
+        const totalRows=ck.reduce((s,k)=>s+(r.compIndexStore[k]?.length||0),0)||Object.values(r.parsedStore||{}).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0);
+        const pN=r.checks.filter(c=>c.status==='pass').length, fN=r.checks.filter(c=>c.status==='fail').length, wN=r.checks.filter(c=>c.status==='warn').length;
+        const kv=r.mcKpiValidation||[];
+        const hdrCov=isMC?(kv.filter(v=>v.status==='❌ NO_HEADER').length===0?'PASS':'FAIL'):'N/A';
+        const cntOK =isMC?(kv.filter(v=>v.status==='⚠ COUNT_MISMATCH').length===0?'PASS':'WARN'):'N/A';
+        const namOK =isMC?(kv.filter(v=>v.named<v.toolCount).length===0?'PASS':'WARN'):'N/A';
+        sumRows.push([r.topProfile.app,r.filename,r.fmt,(r.topScore*100).toFixed(0)+'%',
+            r.overallStatus.toUpperCase(),pN,fN,wN,isMC?ck.length:1,totalRows,
+            _kpiRange(r),r.topScore>=0.80?'Yes (≥80%)':'No (manual)',hdrCov,cntOK,namOK]);
+    });
+    const wsSummary=XLSX.utils.aoa_to_sheet(sumRows);
+    wsSummary['!merges']=[{s:{r:0,c:0},e:{r:0,c:14}}];
+    wsSummary['!cols']=[14,44,10,7,10,7,7,8,10,11,10,13,14,14,14].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsSummary,'Summary');
+
+    // ── Sheet 2: Test Results ────────────────────────────────────────────────
+    const EXP={
+        'File loaded':'File readable, row count > 0',
+        'Format detected':'Correct format: logPipe/flatCsv/multiComp',
+        'Profile matched':'Top profile ≥80% — auto-applies',
+        'Annotation values':'All static annotation values match data columns',
+        'Key structure':'keyIndices and dataStartIndex correct for format',
+        'Component groups':'Correct MC group count — not 0, not >500',
+        'KPI tokens/component':'All components have >0 KPI tokens',
+        'Data parsed':'Rows extracted with KPI tokens',
+        'Freeze risk':'Component count ≤500 — safe for UI rendering',
+        'MC header coverage':'All MC components have a matching header line',
+        'MC KPI count match':'Tool token count == config KPI count for all components',
+        'MC KPI naming':'All KPI tokens have friendly names from config header'
+    };
+    const testRows=[['TC ID','App','File','Test Name','Expected','Actual Result','Status','Notes']];
+    let tc=1;
+    _allResults.forEach(r=>{
+        r.checks.forEach(c=>{
+            testRows.push(['TC-'+String(tc++).padStart(3,'0'),r.topProfile.app,r.filename,c.name,
+                EXP[c.name]||c.name, c.value+(c.detail?' | '+c.detail:''),
+                c.status.toUpperCase(),
+                c.status==='fail'?'INVESTIGATE':c.status==='warn'?'REVIEW':'OK']);
+        });
+    });
+    const wsTests=XLSX.utils.aoa_to_sheet(testRows);
+    wsTests['!cols']=[9,12,44,25,38,60,8,11].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsTests,'Test Results');
+
+    // ── Sheet 3: MC KPI Validation ───────────────────────────────────────────
+    const kpiRows=[['App','File','Component Key','Matched Header Line','Status',
+        'Tool KPIs','Config KPIs','Named KPIs','Unnamed KPIs',
+        'Tool KPI Names (pos 1-8)','Config KPI Names (pos 1-8)','Overlay KPIs']];
+    _allResults.forEach(r=>{
+        const isMC=r.fmt==='multiComp';
+        (r.mcKpiValidation||[]).forEach(v=>{
+            kpiRows.push([r.topProfile.app,r.filename,v.key,v.hdrLine,v.status,
+                v.toolCount,v.cfgCount||0,v.named,Math.max(0,v.toolCount-v.named),
+                v.kpiNames.slice(0,8).join(', '),v.cfgKPIs.slice(0,8).join(', '),
+                (v.overlayToks||[]).join(', ')||'—']);
+        });
+        if(!isMC){
+            const sk=Object.keys(r.parsedStore||{})[0],rows=r.parsedStore?.[sk]||[],r0=rows[0];
+            const toks=r0?Object.keys(r0.tokens):[];
+            kpiRows.push([r.topProfile.app,r.filename,'(single component)',
+                '—','✅ PASS',toks.length,toks.length,toks.length,0,
+                toks.slice(0,8).join(', '),'—','—']);
+        }
+    });
+    const wsKpi=XLSX.utils.aoa_to_sheet(kpiRows);
+    wsKpi['!cols']=[12,44,30,14,16,8,8,8,10,55,55,35].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsKpi,'MC KPI Validation');
+
+    // ── Sheet 4: Component Groups ────────────────────────────────────────────
+    const compRows=[['App','File','Component Key','Key Labels (cols)','Data Start Col',
+        'Row Count','KPI Count','KPI Names (first 8)','Overlay KPIs','Status']];
+    _allResults.forEach(r=>{
+        const isMC=r.fmt==='multiComp';
+        if(isMC){
+            Object.keys(r.compIndexStore||{}).sort().forEach(ck=>{
+                const rows=r.compIndexStore[ck],r0=rows?.[0];
+                const toks=r0?Object.keys(r0.tokens):[];
+                const kv=(r.mcKpiValidation||[]).find(v=>v.key===ck);
+                const names=(kv?.kpiNames||toks).slice(0,8);
+                const ov=(kv?.overlayToks||[]).join(', ')||'—';
+                const st=kv?.status||'—';
+                compRows.push([r.topProfile.app,r.filename,ck,
+                    '['+r.mcKeyFieldLabels?.join('|')+']',r.mcDataStartIndex,
+                    rows?.length||0,toks.length,names.join(', ')+(toks.length>8?' …':''),ov,st]);
+            });
+        } else {
+            const sk=Object.keys(r.parsedStore||{})[0],rows=r.parsedStore?.[sk]||[],r0=rows[0];
+            const toks=r0?Object.keys(r0.tokens):[];
+            compRows.push([r.topProfile.app,r.filename,'(single)',r.fmt,2,
+                rows.length,toks.length,toks.slice(0,8).join(', ')+(toks.length>8?' …':''),'—','✅ PASS']);
+        }
+    });
+    const wsComp=XLSX.utils.aoa_to_sheet(compRows);
+    wsComp['!cols']=[12,44,30,20,10,10,10,60,35,14].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsComp,'Component Groups');
+
+    // ── Sheet 5: Gaps & Findings ─────────────────────────────────────────────
+    const gapRows=[['App','File','Component Key','Gap Type','Severity',
+        'Tool KPIs','Config KPIs','Finding','Recommended Fix in MasterConfig']];
+    let hasGaps=false;
+    _allResults.forEach(r=>{
+        (r.mcKpiGaps||[]).forEach(g=>{
+            hasGaps=true;
+            const sev=g.status.startsWith('❌')?'ERROR':'WARNING';
+            const gapType=g.status==='❌ NO_HEADER'?'Missing Header Line':
+                          g.toolCount>(g.cfgCount||0)?'Config Header Too Short':
+                          g.toolCount<(g.cfgCount||0)?'Config Header Too Long':'KPI Name Mismatch';
+            const fix=g.status==='❌ NO_HEADER'
+                ?'Add mcHeaderFile entry: Date,Time,InstanceName(XXX),RecordType('+g.key.split('|')[0]+'),iCampaignAppId('+g.key.split('|')[1]+'),omKPIGroup('+g.key.split('|')[2]+'),KPI1,KPI2,...'
+                :g.toolCount>(g.cfgCount||0)
+                ?'Append '+(g.toolCount-(g.cfgCount||0))+' KPI column name(s) to header line '+g.hdrLine
+                :g.toolCount<(g.cfgCount||0)
+                ?'Remove '+((g.cfgCount||0)-g.toolCount)+' trailing KPI name(s) from header line '+g.hdrLine
+                :'Review KPI name ordering in header line '+g.hdrLine;
+            gapRows.push([r.topProfile.app,r.filename,g.key,gapType,sev,
+                g.toolCount||0,g.cfgCount||0,g.finding||'',fix]);
+        });
+    });
+    if(!hasGaps) gapRows.push(['—','—','—','No gaps found','—',0,0,
+        'All MC components passed KPI validation','No action required']);
+    const wsGaps=XLSX.utils.aoa_to_sheet(gapRows);
+    wsGaps['!cols']=[12,44,30,22,8,8,8,65,65].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsGaps,'Gaps & Findings');
+
+    // ── Sheet 5b: Graph & Rule Validation ───────────────────────────────────
+    const graphRows=[['App','File','Rule #','Rule Header','Rule Mode','Expected Tokens',
+        'Chart Generated','Chart Title','Datasets Count','Datasets with Data',
+        'Token Match Status','Chart Status',
+        'T16: Overlay XXX-only','T17: KPI no XXX']];
+    _allResults.forEach(r=>{
+        const profRules=r.profRules||[];
+        const chartRes=r.chartResults||[];
+        const ruleQ=r.ruleQueueSnapshot||[];
+        // T16/T17 summary for this file (one value per file, repeated per row)
+        const t16chk=r.checks?.find(c=>c.name==='Overlay fields: XXX-only');
+        const t17chk=r.checks?.find(c=>c.name==='KPI Metrics: no XXX fields');
+        const t16val=t16chk?(t16chk.status==='pass'?'✅ PASS':t16chk.status==='warn'?'⚠ WARN':'❌ FAIL'):'—';
+        const t17val=t17chk?(t17chk.status==='pass'?'✅ PASS':t17chk.status==='warn'?'⚠ WARN':'❌ FAIL'):'—';
+        if(profRules.length===0){
+            graphRows.push([r.topProfile.app,r.filename,'—','No rules in MasterConfig profile','—','—','—','—','—','—','—','❌ NO_RULES',t16val,t17val]);
+            return;
+        }
+        profRules.forEach((rule,ri)=>{
+            const ruleHeader=rule.header||rule.name||'Rule '+(ri+1);
+            const tokens=(rule.tokens||[]).join(', ').substring(0,200);
+            const mode=rule.mode||'direct';
+            const matchingChart=chartRes.find(c=>c.title&&c.title.toLowerCase().includes(ruleHeader.toLowerCase()));
+            const ruleLoaded=ruleQ.some(rq=>rq.header===ruleHeader||rq.header===rule.header);
+            // Token match check
+            let tokenMatchStatus='—';
+            if(matchingChart){
+                const missing=(rule.tokens||[]).filter(tok=>!matchingChart.datasets.some(d=>d.label&&d.label.includes(tok)));
+                tokenMatchStatus=missing.length===0?'✅ All matched':'⚠ Missing: '+missing.join(', ');
+            }
+            const chartStatus=!ruleLoaded?'❌ RULE_NOT_LOADED':!matchingChart?'❌ NO_CHART':matchingChart.datasets.some(d=>d.hasData)?'✅ CHART_OK':'⚠ CHART_EMPTY';
+            graphRows.push([
+                r.topProfile.app, r.filename, ri+1, ruleHeader, mode, tokens,
+                ruleLoaded?'Yes':'No',
+                matchingChart?matchingChart.title:'—',
+                matchingChart?matchingChart.datasetCount:0,
+                matchingChart?matchingChart.datasets.filter(d=>d.hasData).length:0,
+                tokenMatchStatus, chartStatus,
+                ri===0?t16val:'', ri===0?t17val:''  // only show on first rule row
+            ]);
+        });
+    });
+    const wsGraph=XLSX.utils.aoa_to_sheet(graphRows);
+    wsGraph['!cols']=[12,44,6,35,10,50,10,40,10,12,30,14,18,16].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsGraph,'Graph & Rule Validation');
+
+    // ── Sheet 5c: Overlay Field Separation ───────────────────────────────────
+    const ovRows=[['App','File','Format','XXX Overlay Fields Registered',
+        'Overlay Selector Options (display)','Overlay Selector Raw Keys',
+        'KPI Metrics Count','KPI Metrics (first 8)',
+        'T16 Overlay XXX-only','T16 Detail','T17 KPI no XXX','T17 Detail']];
+    _allResults.forEach(r=>{
+        if(!r.isMC){ return; } // only MC files have overlay concept
+        const overlayNames=r.mcOverlayFieldNames||[];
+        const kpiOpts=r.kpiSelectorOptions||[];
+        const ovOpts=r.overlaySelectorOptions||[];
+        const t16chk=r.checks?.find(c=>c.name==='Overlay fields: XXX-only');
+        const t17chk=r.checks?.find(c=>c.name==='KPI Metrics: no XXX fields');
+        const t16s=t16chk?(t16chk.status==='pass'?'✅ PASS':t16chk.status==='warn'?'⚠ WARN':'❌ FAIL'):'—';
+        const t17s=t17chk?(t17chk.status==='pass'?'✅ PASS':t17chk.status==='warn'?'⚠ WARN':'❌ FAIL'):'—';
+        ovRows.push([
+            r.topProfile.app, r.filename, r.fmt,
+            overlayNames.length>0 ? overlayNames.join(', ') : '(none)',
+            ovOpts.map(o=>o.display).join(', ')||'(empty)',
+            ovOpts.map(o=>o.raw).join(', ')||'(empty)',
+            kpiOpts.length,
+            kpiOpts.slice(0,8).map(o=>o.display).join(', ')+(kpiOpts.length>8?'…':''),
+            t16s, t16chk?.value||'—',
+            t17s, t17chk?.value||'—'
+        ]);
+    });
+    if(ovRows.length>1){
+        const wsOv=XLSX.utils.aoa_to_sheet(ovRows);
+        wsOv['!cols']=[14,44,10,35,50,40,10,60,14,50,14,50].map(w=>({wch:w}));
+        XLSX.utils.book_append_sheet(wb,wsOv,'Overlay Field Separation');
+    }
+
+    // ── Sheet 6: App Summary ─────────────────────────────────────────────────
+    const appMap={};
+    _allResults.forEach(r=>{
+        const app=r.topProfile.app;
+        if(!appMap[app]) appMap[app]={files:[],tPass:0,tFail:0,tWarn:0,groups:0,rows:0,kpiGaps:0,noHdr:0,cntMismatch:0};
+        appMap[app].files.push(r.filename);
+        appMap[app].tPass+=r.checks.filter(c=>c.status==='pass').length;
+        appMap[app].tFail+=r.checks.filter(c=>c.status==='fail').length;
+        appMap[app].tWarn+=r.checks.filter(c=>c.status==='warn').length;
+        appMap[app].groups+=Object.keys(r.compIndexStore||{}).length||(r.fmt!=='multiComp'?1:0);
+        appMap[app].rows+=Object.values(r.compIndexStore||{}).reduce((s,v)=>s+(v.length||0),0)||Object.values(r.parsedStore||{}).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0);
+        appMap[app].kpiGaps+=(r.mcKpiGaps||[]).length;
+        appMap[app].noHdr+=(r.mcKpiValidation||[]).filter(v=>v.status==='❌ NO_HEADER').length;
+        appMap[app].cntMismatch+=(r.mcKpiValidation||[]).filter(v=>v.status==='⚠ COUNT_MISMATCH').length;
+    });
+    const appRows=[['Application Consolidated Summary'],['Generated:',ts],[],
+        ['App','Files Tested','Overall Status','Total Checks','Passed','Failed','Warned',
+         'Component Groups','Total Rows','KPI Gaps','Missing Headers','Count Mismatches']];
+    // Also accumulate chart/rule stats
+    _allResults.forEach(r=>{
+        const app=r.topProfile.app;
+        if(!appMap[app]) appMap[app]={files:[],tPass:0,tFail:0,tWarn:0,groups:0,rows:0,kpiGaps:0,noHdr:0,cntMismatch:0,totalRules:0,chartsGenerated:0,chartsWithData:0};
+        appMap[app].totalRules+=(r.profRules||[]).length;
+        appMap[app].chartsGenerated+=(r.chartResults||[]).length;
+        appMap[app].chartsWithData+=(r.chartResults||[]).filter(c=>c.datasets.some(d=>d.hasData)).length;
+    });
+    const appHdr=appRows[appRows.length-1]; // header row
+    appHdr.push('Total Rules','Charts Generated','Charts with Data');
+    Object.entries(appMap).forEach(([app,s])=>{
+        const total=s.tPass+s.tFail+s.tWarn;
+        const status=s.tFail>0?'FAIL':s.tWarn>0||s.kpiGaps>0?'WARN':'PASS';
+        appRows.push([app,s.files.join(', '),status,total,s.tPass,s.tFail,s.tWarn,
+            s.groups,s.rows,s.kpiGaps,s.noHdr,s.cntMismatch,
+            s.totalRules,s.chartsGenerated,s.chartsWithData]);
+    });
+    const wsApp=XLSX.utils.aoa_to_sheet(appRows);
+    wsApp['!merges']=[{s:{r:0,c:0},e:{r:0,c:11}}];
+    wsApp['!cols']=[14,50,10,12,8,8,8,14,12,9,14,15].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,wsApp,'App Summary');
+
+    // ── Sheet 7: Chart Snapshots — per-rule chart info ───────────────────────
+    const snapRows=[['App','File','Rule #','Rule Header','Rule Mode','Chart Title',
+        'Datasets','Datasets w/Data','Dataset Names (first 5)','Snapshot (see HTML Visual Report)']];
+    // Helper: guarantee a safe Excel cell value — no undefined/null/NaN/Infinity
+    const _safe = (v, fallback='—') => {
+        if (v === null || v === undefined) return fallback;
+        if (typeof v === 'number') return isFinite(v) ? v : 0;
+        const s = String(v);
+        return s.length > 500 ? s.substring(0, 500) : (s || fallback);
+    };
+    _allResults.forEach(r=>{
+        const profRules=r.profRules||[];
+        const chartRes=r.chartResults||[];
+        if(profRules.length===0){
+            snapRows.push([_safe(r.topProfile.app),'—','—','No rules defined in MasterConfig','—','—',0,0,'—','—']);
+            return;
+        }
+        profRules.forEach((rule,ri)=>{
+            const ruleHeader=_safe(rule.header||('Rule '+(ri+1)));
+            const mc=chartRes.find(c=>c.title&&c.title.toLowerCase().includes(ruleHeader.toLowerCase()));
+            const snap = mc?.snapshot;
+            const snapAvail = snap && snap.length > 200;
+            const dsLabels = Array.isArray(mc?.datasets) ? mc.datasets.map(d=>_safe(d.label)).slice(0,5).join(', ') : '—';
+            const snapStatus = snapAvail ? 'YES ('+Math.round(snap.length/1024)+'KB — see HTML Visual Report)' : 'NO SNAPSHOT';
+            snapRows.push([
+                _safe(r.topProfile.app), _safe(r.filename), ri+1,
+                ruleHeader, _safe(rule.mode||'direct'),
+                _safe(mc?.title||'NOT GENERATED'),
+                typeof mc?.datasetCount==='number' ? mc.datasetCount : 0,
+                Array.isArray(mc?.datasets) ? mc.datasets.filter(d=>d.hasData).length : 0,
+                _safe(dsLabels), _safe(snapStatus)
+            ]);
+        });
+        // Extra charts (per-component MC charts not directly named in rules)
+        const extraCharts=chartRes.filter(c=>!profRules.some(ru=>c.title&&c.title.toLowerCase().includes((ru.header||'').toLowerCase())));
+        extraCharts.forEach(c=>{
+            const s=c.snapshot;
+            const dsL=Array.isArray(c.datasets)?c.datasets.map(d=>_safe(d.label)).slice(0,5).join(', '):'—';
+            const dsW=Array.isArray(c.datasets)?c.datasets.filter(d=>d.hasData).length:0;
+            snapRows.push([_safe(r.topProfile.app),_safe(r.filename),'*','(additional)',_safe(r.fmt),
+                _safe(c.title),typeof c.datasetCount==='number'?c.datasetCount:0,dsW,_safe(dsL),
+                (s&&s.length>200)?'YES ('+Math.round(s.length/1024)+'KB — see HTML Visual Report)':'NO SNAPSHOT']);
+        });
+    });
+    if(snapRows.length>1){
+        const wsSnap=XLSX.utils.aoa_to_sheet(snapRows);
+        wsSnap['!cols']=[14,44,6,35,10,40,8,10,55,35].map(w=>({wch:w}));
+        XLSX.utils.book_append_sheet(wb,wsSnap,'Chart Snapshots');
+    }
+
+    // ── Download XLSX with embedded chart images via JSZip ───────────────────
+    const xlsFname='KPI-Test-Results-'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.xlsx';
+
+    // Sanitize all cells — Excel 32767 char limit
+    (wb.SheetNames || []).forEach(sname => {
+        const ws = wb.Sheets[sname]; if (!ws) return;
+        Object.keys(ws).filter(k=>k[0]!=='!').forEach(addr => {
+            const cell = ws[addr];
+            if (cell && cell.t==='s' && typeof cell.v==='string' && cell.v.length>32700) {
+                cell.v=cell.v.substring(0,32700)+'…'; if(cell.w) cell.w=cell.v;
+            }
+        });
+    });
+
+    // Collect all chart snapshots
+    const allSnaps = [];
+    _allResults.forEach(r=>{
+        (r.chartResults||[]).forEach((c,ci)=>{
+            if(c.snapshot && c.snapshot.length>200) {
+                allSnaps.push({
+                    app: r.topProfile.app||'',
+                    title: (c.title||('Chart '+ci)).replace(/[<>&"']/g,'_').substring(0,60),
+                    b64: c.snapshot.replace(/^data:image\/[^;]+;base64,/,'')
+                });
+            }
+        });
+    });
+
+    if(allSnaps.length > 0 && typeof JSZip !== 'undefined') {
+        (async function() {
+            try {
+                // Write workbook to array, load into JSZip
+                const arr = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+                const zip = await JSZip.loadAsync(arr);
+
+                // Add each PNG to xl/media/
+                allSnaps.forEach((s,i) => zip.file('xl/media/image'+(i+1)+'.png', s.b64, {base64:true}));
+
+                // Build drawing XML — 2 images per row, each spanning 8 cols × 22 rows
+                const COLS=2, IC=8, IR=22;
+                const anchors = allSnaps.map((s,i)=>{
+                    const col=(i%COLS)*(IC+1), row=Math.floor(i/COLS)*(IR+2);
+                    return `<xdr:twoCellAnchor editAs="oneCell">` +
+                        `<xdr:from><xdr:col>${col}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>` +
+                        `<xdr:to><xdr:col>${col+IC}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row+IR}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>` +
+                        `<xdr:pic><xdr:nvPicPr>` +
+                        `<xdr:cNvPr id="${i+2}" name="${s.title}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr>` +
+                        `</xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId${i+1}"/>` +
+                        `<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>` +
+                        `<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="5000000" cy="3200000"/></a:xfrm>` +
+                        `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>` +
+                        `</xdr:pic><xdr:clientData/></xdr:twoCellAnchor>`;
+                }).join('');
+
+                const NS_XDR='http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+                const NS_A='http://schemas.openxmlformats.org/drawingml/2006/main';
+                const NS_R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+                const drawingXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`+
+                    `<xdr:wsDr xmlns:xdr="${NS_XDR}" xmlns:a="${NS_A}" xmlns:r="${NS_R}">${anchors}</xdr:wsDr>`;
+
+                // Drawing rels
+                const drawingRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`+
+                    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`+
+                    allSnaps.map((s,i)=>`<Relationship Id="rId${i+1}" `+
+                        `Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" `+
+                        `Target="../media/image${i+1}.png"/>`).join('')+
+                    `</Relationships>`;
+
+                // Chart Snapshots is the last sheet
+                const sheetIdx = wb.SheetNames.length;
+                const dNum = sheetIdx;
+                zip.file(`xl/drawings/drawing${dNum}.xml`, drawingXml);
+                zip.folder('xl/drawings/_rels');
+                zip.file(`xl/drawings/_rels/drawing${dNum}.xml.rels`, drawingRels);
+
+                // Patch worksheet XML — add <drawing> reference and r: namespace
+                const wsKey=`xl/worksheets/sheet${sheetIdx}.xml`;
+                const wsFile=zip.file(wsKey);
+                if(wsFile) {
+                    let wsXml=await wsFile.async('string');
+                    if(!wsXml.includes('xmlns:r=')) wsXml=wsXml.replace('<worksheet ',`<worksheet xmlns:r="${NS_R}" `);
+                    if(!wsXml.includes('<drawing')) wsXml=wsXml.replace('</worksheet>',`<drawing r:id="rId_d"/></worksheet>`);
+                    zip.file(wsKey, wsXml);
+                }
+
+                // Patch worksheet rels
+                const wsRelKey=`xl/worksheets/_rels/sheet${sheetIdx}.xml.rels`;
+                const existRel=zip.file(wsRelKey);
+                let wsRelXml=existRel?await existRel.async('string'):
+                    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+                if(!wsRelXml.includes('rId_d')) wsRelXml=wsRelXml.replace('</Relationships>',
+                    `<Relationship Id="rId_d" `+
+                    `Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" `+
+                    `Target="../drawings/drawing${dNum}.xml"/></Relationships>`);
+                zip.file(wsRelKey, wsRelXml);
+
+                // Patch [Content_Types].xml
+                const ctFile=zip.file('[Content_Types].xml');
+                let ctXml=await ctFile.async('string');
+                if(!ctXml.includes('image/png')) ctXml=ctXml.replace('</Types>',`<Default Extension="png" ContentType="image/png"/></Types>`);
+                if(!ctXml.includes('drawing+xml')) ctXml=ctXml.replace('</Types>',
+                    `<Override PartName="/xl/drawings/drawing${dNum}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`);
+                zip.file('[Content_Types].xml', ctXml);
+
+                // Generate and download
+                const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
+                const url=URL.createObjectURL(blob);
+                const a=document.createElement('a'); a.href=url; a.download=xlsFname; a.click();
+                setTimeout(()=>URL.revokeObjectURL(url),5000);
+                setStatus('✅ XLSX saved: '+xlsFname+' ('+wb.SheetNames.length+' sheets, '+allSnaps.length+' images embedded)');
+            } catch(e) {
+                console.error('JSZip image injection failed:',e.message,e.stack?.substring(0,200));
+                XLSX.writeFile(wb,xlsFname);
+                setStatus('✅ XLSX saved: '+xlsFname+' (image embed failed: '+e.message.substring(0,60)+')');
+            }
+        })();
+    } else {
+        XLSX.writeFile(wb,xlsFname);
+        setStatus('✅ XLSX saved: '+xlsFname+' ('+wb.SheetNames.length+' sheets)');
+    }
+
+    // ── Export companion visual HTML report ──────────────────────────────────
+    const snaps=[];
+    document.querySelectorAll('.rcard').forEach(card=>{
+        const fname=card.querySelector('.rcard-title')?.textContent||'';
+        const badge=card.querySelector('.badge')?.textContent||'';
+        const meta=card.querySelector('.rcard-meta')?.textContent||'';
+        const charts=[];
+        card.querySelectorAll('canvas').forEach((cv,ci)=>{
+            try{
+                const lbl=cv.parentElement?.previousElementSibling?.textContent||('Chart '+ci);
+                // Use Chart.js toBase64Image for reliable capture even in hidden iframes
+        let snapSrc = null;
+        // Try to find matching chart result from _allResults
+        const fname2 = card.querySelector('.rcard-title')?.textContent||'';
+        const res2 = _allResults.find(r=>r.filename===fname2);
+        if (res2) {
+          const matchC = res2.chartResults?.find((_,i)=>i===ci) || res2.chartResults?.[ci];
+          if (matchC?.snapshot && matchC.snapshot.length > 200) snapSrc = matchC.snapshot;
+        }
+        if (!snapSrc) {
+          try { const tmpChart = cv.__chartjs_chart || cv._chart; if(tmpChart) snapSrc=tmpChart.toBase64Image('image/png',1.0); } catch(e){}
+          if (!snapSrc || snapSrc.length < 200) { try { snapSrc = cv.toDataURL('image/png'); } catch(e){} }
+        }
+        if (snapSrc && snapSrc.length > 200) charts.push({lbl:lbl.trim().substring(0,60), src:snapSrc});
+            }catch(e){}
+        });
+        const kpiTbl=card.querySelector('table');
+        snaps.push({fname,badge,meta,charts,kpiTableHtml:kpiTbl?kpiTbl.outerHTML:''});
+    });
+    const snapHtml=snaps.map(s=>`
+    <div class="card ${s.badge.includes('PASS')?'pass':s.badge.includes('FAIL')?'fail':'warn'}">
+      <div class="card-hdr"><span class="title">${s.fname}</span><span class="badge2">${s.badge}</span></div>
+      <div class="cmeta">${s.meta}</div>
+      ${s.charts.length?`<div class="charts-row">${s.charts.map(c=>`<div class="cbox"><div class="clbl">${c.lbl}</div><img src="${c.src}"></div>`).join('')}</div>`:''}
+      ${s.kpiTableHtml?`<div style="padding:0 16px 16px;overflow-x:auto">${s.kpiTableHtml}</div>`:''}
+    </div>`).join('');
+    const vhtml=`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>KPI Test Visual Report — ${ts}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Segoe UI',monospace;background:#0d1117;color:#e6edf3;padding:20px}
+      h1{color:#58a6ff;font-size:1.4em;margin-bottom:4px}
+      .sub{color:#8b949e;font-size:.85em;margin-bottom:24px}
+      .card{background:#161b22;border:1px solid #30363d;border-radius:10px;margin-bottom:20px;overflow:hidden}
+      .card.pass{border-left:4px solid #3fb950}.card.fail{border-left:4px solid #f85149}.card.warn{border-left:4px solid #d29922}
+      .card-hdr{padding:12px 18px;display:flex;justify-content:space-between;background:rgba(255,255,255,.03)}
+      .title{font-weight:700;color:#79c0ff;font-size:1em}.badge2{padding:3px 10px;border-radius:12px;font-size:.72em;font-weight:700;background:rgba(255,255,255,.1)}
+      .cmeta{padding:6px 18px 10px;font-size:.78em;color:#8b949e}
+      .charts-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:0 18px 16px}
+      .cbox{background:#fff;border-radius:6px;padding:8px}.clbl{font-size:.72em;color:#666;margin-bottom:4px}
+      .cbox img{width:100%;border-radius:4px}
+      table{width:100%;border-collapse:collapse;font-size:.8em}
+      th{background:rgba(255,255,255,.06);padding:5px 8px;text-align:left;font-size:.78em}
+      td{padding:4px 8px;border-bottom:1px solid #30363d;font-family:monospace;font-size:.77em}
+    </style></head><body>
+    <h1>📊 KPI Tool — Visual Test Report</h1>
+    <p class="sub">Generated: ${ts} &nbsp;|&nbsp; ${snaps.length} file(s) tested</p>
+    ${snapHtml}</body></html>`;
+    const va=document.createElement('a');
+    va.href=URL.createObjectURL(new Blob([vhtml],{type:'text/html'}));
+    va.download='KPI-Test-Visual-'+Date.now()+'.html'; va.click();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIG VALIDATOR
+// ═══════════════════════════════════════════════════════════════════════════════
+let _cvIframe = null;   // dedicated iframe for Config Validator (separate from test-suite _iframe)
+let _cvRaw = null;      // raw data file text
+let _cvHdrRaw = null;   // raw header file text (optional)
+let _cvFilename = '';
+let _cvCfg = null;      // loaded MasterConfig
+let _cvW = null;        // iframe window
+let _cvParsed = null;   // runParse result
+let _cvTop = null;      // best matching profile
+let _cvCurrentTab = 'validate';
+
+async function openConfigValidator() {
+    // Load MasterConfig (from upload, base dir, or default URL)
+    try {
+        _cvCfg = await loadMasterConfig();
+    } catch(e) { alert('Cannot load MasterConfig: ' + e.message); return; }
+
+    // Populate file dropdown from known data files
+    const fileSel = document.getElementById('cv-file-sel');
+    const hdrSel = document.getElementById('cv-hdr-sel');
+    fileSel.innerHTML = '<option value="">— select existing file —</option>';
+    hdrSel.innerHTML = '<option value="">— none —</option>';
+    try {
+        const files = await cvDiscoverFiles();
+        files.forEach(f => {
+            fileSel.innerHTML += `<option value="${f}">${f}</option>`;
+        });
+    } catch(e) {}
+
+    // Reset state
+    _cvRaw = null; _cvHdrRaw = null; _cvFilename = ''; _cvParsed = null; _cvTop = null;
+    document.getElementById('cv-file-name').textContent = '';
+    document.getElementById('cv-hdr-name').textContent = '';
+    document.getElementById('cv-step2').style.display = 'none';
+    document.getElementById('cv-step1-status').textContent = '';
+
+    document.getElementById('cv-modal').style.display = 'block';
+    // Show Review tab immediately — it works without a specific file
+    document.getElementById('cv-tab-review').style.display = 'inline-block';
+}
+
+function closeConfigValidator() {
+    document.getElementById('cv-modal').style.display = 'none';
+    // Don't destroy _cvIframe — keep it for re-analysis without reload
+}
+
+async function cvHandleUpload(input) {
+    if (!input.files[0]) return;
+    _cvRaw = await input.files[0].text();
+    _cvFilename = input.files[0].name;
+    document.getElementById('cv-file-name').textContent = '✓ ' + _cvFilename + ' (' + Math.round(_cvRaw.length/1024) + 'KB)';
+}
+
+async function cvHandleHdrUpload(input) {
+    if (!input.files[0]) return;
+    _cvHdrRaw = await input.files[0].text();
+    document.getElementById('cv-hdr-name').textContent = '✓ ' + input.files[0].name;
+}
+
+async function cvAnalyse() {
+    const statusEl = document.getElementById('cv-step1-status');
+    statusEl.textContent = 'Loading…';
+
+    // Load MasterConfig if not already loaded (standalone mode — no openConfigValidator call)
+    if (!_cvCfg) {
+        try { _cvCfg = await loadMasterConfig(); }
+        catch(e) { statusEl.textContent = '⚠ Cannot load MasterConfig: ' + e.message; return; }
+    }
+
+    // Load data file (uploaded folder → base dir → server)
+    if (!_cvRaw) {
+        const sel = document.getElementById('cv-file-sel').value;
+        if (!sel) { statusEl.textContent = '⚠ Select or upload a data file first.'; return; }
+        try { _cvRaw = await fetchFile(sel); _cvFilename = sel; }
+        catch(e) { statusEl.textContent = '⚠ Cannot load ' + sel + ': ' + e.message; return; }
+    }
+
+    // Load header file if selected
+    if (!_cvHdrRaw) {
+        const hSel = document.getElementById('cv-hdr-sel').value;
+        if (hSel) { try { _cvHdrRaw = await fetchFile(hSel); } catch(e) {} }
+    }
+
+    statusEl.textContent = 'Analysing file…';
+
+    // Load a dedicated CV iframe — separate from test-suite _iframe/_w to avoid state collision
+    try {
+        if (_cvIframe) { _cvIframe.remove(); _cvW = null; }
+        _cvIframe = document.createElement('iframe');
+        _cvIframe.src = document.getElementById('toolUrl').value;
+        _cvIframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;';
+        document.body.appendChild(_cvIframe);
+        _cvW = await new Promise((res, rej) => {
+            const to = setTimeout(() => rej('CV iframe timeout (15s)'), 15000);
+            _cvIframe.onload = () => {
+                clearTimeout(to);
+                try { const w = _cvIframe.contentWindow; patchIframe(w); res(w); }
+                catch(e) { rej('CV iframe access: ' + e.message); }
+            };
+            _cvIframe.onerror = () => rej('CV iframe load error');
+        });
+    } catch(e) { statusEl.textContent = '⚠ Tool iframe error: ' + e.message; return; }
+
+    // If header file provided, inject it into the iframe BEFORE the parse runs
+    // so processFilesFromUI picks up the correct MC header lines and component structure
+    let _injectedHdrLines = null;
+    if (_cvHdrRaw) {
+        _injectedHdrLines = _cvHdrRaw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
+        // Pre-inject into iframe so the parse uses them for key structure detection
+        try {
+            _cvW.mcHeaderFileLines = _injectedHdrLines.slice();
+            // Also parse key structure from the first header line
+            if (typeof _cvW.parseAnnotatedHeaders === 'function' && _injectedHdrLines.length > 0) {
+                const firstHdr = _injectedHdrLines[0].split(',').map(c=>c.trim());
+                const ann = _cvW.parseAnnotatedHeaders(firstHdr, 2);
+                if (ann && ann.keyIndices.length > 0) {
+                    _cvW.mcKeyFieldIndices  = ann.keyIndices.filter(ki => ann.instanceIdIndices.indexOf(ki) < 0);
+                    _cvW.mcKeyFieldLabels   = _cvW.mcKeyFieldIndices.map(ki => ann.keyLabels[ann.keyIndices.indexOf(ki)] || ('Key'+(ki+1)));
+                    _cvW.mcDataStartIndex   = ann.dataStartIndex;
+                    _cvW.mcAnnotatedMode    = true;
+                    _cvW.mcInstanceIdIndices = ann.instanceIdIndices;
+                }
+            }
+            statusEl.textContent = 'Header applied — running parse…';
+        } catch(e) { statusEl.textContent = 'Header inject warning: ' + e.message; }
+    }
+
+    // Run full parse — processFilesFromUI uses autoMatchProfile (KPI-pattern based)
+    statusEl.textContent = _injectedHdrLines ? 'Running parse with custom header…' : 'Running parse…';
+    try {
+        _cvParsed = await runParse(_cvFilename, _cvRaw, _cvCfg, _cvW);
+    } catch(e) {
+        statusEl.textContent = '⚠ Parse error: ' + e.message; return;
+    }
+
+    // Use the tool's own matchedProfile as authoritative (set by autoMatchProfile internally)
+    const toolMatched = _cvW.matchedProfile;
+    const allScores = scoreAllProfiles(_cvRaw, _cvCfg, _cvW);
+
+    if (toolMatched && !_injectedHdrLines) {
+        // Profile found in MasterConfig and no custom header — trust the match
+        const matchEntry = allScores.find(s => s.profile.name === toolMatched.name);
+        _cvTop = { profile: toolMatched, score: matchEntry ? matchEntry.score : 100 };
+    } else if (_injectedHdrLines) {
+        // Custom header provided — suggest a NEW profile (don't use a wrongly-matched one)
+        // Build a synthetic profile using detected structure + injected headers
+        const detFmt = _cvW.detectFileFormat(_cvRaw);
+        let ki = (_cvW.mcKeyFieldIndices || []).slice();
+        let kl = (_cvW.mcKeyFieldLabels || []).slice();
+        const dsi = _cvW.mcDataStartIndex || 5;
+        const appName = _cvFilename.replace(/[-_](kpi|data|stats|log)?\.(txt|csv|log)$/i,'').replace(/[^a-zA-Z0-9]/g,' ').trim() || 'NewApp';
+        _cvTop = {
+            score: 100,
+            profile: {
+                name: appName + ' Statistics',
+                app: appName,
+                format: detFmt,
+                match: { columns: {"0":{type:"date"}, "1":{type:"time"}}, ...(detFmt==='multiComp'?{allNumericFrom:dsi}:{}) },
+                headers: {
+                    hasHeader: false,
+                    keyLabels: Object.fromEntries(ki.map((idx,i)=>[idx, kl[i]||('Key'+(i+1))])),
+                    kpiColumns: {start: dsi},
+                    mcHeaderFile: _injectedHdrLines
+                },
+                rules: []
+            }
+        };
+    } else {
+        _cvTop = allScores[0];
+    }
+
+    const topScore = (toolMatched && !_injectedHdrLines) ? 100 : Math.round(_cvTop.score);
+    const hasProfile = !!(toolMatched || topScore >= 40 || _injectedHdrLines);
+
+    statusEl.textContent = '';
+    cvRenderResults(hasProfile, topScore, allScores);
+}
+
+function cvRenderResults(hasProfile, topScore, scores) {
+    document.getElementById('cv-step2').style.display = 'block';
+
+    // Match banner
+    const banner = document.getElementById('cv-match-banner');
+    const profName = _cvTop.profile.name;
+    const profApp = _cvTop.profile.app;
+    if (hasProfile) {
+        banner.style.background = 'rgba(63,185,80,.1)';
+        banner.style.border = '1px solid rgba(63,185,80,.3)';
+        banner.style.color = '#3fb950';
+        const scoreLabel = topScore >= 99 ? '✅ auto-matched by KPI pattern' : topScore + '% fingerprint score';
+        banner.innerHTML = `<strong>✅ Profile matched:</strong> "${profName}" (${profApp}) — ${scoreLabel}<br>
+            <span style="color:#8b949e;font-size:.9em;">Running full config validation…</span>`;
+    } else {
+        banner.style.background = 'rgba(88,166,255,.07)';
+        banner.style.border = '1px solid rgba(88,166,255,.3)';
+        banner.style.color = '#58a6ff';
+        banner.innerHTML = `<strong>💡 No strong profile match</strong> — Best: "${profName}" (${topScore}%)<br>
+            <span style="color:#8b949e;font-size:.9em;">Showing config suggestion. Create a new profile for this file format.</span>`;
+    }
+
+    if (hasProfile) {
+        cvRenderValidate();
+        cvShowTab('validate');
+    } else {
+        cvRenderSuggest();
+        cvShowTab('suggest');
+    }
+}
+
+function cvShowTab(tab) {
+    _cvCurrentTab = tab;
+    document.getElementById('cv-pane-validate').style.display = tab === 'validate' ? 'block' : 'none';
+    document.getElementById('cv-pane-suggest').style.display = tab === 'suggest' ? 'block' : 'none';
+    document.getElementById('cv-pane-review').style.display = tab === 'review' ? 'block' : 'none';
+    ['validate','suggest','review'].forEach(t => {
+        const btn = document.getElementById('cv-tab-'+t);
+        if (!btn) return;
+        btn.style.borderBottomColor = tab === t ? '#58a6ff' : 'transparent';
+        btn.style.color = tab === t ? '#58a6ff' : '#8b949e';
+        btn.style.fontWeight = tab === t ? '700' : '400';
+    });
+    if (tab === 'suggest' && !document.getElementById('cv-json-editor').value) cvRenderSuggest();
+    if (tab === 'review' && !document.getElementById('cv-review-body').children.length) cvRunReview(); // async — no await needed here
+}
+
+// ── VALIDATE MODE ─────────────────────────────────────────────────────────────
+function cvRenderValidate() {
+    const p = _cvTop.profile;
+    const parsed = _cvParsed;
+    const fmt = parsed.fmt;
+    const isMC = parsed.isMC;
+    const checks = [];
+    const _chk = (name, status, value, detail='') => checks.push({name, status, value, detail});
+    const chkEl = document.getElementById('cv-val-checks');
+
+    // ── Format ───────────────────────────────────────────────────────────────
+    const detFmt = parsed.fmt;
+    const cfgFmt = p.format;
+    _chk('Format', detFmt === cfgFmt ? 'pass' : 'fail',
+        `Detected: ${detFmt}  Config: ${cfgFmt}`,
+        detFmt !== cfgFmt ? `Update profile format to "${detFmt}"` : '');
+
+    // ── Key structure (MC only) ───────────────────────────────────────────────
+    if (isMC) {
+        const ki = parsed.mcKeyFieldIndices;
+        const ds = parsed.mcDataStartIndex;
+        const kl = parsed.mcKeyFieldLabels;
+        const cfgKl = p.headers?.keyLabels ? Object.values(p.headers.keyLabels) : [];
+        _chk('Key structure', ki.length > 0 ? 'pass' : 'fail',
+            `keyIndices=[${ki.join(',')}]  dataStart=${ds}  labels=[${kl.join(',')}]`,
+            cfgKl.length && JSON.stringify(cfgKl) !== JSON.stringify(kl)
+                ? `Config keyLabels=${JSON.stringify(cfgKl)}, detected=[${kl.join(',')}]` : '');
+    }
+
+    // ── Rules ────────────────────────────────────────────────────────────────
+    const rules = p.rules || p.rwules || [];
+    const rKey = p.rules ? 'rules' : 'rwules';
+    if (rules.length === 0) {
+        _chk('Rules', 'fail', 'No rules defined in profile', `Add a "${rKey}" array to profile "${p.name}"`);
+    } else {
+        _chk('Rules', 'pass', `${rules.length} rule(s): [${rules.map(r=>r.header).join(', ')}]`);
+        // Check each rule's tokens exist as KPI names (named tokens only — KPI_N are positional refs)
+        const allKpis = new Set(Object.values(parsed.kpiNames || {}));
+        const allTokKeys = Object.keys(parsed.kpiNames || {});
+        rules.forEach(rule => {
+            const namedTokens = (rule.tokens||[]).filter(t => !/^KPI_\d+$/.test(t));
+            if (namedTokens.length === 0 && (rule.tokens||[]).length > 0) {
+                // All tokens are KPI_N — suggest using actual names
+                const hdrKpis = (p.headers?.mcHeaderFile||[]).flatMap(line => {
+                    const c = line.split(',').map(s=>s.trim());
+                    return c.slice(p.headers?.kpiColumns?.start || 5).filter(s=>s && !s.includes('('));
+                }).slice(0,5);
+                if (hdrKpis.length > 0) _chk(`Rule: ${rule.header}`, 'warn',
+                    `Tokens use positional KPI_N names — replace with actual KPI names`,
+                    `From header: [${hdrKpis.join(', ')}${hdrKpis.length>=5?', …':''}]`);
+            } else {
+                const bad = namedTokens.filter(t => !allTokKeys.includes(t) && !allKpis.has(t));
+                if (bad.length) _chk(`Rule: ${rule.header}`, 'warn',
+                    `${bad.length} token(s) not found in parsed KPIs`,
+                    `Missing tokens: [${bad.join(', ')}]`);
+            }
+        });
+    }
+
+    // ── MC Header coverage & KPI counts ──────────────────────────────────────
+    const mcKpiValidation = [];
+    if (isMC) {
+        const mcHdrStore = parsed.mcHdrStore || {};
+        const kIdx = parsed.mcKeyFieldIndices || [];
+        const profHeaders = p.headers?.mcHeaderFile || [];
+
+        const compKeys = Object.keys(parsed.compIndexStore).sort();
+
+        if (profHeaders.length === 0) {
+            _chk('MC Headers', 'fail', 'No mcHeaderFile defined in profile',
+                'Add a "headers.mcHeaderFile" array with one CSV line per component');
+        } else {
+            _chk('MC Headers', 'pass', `${profHeaders.length} header line(s) defined`);
+        }
+
+        let noHdr = 0, cntMismatch = 0, unnamedTotal = 0;
+        compKeys.forEach(ck => {
+            const entry = mcHdrStore[ck] || {};
+            const kpiNames = entry.kpiNames || [];
+            const rows = parsed.compIndexStore[ck];
+            const r0 = rows?.[0];
+            const toolToks = r0 ? Object.keys(r0.tokens) : [];
+            const toolCount = toolToks.length;
+            const cfgCount = kpiNames.length;
+            const named = kpiNames.filter(n=>n&&!n.startsWith('KPI_')).length;
+            const hdrLine = findBestHdr ? findBestHdr(ck, kIdx, profHeaders) : null;
+            const status = !hdrLine ? '❌ NO_HEADER' : toolCount !== cfgCount ? '⚠ COUNT_MISMATCH' : '✅ PASS';
+            if (!hdrLine) noHdr++;
+            if (hdrLine && toolCount !== cfgCount) cntMismatch++;
+            unnamedTotal += Math.max(0, toolCount - named);
+            mcKpiValidation.push({key:ck, toolCount, cfgCount, named, status, hdrLine});
+        });
+
+        if (isMC && compKeys.length > 0) {
+            _chk('MC header coverage', noHdr===0?'pass':'fail',
+                noHdr===0 ? `All ${compKeys.length} components have a matching header line`
+                           : `${noHdr} component(s) have NO matching header line`,
+                noHdr>0 ? mcKpiValidation.filter(v=>v.status==='❌ NO_HEADER').map(v=>v.key).join(', ') : '');
+            _chk('MC KPI count match', cntMismatch===0?'pass':'warn',
+                cntMismatch===0 ? 'All KPI counts match between data and config'
+                                : `${cntMismatch} component(s) have KPI count mismatch`,
+                cntMismatch>0 ? mcKpiValidation.filter(v=>v.status==='⚠ COUNT_MISMATCH')
+                    .map(v=>`${v.key}: data=${v.toolCount} config=${v.cfgCount}`).join('; '):'');
+            _chk('MC KPI naming', unnamedTotal===0?'pass':'warn',
+                unnamedTotal===0?'All KPIs have friendly names'
+                               :`${unnamedTotal} unnamed KPI(s) (generic KPI_N names)`,
+                unnamedTotal>0 ? 'Add KPI names to the mcHeaderFile lines' : '');
+        }
+
+        // ── Overlay field separation + config check ─────────────────────────
+        const ovNames = parsed.mcOverlayFieldNames || [];
+        const kpiOpts = parsed.kpiSelectorOptions || [];
+        const ovOpts = parsed.overlaySelectorOptions || [];
+        if (ovNames.length > 0) {
+            const xxxInKpi = kpiOpts.filter(o=>ovNames.includes(o.raw)||ovNames.includes(o.display));
+            const nonXxxInOv = ovOpts.filter(o=>!o.display.includes('no XXX')&&!ovNames.includes(o.raw)&&!ovNames.includes(o.display));
+            _chk('Overlay separation', (xxxInKpi.length===0&&nonXxxInOv.length===0)?'pass':'fail',
+                `XXX fields registered: [${ovNames.join(', ')}]`,
+                xxxInKpi.length>0 ? `XXX leaking into KPI Metrics: [${xxxInKpi.map(o=>o.display).join(', ')}]`
+                                  : nonXxxInOv.length>0 ? `Non-XXX in overlay: [${nonXxxInOv.map(o=>o.display).join(', ')}]`
+                                  : 'Overlay fields correctly separated from KPI Metrics');
+            // Check overlay section in config — also derive expected format from header lines
+            const cfgOverlay = p.overlay || {};
+            const hasOverlayConfig = Object.keys(cfgOverlay).length > 0;
+            // Build expected overlay from header lines for comparison
+            const expectedOverlay = {};
+            (p.headers?.mcHeaderFile||[]).forEach(line => {
+                const cols = line.split(',').map(c=>c.trim());
+                const staticVals=[], xxxFields=[];
+                cols.forEach((col,ci) => {
+                    if (ci<2||ci>8) return;
+                    const m2=col.match(/^(.+?)\(([^)]+)\)$/);
+                    if (!m2) return;
+                    const v=m2[2].trim(), l=m2[1].trim();
+                    if (v.toUpperCase()==='XXX') xxxFields.push(l);
+                    else staticVals.push(v);
+                });
+                if (!xxxFields.length) return;
+                const ck=staticVals.join('|');
+                if (!expectedOverlay[ck]) expectedOverlay[ck]=[];
+                xxxFields.forEach(f=>{if(!expectedOverlay[ck].includes(f))expectedOverlay[ck].push(f);});
+            });
+            const expectedKeys = Object.keys(expectedOverlay);
+            const missingOverlayKeys = expectedKeys.filter(k=>!cfgOverlay[k]);
+            const ovCfgStatus = hasOverlayConfig && missingOverlayKeys.length===0 ? 'pass'
+                              : hasOverlayConfig && missingOverlayKeys.length>0 ? 'warn' : 'warn';
+            _chk('Overlay config', ovCfgStatus,
+                hasOverlayConfig && missingOverlayKeys.length===0
+                    ? `${Object.keys(cfgOverlay).length} component group(s) configured: [${Object.keys(cfgOverlay).join(', ')}]`
+                    : missingOverlayKeys.length>0
+                        ? `Missing overlay for ${missingOverlayKeys.length} component(s): [${missingOverlayKeys.join(', ')}]`
+                        : `No overlay section — ${expectedKeys.length} component type(s) need overlay config`,
+                hasOverlayConfig
+                    ? Object.entries(cfgOverlay).map(([k,v])=>`${k}: [${v.join(', ')}]`).join('; ')
+                    : expectedKeys.length>0
+                        ? `Add to profile — "overlay": {${expectedKeys.map(k=>`"${k}": [${expectedOverlay[k].map(f=>`"${f}"`).join(', ')}]`).join(', ')}}`
+                        : `Expected overlay fields: [${ovNames.join(', ')}]`);
+        } else if (isMC && parsed.mcHeaderStore && Object.keys(parsed.mcHeaderStore).length > 0) {
+            // Check if any header line has XXX fields even if not yet demoted
+            const profHdrLines = p.headers?.mcHeaderFile || [];
+            const xxxInHdr = [];
+            profHdrLines.forEach(line => {
+                const matches = line.match(/\w[\w\s]*\(XXX\)/gi) || [];
+                matches.forEach(m => { const name = m.replace(/\(XXX\)$/i,'').trim(); if (!xxxInHdr.includes(name)) xxxInHdr.push(name); });
+            });
+            if (xxxInHdr.length > 0) {
+                const hasOverlayConfig = !!(p.overlay && Object.keys(p.overlay).length > 0);
+                _chk('Overlay config', hasOverlayConfig ? 'pass' : 'warn',
+                    hasOverlayConfig ? `Overlay config present: ${JSON.stringify(p.overlay)}`
+                                     : `${xxxInHdr.length} XXX field(s) in headers but no overlay config`,
+                    `XXX fields from headers: [${xxxInHdr.join(', ')}]. Add "overlay" section to profile.`);
+            }
+        }
+    }
+
+    // ── Match score (all profiles) ───────────────────────────────────────────
+    const allScores = scoreAllProfiles(_cvRaw, _cvCfg, _cvW);
+    const wasAutoMatched = !!_cvW.matchedProfile;
+    const scoreStatus = wasAutoMatched ? 'pass'
+                      : _cvTop.score >= 80 ? 'pass'
+                      : _cvTop.score >= 50 ? 'warn' : 'fail';
+    const scoreLabel = wasAutoMatched
+        ? `auto-matched by KPI pattern — "${_cvTop.profile.name}"`
+        : `${Math.round(_cvTop.score)}% fingerprint score — "${_cvTop.profile.name}"`;
+    _chk('Profile match', scoreStatus, scoreLabel,
+        allScores.slice(0,4).map(s=>`${s.profile.name}: ${Math.round(s.score)}%`).join(' | '));
+
+    // ── Render checks ─────────────────────────────────────────────────────────
+    const icon = {pass:'✓', fail:'✗', warn:'△'};
+    chkEl.innerHTML = checks.map(c => `
+        <div class="chk ${c.status}">
+            <span class="chk-icon">${icon[c.status]||'·'}</span>
+            <span class="chk-name">${c.name}</span>
+            <span class="chk-val">${c.value}${c.detail?`<br><span style="color:#8b949e;font-size:.9em;">${c.detail}</span>`:''}</span>
+        </div>`).join('');
+
+    // ── MC KPI table ──────────────────────────────────────────────────────────
+    const tblEl = document.getElementById('cv-val-kpi-table');
+    if (mcKpiValidation.length) {
+        const passCnt = mcKpiValidation.filter(v=>v.status==='✅ PASS').length;
+        tblEl.innerHTML = `
+            <div class="section-lbl" style="margin-bottom:8px;">MC COMPONENT KPI VALIDATION (${passCnt}/${mcKpiValidation.length} PASS)</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.78em;">
+            <thead><tr style="border-bottom:1px solid #30363d;color:#8b949e;">
+                <th style="text-align:left;padding:4px 8px;">Component Key</th>
+                <th style="padding:4px 8px;">Status</th>
+                <th style="padding:4px 8px;">Data KPIs</th>
+                <th style="padding:4px 8px;">Config KPIs</th>
+                <th style="text-align:left;padding:4px 8px;">Action Required</th>
+            </tr></thead><tbody>` +
+            mcKpiValidation.map(v => {
+                const clr = v.status==='✅ PASS'?'#3fb950':v.status==='❌ NO_HEADER'?'#f85149':'#d29922';
+                // Build sample rows for NO_HEADER from _cvParsed compIndexStore
+            let cvSampleRows = [];
+            if (!v.status?.includes('PASS')) {
+                const compRows = _cvParsed?.compIndexStore?.[v.key];
+                const cvKIdx = _cvParsed?.mcKeyFieldIndices || [];
+                const cvDsi  = _cvParsed?.mcDataStartIndex  || 5;
+                const keyParts = v.key.split('|');
+                if (compRows?.length) {
+                    for (let si = 0; si < Math.min(2, compRows.length); si++) {
+                        const sr = compRows[si];
+                        const [srDate, srTime] = (sr.timestamp||'?,?').split(',');
+                        const tokenVals = Object.values(sr.tokens||{});
+                        const totalCols = cvDsi + tokenVals.length;
+                        const colArr = new Array(totalCols).fill('?');
+                        colArr[0] = srDate||'?'; colArr[1] = srTime||'?';
+                        cvKIdx.forEach((ki, i) => { if (ki < totalCols) colArr[ki] = keyParts[i] !== undefined ? keyParts[i] : '?'; });
+                        tokenVals.forEach((tv, i) => { colArr[cvDsi + i] = tv; });
+                        cvSampleRows.push(colArr.join(','));
+                    }
+                }
+            }
+            const isNoHdrCV = v.status === '❌ NO_HEADER';
+            const isMismatchCV = v.status === '⚠ COUNT_MISMATCH';
+            let cvSampleHtml = '';
+            if (isMismatchCV && v.cfgKPIs?.length) {
+                cvSampleHtml += `<div style="margin-top:4px;padding:4px 6px;background:#0a0d12;border-radius:3px;border-left:2px solid #d29922;font-size:.71em;">
+                    <div style="color:#d29922;margin-bottom:2px;">Config header defines ${v.cfgCount} KPI(s): <span style="color:#8b949e;font-family:monospace;">${v.cfgKPIs.join(', ')}</span></div></div>`;
+            }
+            if (cvSampleRows.length) {
+                cvSampleHtml += `<div style="margin-top:3px;padding:4px 6px;background:#0a0d12;border-radius:3px;border-left:2px solid #58a6ff;font-family:monospace;font-size:.71em;word-break:break-all">
+                    <div style="color:#58a6ff;margin-bottom:2px;">${isNoHdrCV?'Sample rows (write header matching this format):':'Sample data rows ('+v.toolCount+' KPI columns detected):'}</div>
+                    ${cvSampleRows.map((s,i)=>`<div style="color:#8b949e;margin-bottom:2px;"><span style="color:#6e7681">row ${i+1}:</span> <span style="color:#ccc">${s}</span></div>`).join('')}
+                    ${isNoHdrCV?'<div style="color:#58a6ff;font-size:.8em;margin-top:3px;">Format: Date,Time,Seq,<span style="color:#d29922">key1(val),key2(val)</span>,<span style="color:#3fb950">KPIName1,KPIName2,…</span></div>':''}
+                    ${isMismatchCV?`<div style="color:#d29922;font-size:.8em;margin-top:3px;">Data has ${v.toolCount} KPI columns — config has ${v.cfgCount}</div>`:''}
+                   </div>`;
+            }
+            const action = v.status==='❌ NO_HEADER'
+                    ? `Add header line for [${v.key}]${cvSampleHtml}`
+                    : v.status==='⚠ COUNT_MISMATCH'
+                        ? (v.toolCount > v.cfgCount ? `Config too short — add ${v.toolCount-v.cfgCount} KPI name(s)`
+                                                    : `Config too long — remove ${v.cfgCount-v.toolCount} KPI name(s)`) + cvSampleHtml
+                        : '—';
+                return `<tr style="border-bottom:1px solid #1a1e26;">
+                    <td style="padding:4px 8px;color:#79c0ff;font-family:monospace;">${v.key}</td>
+                    <td style="padding:4px 8px;text-align:center;color:${clr};">${v.status}</td>
+                    <td style="padding:4px 8px;text-align:center;">${v.toolCount}</td>
+                    <td style="padding:4px 8px;text-align:center;">${v.cfgCount}</td>
+                    <td style="padding:4px 4px;color:${v.status!=='✅ PASS'?'#f85149':'#3fb950'};max-width:320px;">${action}</td>
+                </tr>`;
+            }).join('') + '</tbody></table>';
+    } else { tblEl.innerHTML = ''; }
+
+    // ── Gaps summary ──────────────────────────────────────────────────────────
+    const gapsEl = document.getElementById('cv-val-gaps');
+    const issues = checks.filter(c=>c.status!=='pass' && c.detail);
+    if (issues.length) {
+        gapsEl.innerHTML = `<div class="section-lbl" style="margin-bottom:8px;">CORRECTIONS REQUIRED (${issues.length})</div>` +
+            issues.map(c=>`<div style="padding:6px 10px;background:rgba(248,81,73,.06);border-left:3px solid #f85149;border-radius:0 4px 4px 0;margin-bottom:5px;font-size:.8em;">
+                <strong style="color:#f85149;">${c.status.toUpperCase()}</strong>
+                <strong style="color:#e6edf3;"> ${c.name}:</strong>
+                <span style="color:#8b949e;"> ${c.detail}</span></div>`).join('');
+    } else {
+        gapsEl.innerHTML = '<div style="padding:8px 12px;background:rgba(63,185,80,.07);border-left:3px solid #3fb950;border-radius:0 4px 4px 0;font-size:.82em;color:#3fb950;">✅ All configuration checks passed — no corrections required.</div>';
+    }
+
+    // ── Action buttons ────────────────────────────────────────────────────────
+    document.getElementById('cv-val-actions').innerHTML = `
+        <button onclick="cvShowTab('suggest')" style="padding:6px 14px;background:#1f4e79;border:1px solid #58a6ff;color:#79c0ff;border-radius:5px;cursor:pointer;font-size:.82em;">💡 View Suggested Config</button>
+        <button onclick="cvDownloadCorrectedConfig()" style="padding:6px 14px;background:#1a3a1a;border:1px solid #3fb950;color:#3fb950;border-radius:5px;cursor:pointer;font-size:.82em;">💾 Save Corrected Config</button>
+    `;
+}
+
+// Helper to find best header line (same logic as in validateFile)
+function findBestHdr(ck, kIdx, hdrLines) {
+    // Annotation-based matching: read static key values + count XXX wildcard slots.
+    // XXX positions in the header match any instance-specific value in the component key.
+    const parts = ck.split('|');
+    let best = null, bestScore = -1;
+    hdrLines.forEach((line, li) => {
+        const cols = line.split(',').map(c=>c.trim());
+        const staticVals = [];
+        let xxxCount = 0, inKeyZone = false;
+        for (let ci = 0; ci < cols.length; ci++) {
+            const mv = cols[ci].match(/^(.+?)\(([^)]+)\)$/);
+            if (!mv) { if (inKeyZone) break; continue; }
+            inKeyZone = true;
+            const val = mv[2].trim();
+            if (val.toUpperCase() === 'XXX') { xxxCount++; continue; }
+            staticVals.push(val);
+        }
+        if (staticVals.length === 0) return;
+        let ok = true, score = 0, pi = 0;
+        for (let si = 0; si < staticVals.length; si++) {
+            if (pi >= parts.length) { ok=false; break; }
+            if (staticVals[si] === parts[pi]) { score+=10; pi++; }
+            else { ok=false; break; }
+        }
+        const remaining = parts.length - pi;
+        if (ok && remaining > xxxCount) ok = false;
+        if (ok && score > bestScore) { bestScore=score; best={li, line, cols, score}; }
+    });
+    return best;
+}
+
+// ── SUGGEST MODE ──────────────────────────────────────────────────────────────
+function cvRenderSuggest() {
+    const fmt = _cvParsed?.fmt || _cvW?.detectFileFormat(_cvRaw) || 'unknown';
+    const isMC = fmt === 'multiComp';
+    const hdrInputSection = document.getElementById('cv-hdr-input-section');
+
+    // Show header input for MC files without a header
+    const hasHdrLines = (_cvTop?.profile?.headers?.mcHeaderFile||[]).length > 0 || _cvHdrRaw;
+    hdrInputSection.style.display = (isMC && !hasHdrLines) ? 'block' : 'none';
+
+    cvBuildSuggestedJson();
+
+    // Action buttons
+    document.getElementById('cv-sug-actions').innerHTML = `
+        <button onclick="cvSaveToMasterConfig()" style="padding:6px 14px;background:#1a3a1a;border:1px solid #3fb950;color:#3fb950;border-radius:5px;cursor:pointer;font-size:.82em;">💾 Save to MasterConfig</button>
+        <button onclick="cvDownloadProfile()" style="padding:6px 14px;background:#1f4e79;border:1px solid #58a6ff;color:#79c0ff;border-radius:5px;cursor:pointer;font-size:.82em;">⬇ Download Profile JSON</button>
+        <button onclick="cvCopyJson()" style="padding:6px 14px;background:#30363d;border:none;color:#8b949e;border-radius:5px;cursor:pointer;font-size:.82em;">📋 Copy JSON</button>
+    `;
+}
+
+function cvBuildSuggestedJson() {
+    const fmt = _cvParsed?.fmt || 'unknown';
+    const isMC = fmt === 'multiComp';
+    const appName = _cvFilename.replace(/-DataFile.*$/i,'').replace(/\.\w+$/,'').trim() || 'NewApp';
+    const ki = _cvParsed?.mcKeyFieldIndices || [3,4];
+    const ds = _cvParsed?.mcDataStartIndex || 5;
+    const kl = _cvParsed?.mcKeyFieldLabels || ['Type','CompId'];
+
+    // Get header lines from profile, textarea, or raw header file
+    let hdrLines = _cvTop?.profile?.headers?.mcHeaderFile || [];
+    if (!hdrLines.length && _cvHdrRaw) {
+        hdrLines = _cvHdrRaw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
+    }
+    const taVal = document.getElementById('cv-hdr-textarea')?.value.trim();
+    if (!hdrLines.length && taVal) {
+        hdrLines = taVal.split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
+    }
+
+    // If header lines present, re-parse key structure from them for accurate suggestions
+    if (hdrLines.length > 0 && _cvW && typeof _cvW.parseAnnotatedHeaders === 'function') {
+        try {
+            const firstHdr = hdrLines[0].split(',').map(c=>c.trim());
+            const ann = _cvW.parseAnnotatedHeaders(firstHdr, 2);
+            if (ann && ann.keyIndices.length > 0) {
+                // Override ki/ds/kl with header-derived values
+                ki.splice(0, ki.length, ...ann.keyIndices.filter(k=>ann.instanceIdIndices.indexOf(k)<0));
+                kl.splice(0, kl.length, ...ki.map(k=>{ const p=ann.keyIndices.indexOf(k); return p>=0?ann.keyLabels[p]:('Key'+(k+1)); }));
+                ds = ann.dataStartIndex;
+            }
+        } catch(e) {}
+    }
+
+    // Build match section — use actual MasterConfig format: {"0":{"type":"date"}, "1":{"type":"time"}}
+    // Plus allNumericFrom for multiComp files (column from which all values are numeric)
+    const matchObj = {
+        columns: {
+            "0": {type: "date"},
+            "1": {type: "time"}
+        }
+    };
+    if (isMC) matchObj.allNumericFrom = ds;
+
+    // Build rules from existing parsed KPI names
+    const kpiNames = _cvParsed?.kpiNames || {};
+    const compKeys = Object.keys(_cvParsed?.compIndexStore||{});
+    const sampleKpis = Object.values(kpiNames).filter(n=>n&&!n.startsWith('KPI_')).slice(0,8);
+
+    // Build suggested rules — use actual KPI names from headers (never KPI_N when names available)
+    // For MC: extract KPI names per component from header lines
+    const buildRulesFromHeaders = () => {
+        if (!hdrLines.length) return null;
+        const rules = [];
+        hdrLines.forEach((line, li) => {
+            const cols = line.split(',').map(c=>c.trim());
+            // Get the static key values from this header line (non-XXX positions)
+            const staticVals = [];
+            const xxxFields = [];
+            const kpiCols = [];
+            let effectiveDsi = ds;
+            cols.forEach((col, ci) => {
+                if (ci < 2) return; // skip date/time
+                const m = col.match(/^(.+?)\(([^)]+)\)$/);
+                if (m && ci >= 2 && ci <= 7) {
+                    const val = m[2].trim();
+                    if (val.toUpperCase() === 'XXX') {
+                        xxxFields.push(m[1].trim());
+                        effectiveDsi = Math.max(effectiveDsi, ci + 1);
+                    } else {
+                        staticVals.push(m[1].trim() + ': ' + val);
+                    }
+                } else if (ci >= effectiveDsi) {
+                    if (col && !col.startsWith('//')) kpiCols.push(col);
+                }
+            });
+            if (kpiCols.length === 0) return; // no KPI columns
+            // Build component description from static key values
+            const compDesc = staticVals.length ? staticVals.join(', ') : ('Format ' + (li+1));
+            rules.push({
+                header: appName + ' ' + compDesc,
+                mode: 'direct',
+                tokens: kpiCols.slice(0, 8) // use actual KPI names, up to 8
+            });
+        });
+        return rules.length ? rules : null;
+    };
+
+    const hdrRules = buildRulesFromHeaders();
+    const suggestedRules = hdrRules || (isMC && compKeys.length > 0 ? [{
+        header: appName + ' KPIs',
+        mode: 'direct',
+        tokens: sampleKpis.length > 0 ? sampleKpis.slice(0,6) : ['KPI_1','KPI_2','KPI_3']
+    }] : [{
+        header: appName + ' Statistics',
+        mode: 'direct',
+        tokens: sampleKpis.slice(0,6)
+    }]);
+
+    // Build profile
+    const profile = {
+        name: appName + ' Statistics',
+        app: appName,
+        format: fmt,
+        match: matchObj,
+        headers: {}
+    };
+
+    if (fmt === 'flatCsv') {
+        const firstRow = _cvRaw?.split(/\r?\n/)[0];
+        if (firstRow) profile.headers.columns = firstRow.trim();
+        profile.headers.hasHeader = false;
+    }
+
+    if (isMC) {
+        profile.headers.hasHeader = false;
+        // keyLabels: derive from header lines (authoritative) or fall back to detected ki/kl
+        const keyLabelMap = {};
+        if (hdrLines.length > 0 && _cvW && typeof _cvW.parseAnnotatedHeaders === 'function') {
+            try {
+                const firstHdrCols = hdrLines[0].split(',').map(c=>c.trim());
+                const ann = _cvW.parseAnnotatedHeaders(firstHdrCols, 2);
+                if (ann && ann.keyIndices.length > 0) {
+                    // Use only STATIC key positions (non-XXX)
+                    ann.keyIndices.filter(idx => ann.instanceIdIndices.indexOf(idx) < 0).forEach((idx, i) => {
+                        keyLabelMap[idx] = ann.keyLabels[ann.keyIndices.indexOf(idx)] || ('Key'+(i+1));
+                    });
+                }
+            } catch(e) {}
+        }
+        // Fall back to ki/kl if header parse didn't give us labels
+        if (Object.keys(keyLabelMap).length === 0) {
+            ki.forEach((idx,i) => { keyLabelMap[idx] = kl[i] || ('Key'+(i+1)); });
+        }
+        profile.headers.keyLabels = keyLabelMap;
+        profile.headers.kpiColumns = {start: ds};
+        if (hdrLines.length) profile.headers.mcHeaderFile = hdrLines;
+        else profile.headers.mcHeaderFile = [`// Add header lines: Date,Time,Seq,${Object.values(keyLabelMap).map((l,i)=>`${l}(value${i+1})`).join(',')},KPI1,KPI2,...`];
+
+        // ── Overlay fields — one entry per component group showing XXX key fields ──────
+        // Collect all XXX-annotated fields across all header lines, grouped by component key
+        // Build overlay section from header lines
+        // Key = static VALUE combination matching compIndexStore format (e.g. "2|69")
+        // Value = array of XXX field names for that component type
+        {
+            const overlayPerComp = {};
+            hdrLines.forEach((line) => {
+                const cols = line.split(',').map(c=>c.trim());
+                const staticVals = [];
+                const xxxFields = [];
+                cols.forEach((col, ci) => {
+                    if (ci < 2) return; // skip date/time
+                    const m = col.match(/^(.+?)\(([^)]+)\)$/);
+                    if (!m || ci > 8) return; // only check key columns
+                    const val = m[2].trim();
+                    const label = m[1].trim();
+                    if (val.toUpperCase() === 'XXX') {
+                        xxxFields.push(label); // overlay field name
+                    } else {
+                        staticVals.push(val); // use the VALUE not the label
+                    }
+                });
+                if (xxxFields.length === 0) return;
+                const compKey = staticVals.join('|'); // e.g. "2|69" matches compIndexStore key
+                if (!overlayPerComp[compKey]) overlayPerComp[compKey] = [];
+                xxxFields.forEach(f => { if (!overlayPerComp[compKey].includes(f)) overlayPerComp[compKey].push(f); });
+            });
+            if (Object.keys(overlayPerComp).length > 0) {
+                profile.overlay = overlayPerComp;
+            }
+        }
+    }
+
+    profile.rules = suggestedRules;
+
+    document.getElementById('cv-json-editor').value = JSON.stringify(profile, null, 4);
+}
+
+function cvRegenerateFromHeaders() {
+    cvBuildSuggestedJson();
+}
+
+function cvCopyJson() {
+    const val = document.getElementById('cv-json-editor').value;
+    navigator.clipboard.writeText(val).then(()=>{
+        const btn = document.querySelector('#cv-pane-suggest button[onclick="cvCopyJson()"]');
+        if (btn) { const orig=btn.textContent; btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent=orig, 1500); }
+    });
+}
+
+function cvGetCorrectedConfig() {
+    // Build corrected MasterConfig by fixing the matched profile's issues
+    const corrected = JSON.parse(JSON.stringify(_cvCfg));
+    const profIdx = corrected.profiles.findIndex(p=>p.name===_cvTop.profile.name);
+    if (profIdx < 0) return corrected;
+
+    const p = corrected.profiles[profIdx];
+    const parsed = _cvParsed;
+    const isMC = parsed.isMC;
+
+    // Fix key labels
+    if (isMC && parsed.mcKeyFieldIndices.length) {
+        if (!p.headers) p.headers = {};
+        if (!p.headers.keyLabels) p.headers.keyLabels = {};
+        parsed.mcKeyFieldIndices.forEach((idx,i)=>{
+            p.headers.keyLabels[idx] = parsed.mcKeyFieldLabels[i]||('Key'+(i+1));
+        });
+        p.headers.kpiColumns = {start: parsed.mcDataStartIndex};
+    }
+
+    return corrected;
+}
+
+function cvDownloadCorrectedConfig() {
+    const corrected = cvGetCorrectedConfig();
+    const blob = new Blob([JSON.stringify(corrected, null, 4)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'MasterConfig-corrected-' + (_cvTop?.profile?.app||'app') + '.json';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+}
+
+function cvSaveToMasterConfig() {
+    try {
+        const newProfile = JSON.parse(document.getElementById('cv-json-editor').value);
+        const corrected = JSON.parse(JSON.stringify(_cvCfg));
+        // Check if profile with same name already exists
+        const existing = corrected.profiles.findIndex(p=>p.name===newProfile.name);
+        if (existing >= 0) {
+            if (!confirm(`Profile "${newProfile.name}" already exists. Replace it?`)) return;
+            corrected.profiles[existing] = newProfile;
+        } else {
+            corrected.profiles.push(newProfile);
+        }
+        const blob = new Blob([JSON.stringify(corrected, null, 4)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'MasterConfig-updated.json';
+        a.click();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+        setStatus('✅ MasterConfig downloaded with new profile "' + newProfile.name + '"');
+    } catch(e) { alert('Invalid JSON: ' + e.message); }
+}
+
+function cvDownloadProfile() {
+    try {
+        const profile = JSON.parse(document.getElementById('cv-json-editor').value);
+        const blob = new Blob([JSON.stringify(profile, null, 4)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (profile.app||'NewApp') + '-profile.json';
+        a.click();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+    } catch(e) { alert('Invalid JSON: ' + e.message); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REVIEW ALL PROFILES
+// ─────────────────────────────────────────────────────────────────────────────
+let _cvReviewedConfig = null; // stores the auto-corrected MasterConfig
+
+async function cvRunReview() {
+    if (!_cvCfg) {
+        try { _cvCfg = await loadMasterConfig(); }
+        catch(e) {
+            document.getElementById('cv-review-summary').innerHTML = '<div style="color:#f85149;font-size:.82em;">⚠ Cannot load MasterConfig: ' + e.message + '</div>';
+            return;
+        }
+    }
+    const cfg = _cvCfg;
+
+    const w = _cvW; // may be null — we do text-only analysis here
+    _cvReviewedConfig = JSON.parse(JSON.stringify(cfg)); // deep copy for corrections
+    let totalIssues = 0, totalFixed = 0, totalProfiles = cfg.profiles.length;
+    const cards = [];
+
+    cfg.profiles.forEach((p, pi) => {
+        const rules = p.rules || p.rwules || [];
+        const ruleKey = p.rules ? 'rules' : 'rwules';
+        const hdrLines = p.headers?.mcHeaderFile || [];
+        const dsi = p.headers?.kpiColumns?.start || p.match?.allNumericFrom || 5;
+        const issues = [];
+        const fixes = {}; // {ruleIdx: {tokenIdx: newName}}
+
+        // ── Build KPI_N → name maps from all header lines ─────────────────────
+        // Each header line may map KPI_N differently (different component types)
+        // Strategy: if ALL rules' KPI_N tokens resolve consistently across at least
+        // one header line, use that mapping; otherwise flag as "ambiguous"
+        const buildKpiMap = (line) => {
+            const cols = line.split(',').map(c=>c.trim());
+            let effDsi = dsi;
+            cols.forEach((col,ci) => {
+                if (ci >= 2 && ci <= 8) {
+                    const m = col.match(/\(([^)]+)\)$/);
+                    if (m && m[1].toUpperCase() === 'XXX') effDsi = Math.max(effDsi, ci + 1);
+                }
+            });
+            const map = {};
+            cols.forEach((col,ci) => {
+                if (ci >= effDsi && col && !col.includes('(') && !col.startsWith('//')) {
+                    map['KPI_' + (ci - effDsi + 1)] = col;
+                }
+            });
+            return {map, effDsi, staticVals: (() => {
+                const sv = [];
+                cols.forEach((col,ci) => {
+                    if (ci >= 2 && ci <= 8) {
+                        const m = col.match(/^(.+?)\(([^)]+)\)$/);
+                        if (m && m[2].toUpperCase() !== 'XXX') sv.push(m[2]); // value
+                    }
+                });
+                return sv.join('|');
+            })()};
+        };
+
+        const allMaps = hdrLines.map(buildKpiMap);
+
+        // ── Check each rule for KPI_N tokens ─────────────────────────────────
+        rules.forEach((rule, ri) => {
+            const kpiNTokens = (rule.tokens||[]).filter(t => /^KPI_\d+$/.test(t));
+            if (!kpiNTokens.length) return;
+
+            // Try to find a single header line that resolves ALL KPI_N tokens
+            let bestMap = null, bestLine = '', ambiguous = false;
+            const multiResolutions = {};
+
+            allMaps.forEach(({map, staticVals}, li) => {
+                const resolved = kpiNTokens.map(t => map[t] || null);
+                if (resolved.every(Boolean)) {
+                    // All tokens resolved by this line
+                    const key = resolved.join('|');
+                    if (!multiResolutions[key]) multiResolutions[key] = {resolved, line: hdrLines[li], staticVals};
+                }
+            });
+
+            const resolutionGroups = Object.values(multiResolutions);
+            if (resolutionGroups.length === 0) {
+                // Cannot resolve — headers don't cover these positional indices
+                issues.push({
+                    type: 'kpi_n_unresolvable',
+                    ruleHeader: rule.header,
+                    tokens: kpiNTokens,
+                    detail: `Cannot resolve ${kpiNTokens.join(', ')} from ${hdrLines.length} header line(s) — KPI indices may exceed available columns`
+                });
+            } else if (resolutionGroups.length === 1) {
+                // Unambiguous resolution — safe to replace
+                const {resolved, line, sv} = resolutionGroups[0];
+                // Warn if the component key (sv) doesn't relate to the rule header
+                // e.g. "Probe Input Feed Stats" resolved from PublishStats component
+                const compHint = sv ? `[${sv}]` : '';
+                const ruleWords = rule.header.toLowerCase().replace(/[^a-z0-9\s]/g,'');
+                const lineWords = line.toLowerCase().replace(/[^a-z0-9\s]/g,'');
+                const hdrMatchesRule = !sv || ruleWords.split(' ').some(w=>w.length>3&&lineWords.includes(w));
+                issues.push({
+                    type: 'kpi_n_fixable',
+                    ruleHeader: rule.header,
+                    tokens: kpiNTokens,
+                    resolved,
+                    fromLine: line.substring(0, 80),
+                    compKey: sv,
+                    crossComponentWarn: !hdrMatchesRule,
+                    fix: () => {
+                        // Apply fix to reviewed config
+                        const rulesCopy = _cvReviewedConfig.profiles[pi][ruleKey];
+                        const newTokens = (rule.tokens||[]).map(t => {
+                            if (!/^KPI_\d+$/.test(t)) return t;
+                            const idx = kpiNTokens.indexOf(t);
+                            return idx >= 0 ? resolved[idx] : t;
+                        });
+                        rulesCopy[ri].tokens = newTokens;
+                    }
+                });
+            } else {
+                // Multiple component types map to different names — list all resolutions
+                issues.push({
+                    type: 'kpi_n_ambiguous',
+                    ruleHeader: rule.header,
+                    tokens: kpiNTokens,
+                    resolutions: resolutionGroups.map(g => `[${g.staticVals||'comp'}]: ${g.resolved.join(', ')}`),
+                    detail: `${resolutionGroups.length} different component types resolve these tokens differently — manual correction needed`
+                });
+            }
+        });
+
+        // ── Check overlay section ────────────────────────────────────────────
+        const xxxInHdr = [];
+        const expectedOverlay = {};
+        hdrLines.forEach(line => {
+            const cols = line.split(',').map(c=>c.trim());
+            const staticVals=[], xxxFields=[];
+            cols.forEach((col,ci) => {
+                if (ci<2||ci>8) return;
+                const m=col.match(/^(.+?)\(([^)]+)\)$/);
+                if (!m) return;
+                const v=m[2].trim(), l=m[1].trim();
+                if (v.toUpperCase()==='XXX') { xxxFields.push(l); xxxInHdr.push(l); }
+                else staticVals.push(v);
+            });
+            if (!xxxFields.length) return;
+            const ck=staticVals.join('|');
+            if (!expectedOverlay[ck]) expectedOverlay[ck]=[];
+            xxxFields.forEach(f=>{if(!expectedOverlay[ck].includes(f))expectedOverlay[ck].push(f);});
+        });
+
+        const hasOverlay = !!(p.overlay && Object.keys(p.overlay).length);
+        if (Object.keys(expectedOverlay).length > 0 && !hasOverlay) {
+            issues.push({
+                type: 'overlay_missing',
+                detail: `${Object.keys(expectedOverlay).length} component type(s) have XXX overlay fields but no "overlay" section in profile`,
+                expectedOverlay,
+                fix: () => { _cvReviewedConfig.profiles[pi].overlay = expectedOverlay; }
+            });
+        } else if (hasOverlay) {
+            // Check for missing component keys
+            const missingKeys = Object.keys(expectedOverlay).filter(k => !p.overlay[k]);
+            if (missingKeys.length > 0) {
+                issues.push({
+                    type: 'overlay_incomplete',
+                    detail: `overlay section missing ${missingKeys.length} component key(s): [${missingKeys.join(', ')}]`,
+                    missingKeys, expectedOverlay,
+                    fix: () => {
+                        missingKeys.forEach(k => { _cvReviewedConfig.profiles[pi].overlay[k] = expectedOverlay[k]; });
+                    }
+                });
+            }
+        }
+
+        // ── Build card HTML ─────────────────────────────────────────────────
+        const fixableIssues = issues.filter(i => i.fix);
+        const infoIssues = issues.filter(i => !i.fix);
+        totalIssues += issues.length;
+        if (fixableIssues.length) totalFixed += fixableIssues.length;
+
+        // Apply all fixable issues immediately into _cvReviewedConfig
+        fixableIssues.forEach(iss => { try { iss.fix(); } catch(e) {} });
+
+        const statusColor = issues.length === 0 ? '#3fb950' : fixableIssues.length > 0 ? '#d29922' : '#f85149';
+        const statusIcon = issues.length === 0 ? '✅' : fixableIssues.length > 0 ? '⚠ Auto-fixable' : '⚠ Manual review';
+        const statusText = issues.length === 0 ? 'No issues' : `${issues.length} issue(s)${fixableIssues.length ? ' ('+fixableIssues.length+' auto-fixed)' : ''}`;
+
+        let issueHtml = '';
+        issues.forEach(iss => {
+            const isFixed = !!iss.fix;
+            const borderColor = isFixed ? '#3fb950' : iss.type.includes('ambiguous') ? '#d29922' : '#f85149';
+            if (iss.type === 'kpi_n_fixable') {
+                const warnBorder = iss.crossComponentWarn ? '#d29922' : '#3fb950';
+                const warnPrefix = iss.crossComponentWarn ? '⚠ Fixed (cross-component):' : '✓ Fixed:';
+                const warnColor = iss.crossComponentWarn ? '#d29922' : '#3fb950';
+                const crossWarnMsg = iss.crossComponentWarn
+                    ? `<div style="color:#d29922;margin-top:3px;">⚠ Tokens resolved from component [${iss.compKey}] which may not match this rule's intended component — verify names are correct</div>`
+                    : '';
+                issueHtml += `<div style="padding:6px 10px;background:rgba(63,185,80,.05);border-left:3px solid ${warnBorder};border-radius:0 4px 4px 0;margin-bottom:4px;font-size:.78em;">
+                    <strong style="color:${warnColor};">${warnPrefix}</strong> Rule "<strong>${iss.ruleHeader}</strong>" — replaced
+                    <code style="background:#0d1117;padding:1px 4px;border-radius:3px;">${iss.tokens.join(', ')}</code>
+                    → <code style="background:#0d1117;padding:1px 4px;border-radius:3px;color:#3fb950;">${iss.resolved.join(', ')}</code>
+                    <div style="color:#8b949e;margin-top:2px;">From header: ${iss.fromLine}…</div>
+                    ${crossWarnMsg}
+                </div>`;
+            } else if (iss.type === 'kpi_n_ambiguous') {
+                issueHtml += `<div style="padding:6px 10px;background:rgba(210,153,34,.05);border-left:3px solid #d29922;border-radius:0 4px 4px 0;margin-bottom:4px;font-size:.78em;">
+                    <strong style="color:#d29922;">⚠ Manual:</strong> Rule "<strong>${iss.ruleHeader}</strong>" — tokens <code style="background:#0d1117;padding:1px 4px;border-radius:3px;">${iss.tokens.join(', ')}</code> are ambiguous across component types:<br>
+                    ${iss.resolutions.map(r=>`<div style="color:#8b949e;padding-left:8px;">• ${r}</div>`).join('')}
+                    <div style="color:#8b949e;margin-top:2px;">Update the rule manually to use specific names per component.</div>
+                </div>`;
+            } else if (iss.type === 'kpi_n_unresolvable') {
+                issueHtml += `<div style="padding:6px 10px;background:rgba(248,81,73,.05);border-left:3px solid #f85149;border-radius:0 4px 4px 0;margin-bottom:4px;font-size:.78em;">
+                    <strong style="color:#f85149;">✗ Unresolvable:</strong> Rule "<strong>${iss.ruleHeader}</strong>" — tokens <code style="background:#0d1117;padding:1px 4px;border-radius:3px;">${iss.tokens.join(', ')}</code>
+                    <div style="color:#8b949e;margin-top:2px;">${iss.detail}</div>
+                </div>`;
+            } else if (iss.type === 'overlay_missing' || iss.type === 'overlay_incomplete') {
+                const ovJson = JSON.stringify(iss.expectedOverlay, null, 2).replace(/\n/g,'<br>').replace(/ /g,'&nbsp;');
+                issueHtml += `<div style="padding:6px 10px;background:rgba(63,185,80,.05);border-left:3px solid #3fb950;border-radius:0 4px 4px 0;margin-bottom:4px;font-size:.78em;">
+                    <strong style="color:#3fb950;">✓ Fixed:</strong> ${iss.type === 'overlay_missing' ? 'Added missing' : 'Completed'} overlay section —
+                    <code style="background:#0d1117;padding:1px 4px;border-radius:3px;color:#3fb950;">${Object.entries(iss.expectedOverlay).map(([k,v])=>k+': ['+v.join(', ')+']').join(' | ')}</code>
+                </div>`;
+            }
+        });
+
+        cards.push({app: p.app, name: p.name, statusColor, statusIcon, statusText, issueHtml, issueCount: issues.length, fixable: fixableIssues.length});
+    });
+
+    // Render summary
+    const summaryEl = document.getElementById('cv-review-summary');
+    summaryEl.innerHTML = `<div style="display:flex;gap:16px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:6px;font-size:.82em;flex-wrap:wrap;">
+        <span>📋 <strong>${totalProfiles}</strong> profiles reviewed</span>
+        <span style="color:#3fb950;">✓ <strong>${totalFixed}</strong> auto-fixed</span>
+        <span style="color:#d29922;">⚠ <strong>${totalIssues - totalFixed}</strong> need manual review</span>
+        ${totalFixed > 0 ? '<span style="color:#8b949e;font-style:italic;">Fixes applied — click 💾 Save Updated Config to download</span>' : ''}
+    </div>`;
+
+    // Show save button if any fixes were applied
+    const saveBtn = document.getElementById('cv-review-save-btn');
+    if (saveBtn) saveBtn.style.display = totalFixed > 0 ? 'inline-block' : 'none';
+
+    // Render profile cards
+    const bodyEl = document.getElementById('cv-review-body');
+    bodyEl.innerHTML = cards.map(card => `
+        <div style="background:rgba(255,255,255,.02);border:1px solid ${card.issueCount===0?'rgba(63,185,80,.2)':'rgba(210,153,34,.2)'};border-left:3px solid ${card.statusColor};border-radius:6px;padding:10px 14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${card.issueHtml?'8px':'0'};">
+                <div>
+                    <span style="font-weight:700;color:#79c0ff;">${card.app}</span>
+                    <span style="color:#8b949e;font-size:.8em;margin-left:6px;">${card.name}</span>
+                </div>
+                <span style="font-size:.78em;color:${card.statusColor};background:rgba(255,255,255,.04);padding:2px 8px;border-radius:10px;">${card.statusIcon} ${card.statusText}</span>
+            </div>
+            ${card.issueHtml}
+        </div>`).join('');
+}
+
+function cvSaveReviewedConfig() {
+    if (!_cvReviewedConfig) { alert('Run review first.'); return; }
+    const blob = new Blob([JSON.stringify(_cvReviewedConfig, null, 4)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'MasterConfig-reviewed.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    setStatus('✅ MasterConfig-reviewed.json downloaded with all auto-fixes applied');
+}
+
+</script>
+</body>
+</html>
