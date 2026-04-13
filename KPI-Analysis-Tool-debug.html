@@ -55,6 +55,9 @@
         /* Chart header */
         .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
         .chart-header h3 { margin:0; }
+        /* Multi-file section divider */
+        .section-divider { width:100%; margin:24px 0 8px 0; padding:7px 14px; background:var(--bg-panel); border-left:4px solid var(--primary); font-size:13px; font-weight:600; color:var(--text); border-radius:0 4px 4px 0; box-sizing:border-box; }
+        .section-divider:first-child { margin-top:0; }
         .chart-copy-btn { background:var(--info); color:white; }
         /* Edit banners */
         #editBanner { display:none; padding:6px 10px; margin-top:8px; border-radius:4px; background:rgba(255,193,7,0.15); border-left:3px solid var(--warning); font-size:0.82em; justify-content:space-between; align-items:center; }
@@ -299,6 +302,7 @@
         <button id="addRuleBtn" style="background:var(--primary);color:white;width:100%;margin-top:15px;" onclick="addRuleToQueue()">+ Add to Queue</button>
         <div id="queueList" style="margin-top:10px;"></div>
         <button style="background:var(--success);color:white;width:100%;margin-top:15px;" onclick="generateDashboard()">GENERATE DASHBOARD</button>
+        <button style="background:#1a7a4a;color:white;width:100%;margin-top:6px;" onclick="generateAllDashboards()">ANALYZE ALL FILES</button>
     </div>
 
     <!-- MULTI-COMPONENT BUILDER PANEL -->
@@ -404,6 +408,7 @@
         <button id="mcAddBtn" style="background:var(--primary);color:white;width:100%;margin-top:15px;" onclick="addMcRule()">+ Add to Queue</button>
         <div id="mcQueueList" style="margin-top:10px;"></div>
         <button style="background:var(--success);color:white;width:100%;margin-top:15px;" onclick="generateDashboard()">GENERATE DASHBOARD</button>
+        <button style="background:#1a7a4a;color:white;width:100%;margin-top:6px;" onclick="generateAllDashboards()">ANALYZE ALL FILES</button>
     </div>
 
     <div id="dashboard-container">
@@ -2317,21 +2322,27 @@ function makeChartWrap(title,canvasId,container) {
 // =============================================================================
 // DASHBOARD
 // =============================================================================
-function generateDashboard() {
+function generateDashboard(opts) {
+    opts = opts || {};
+    var _append       = !!opts.append;        // true = don't clear; append charts to existing dashboard
+    var _sectionTitle = opts.sectionTitle || null;  // section header label shown above this section's charts
+    var _skipStats    = !!opts.skipStats;     // true = skip stats panel update
+    var _skipAlerts   = !!opts.skipAlerts;    // true = skip alert panel update
     if (isGeneratingDashboard) return;  // [H1] prevent re-entry
     isGeneratingDashboard = true;
     try {
-    if (!activeLogData.length && document.getElementById('formatType').value!=='multiComp' && !mcAnnotatedMode) {
+    if (!_append && !activeLogData.length && document.getElementById('formatType').value!=='multiComp' && !mcAnnotatedMode) {
         const fk=Object.keys(parsedFilesStore);
         if(fk.length===1){logAction('System: Auto-binding.'); activeLogData=parsedFilesStore[fk[0]]; activeFileName=fk[0];}
         else { logAction('Error: No data loaded.'); return; }
     }
     if(!ruleQueue.length){logAction('Warning: Rule queue empty.'); return;}
-    logAction('Dashboard: Rebuilding.');
+    if (!_append) logAction('Dashboard: Rebuilding.');
     // [DBG-B] Log state at dashboard build time
     logDebug('chart', '=== generateDashboard ===  rules=' + ruleQueue.length
         + '  activeLogData=' + activeLogData.length
-        + '  compKeys=' + Object.keys(compIndexStore).length);
+        + '  compKeys=' + Object.keys(compIndexStore).length
+        + '  append=' + _append);
     ruleQueue.forEach(function(r, i) {
         logDebug('chart', '  rule[' + i + '] "' + r.header + '"'
             + '  _mc=' + !!r._mc
@@ -2339,10 +2350,20 @@ function generateDashboard() {
             + ' [' + r.tokens.slice(0,4).join(', ') + (r.tokens.length>4?'…':'') + ']'
             + (r.compKeys ? '  compKeys=' + r.compKeys.length : ''));
     });
-    chartInstances.forEach(c=>c.destroy()); chartInstances=[];
-    const container=document.getElementById('dashboard'); container.innerHTML='';
+    const container=document.getElementById('dashboard');
+    if (!_append) {
+        chartInstances.forEach(c=>c.destroy()); chartInstances=[];
+        container.innerHTML='';
+    }
     document.getElementById('dashboard-meta').classList.remove('hidden');
     document.getElementById('active-file-label').textContent=activeFileName;
+    // Insert section divider header when appending named sections
+    if (_sectionTitle) {
+        const _divider = document.createElement('div');
+        _divider.className = 'section-divider';
+        _divider.textContent = _sectionTitle;
+        container.appendChild(_divider);
+    }
     // Build gap-aware timeline for standard rules (shared across all non-MC rules)
     const { labels, rows: gappedStdData, gapIndices: stdGapIndices } = buildTimelineWithGaps(activeLogData);
 
@@ -2888,6 +2909,7 @@ function generateDashboard() {
         }
     });
     // ── Stats panel ──────────────────────────────────────────────────────────
+    if (!_skipStats) {
     var _sp = document.getElementById('statsPanel');
     if (_sp) {
         _sp.innerHTML = '';
@@ -2912,13 +2934,127 @@ function generateDashboard() {
             _sp.classList.add('hidden');
         }
     }
+    } // end !_skipStats
     // ── Threshold alerts ─────────────────────────────────────────────────────
+    if (!_skipAlerts) {
     var _breaches = checkThresholds(activeLogData, ruleQueue);
     renderAlerts(_breaches);
+    } // end !_skipAlerts
     } catch(e) {
         logAction('Dashboard ERROR: ' + e.message + ' (line: ' + (e.stack ? e.stack.split('\n')[1] : 'unknown') + ')');
         console.error('Dashboard error:', e);
     } finally { isGeneratingDashboard = false; }  // [H1]
+}
+
+// =============================================================================
+// MULTI-FILE ANALYSIS: Analyze All Files (with running-sequence collation)
+// =============================================================================
+function generateAllDashboards() {
+    var fileKeys = Object.keys(parsedFilesStore);
+    if (!fileKeys.length) {
+        logAction('Analyze All: No standard files loaded. Initialize analysis first.');
+        return;
+    }
+    if (!ruleQueue.length) {
+        logAction('Analyze All: Rule queue is empty. Add rules first.');
+        return;
+    }
+
+    // ── Group files by prefix ─────────────────────────────────────────────────
+    var prefixMap = {};
+    fileKeys.forEach(function(fname) {
+        var p = getFilePrefix(fname);
+        if (!prefixMap[p]) prefixMap[p] = [];
+        prefixMap[p].push(fname);
+    });
+    // Sort filenames within each group (ISO/numeric timestamp in name → lex sort works)
+    Object.keys(prefixMap).forEach(function(p) { prefixMap[p].sort(); });
+    var prefixes = Object.keys(prefixMap).sort();
+
+    // ── Save current globals so existing selection is undisturbed after ───────
+    var savedData = activeLogData;
+    var savedName = activeFileName;
+
+    // ── Initial clear ─────────────────────────────────────────────────────────
+    chartInstances.forEach(function(c) { c.destroy(); });
+    chartInstances = [];
+    var _dashContainer = document.getElementById('dashboard');
+    _dashContainer.innerHTML = '';
+    document.getElementById('dashboard-meta').classList.remove('hidden');
+    var _sp = document.getElementById('statsPanel');
+    if (_sp) { _sp.innerHTML = ''; _sp.classList.add('hidden'); }
+
+    // ── Render one section per prefix group ───────────────────────────────────
+    var allMergedData = [];
+    prefixes.forEach(function(prefix) {
+        var files = prefixMap[prefix];
+        var merged, sectionTitle;
+
+        if (files.length > 1) {
+            // Running sequence: collate all rows, sort by timestamp
+            merged = [];
+            files.forEach(function(f) { merged = merged.concat(parsedFilesStore[f]); });
+            merged.sort(function(a, b) { return getUnix(a.timestamp) - getUnix(b.timestamp); });
+            sectionTitle = prefix + '  (' + files.length + ' files \u2014 running sequence)';
+            logAction('Analyze All: Collating ' + files.length + ' files for prefix "' + prefix + '"');
+        } else {
+            merged = parsedFilesStore[files[0]];
+            sectionTitle = files[0];
+        }
+
+        allMergedData = allMergedData.concat(merged);
+
+        // Temporarily set globals for this section's render
+        activeLogData = merged;
+        activeFileName = sectionTitle;
+
+        // Append this section's charts (skip per-section stats/alerts)
+        generateDashboard({ append: true, sectionTitle: sectionTitle, skipStats: true, skipAlerts: true });
+    });
+
+    // ── Combined stats across all sections ────────────────────────────────────
+    allMergedData.sort(function(a, b) { return getUnix(a.timestamp) - getUnix(b.timestamp); });
+    if (_sp) {
+        _sp.innerHTML = '';
+        var allTokens = [];
+        ruleQueue.forEach(function(r) {
+            if (!r._mc) r.tokens.forEach(function(t) { if (allTokens.indexOf(t) < 0) allTokens.push(t); });
+        });
+        if (allTokens.length && allMergedData.length) {
+            var statsObj = computeStats(allMergedData, allTokens);
+            var stbl = document.createElement('table'); stbl.className = 'stats-summary-table';
+            var shr = stbl.createTHead().insertRow();
+            ['Metric','Min','Max','Mean','Count'].forEach(function(h) {
+                var th = document.createElement('th'); th.textContent = h; shr.appendChild(th);
+            });
+            var stb = stbl.createTBody();
+            allTokens.forEach(function(t) {
+                var s = statsObj[t]; if (!s) return;
+                var row = stb.insertRow();
+                [t, s.min, s.max, typeof s.mean === 'number' ? s.mean.toFixed(2) : s.mean, s.count]
+                    .forEach(function(v) { var td = row.insertCell(); td.textContent = v; });
+            });
+            _sp.appendChild(stbl);
+            _sp.classList.remove('hidden');
+        }
+    }
+
+    // ── Combined threshold alerts ─────────────────────────────────────────────
+    activeLogData = allMergedData;
+    var _breaches = checkThresholds(allMergedData, ruleQueue);
+    renderAlerts(_breaches);
+
+    // Update meta label
+    var _combinedLabel = prefixes.length > 1
+        ? 'All Files (' + fileKeys.length + ' file' + (fileKeys.length > 1 ? 's' : '') + ', ' + prefixes.length + ' groups)'
+        : (prefixMap[prefixes[0]].length > 1 ? prefixes[0] + ' (' + fileKeys.length + ' files)' : fileKeys[0]);
+    document.getElementById('active-file-label').textContent = _combinedLabel;
+
+    logAction('Analyze All: Generated ' + prefixes.length + ' section(s) for ' + fileKeys.length + ' file(s).');
+
+    // ── Restore original selection ────────────────────────────────────────────
+    activeLogData = savedData;
+    activeFileName = savedName;
 }
 
 // =============================================================================

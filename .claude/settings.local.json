@@ -30,7 +30,10 @@
       "Bash(pip3 install:*)",
       "Bash(xxd)",
       "Bash(kill 35674)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(grep -E \"\\\\.\\(html|json|csv|txt\\)$\")",
+      "Bash(grep -n \"^// ===.*===$\" \"/Users/shiju/Library/Mobile Documents/com~apple~CloudDocs/Personal/Scripts/GitHub/KPI-Analysis-Tool/KPI-Analysis-Tool-debug.html\")",
+      "Bash(grep -B1 \"^// ===.*===$\" \"/Users/shiju/Library/Mobile Documents/com~apple~CloudDocs/Personal/Scripts/GitHub/KPI-Analysis-Tool/KPI-Analysis-Tool-debug.html\")"
     ]
   }
 }
