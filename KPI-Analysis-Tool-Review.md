@@ -1,6 +1,6 @@
-# KPI Analysis Tool v2.2.0 — Feature Catalog, Test Cases & Bug Report
+# KPI Analysis Tool v2.4.0 — Feature Catalog, Test Cases & Bug Report
 
-**Author:** Shiju Abraham | **Date:** 2026-03-08 | **Version:** 2.2.0
+**Author:** Shiju Abraham | **Date:** 2026-04-14 | **Version:** 2.4.0
 
 ---
 
@@ -84,6 +84,16 @@
 | F72 | Populate Metric Selects | `populateSelects()` | OK |
 | F73 | CSV Toggle Options | `toggleCsvOptions()` | OK |
 | F74 | Duplicate Header Detection | manualTokens match-and-skip logic | OK |
+| F75 | Multi-File Dashboard — Analyze All Files | `generateAllDashboards()` | NEW v2.4 |
+| F76 | Running Sequence Collation | `getFilePrefix()` + merge-and-sort in generateAllDashboards | NEW v2.4 |
+| F77 | Section Divider Headers | `.section-divider` CSS + DOM injection in generateDashboard(opts) | NEW v2.4 |
+| F78 | generateDashboard append/skipStats/skipAlerts opts | `generateDashboard(opts)` backward-compatible options | NEW v2.4 |
+| F79 | Threshold Visual Indicator Lines — Warn | `_makeThresholdLines()` amber dashed line at warn value | NEW v2.4 |
+| F80 | Threshold Visual Indicator Lines — Critical | `_makeThresholdLines()` dark-red dashed line at critical value | NEW v2.4 |
+| F81 | Threshold Lines excluded from Stats Table | `_isThreshold` guard in `buildStatsTable()` | NEW v2.4 |
+| F82 | Formula Mode — Result-only chart (no ref lines) | Removed `(ref)` dataset generation in standard, MC-agg, MC-pc paths | NEW v2.4 |
+| F83 | Timestamp Format YYMMDD HH:MM — X-axis label | `formatLabel()` expands 6-digit date to YYYY-MM-DD | NEW v2.4 |
+| F84 | Timestamp Format YYMMDD HH:MM — sorting/gaps | `getMs()` normalises HH:MM to HH:MM:SS for Date constructor | NEW v2.4 |
 
 ### 1.2 Server Features (server/server.py)
 
