@@ -200,7 +200,7 @@
     <div class="header-main">
         <div>
             <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em;opacity:0.5;">v3.0.0</span></h2>
-            <div style="font-size:0.8em;color:#888;margin-top:5px;"><strong>Author:</strong> Shiju Abraham | <strong>Email:</strong> shiju.abraham&#64;mobileum.com</div>
+            <div style="font-size:0.8em;color:#888;margin-top:5px;"><strong>Author:</strong> Shiju | <strong>Email:</strong> tipper.axioms_3j&#64;icloud.com</div>
         </div>
         <div style="display:flex;gap:10px;">
             <button style="background:var(--info);color:white;" onclick="document.getElementById('masterConfigFile').click()">&#128295; Config</button>
@@ -285,6 +285,32 @@
                     </select>
                     <span id="groupPreview" style="font-size:0.78em;color:#888;"></span>
                 </div>
+            </div>
+        </div>
+        <!-- Directory Search Mode -->
+        <div id="dirSearchOptions" style="margin-top:15px;padding:12px 14px;background:rgba(40,167,69,0.06);border:1px solid rgba(40,167,69,0.22);border-radius:6px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <input type="checkbox" id="enableDirSearch" style="width:auto;margin:0;cursor:pointer;accent-color:var(--success);" onchange="toggleDirSearchOptions()">
+                <label for="enableDirSearch" style="margin:0;font-weight:600;cursor:pointer;font-size:0.88em;">Search Directory for Files <span style="font-weight:400;color:#888;">(recursively find files by name)</span></label>
+            </div>
+            <div id="dirSearchFields" style="display:none;margin-top:6px;">
+                <div style="margin-bottom:8px;">
+                    <label style="font-size:0.82em;margin-bottom:4px;color:var(--text-main);">Select Directory <span style="font-weight:400;color:#888;">(choose folder to search)</span></label>
+                    <label style="display:block;background:#30363d;color:#e6edf3;padding:8px 12px;border-radius:4px;cursor:pointer;font-size:0.85em;margin-top:4px;">
+                        &#128193; Choose Directory
+                        <input type="file" id="dirSearchInput" webkitdirectory multiple style="display:none" onchange="handleDirSearchSelect(this)">
+                    </label>
+                    <span id="dirSearchBadge" style="font-size:0.78em;color:#28a745;margin-left:8px;"></span>
+                </div>
+                <div>
+                    <label style="font-size:0.82em;margin-bottom:4px;color:var(--text-main);">File Name Pattern <span style="font-weight:400;color:#888;">(e.g. DBW.csv, free.txt, *.log)</span></label>
+                    <input type="text" id="dirSearchPattern" placeholder="e.g. DBW.csv or *free*.txt" style="width:100%;margin-top:4px;">
+                </div>
+                <div id="dirSearchResults" style="margin-top:8px;display:none;padding:8px;background:rgba(0,0,0,0.04);border-radius:4px;font-size:0.82em;">
+                    <strong>Found files:</strong> <span id="dirSearchFileCount">0</span>
+                    <div id="dirSearchFileList" style="margin-top:4px;max-height:120px;overflow-y:auto;font-size:0.78em;color:#666;"></div>
+                </div>
+                <button id="btn-dirSearch" class="btn-mini" style="margin-top:10px;background:var(--success);color:white;width:100%;" onclick="runDirSearch()">&#128269; Search Directory</button>
             </div>
         </div>
         <button style="background:var(--primary);color:white;width:100%;margin-top:10px;" onclick="processFilesFromUI()">Initialize Analysis</button>
@@ -1484,6 +1510,16 @@ function _normSuffixVal(str) {
 // PARSER
 // =============================================================================
 function processFilesFromUI() {
+    // Check if directory search mode is enabled
+    const dirSearchEnabled = document.getElementById('enableDirSearch')?.checked;
+    
+    if (dirSearchEnabled && _dirSearchFiles.length > 0) {
+        // Directory search mode: process found files
+        logAction('Directory Search: Processing ' + _dirSearchFiles.length + ' file(s)...');
+        processDirSearchAndInitialize();
+        return;
+    }
+    
     if (!Object.keys(rawFilesStore).length) { logAction("Warning: No files loaded. Upload or fetch data first."); return; }  // [M5]
     document.getElementById('inventoryPanel').classList.add('hidden');
     document.getElementById('builderPanel').classList.add('hidden');
@@ -2492,6 +2528,12 @@ function getFilePrefix(name) {
     // Also match <prefix>_<8digits>_<6digits>.<ext>
     const m2 = name.match(/^(.+?)[\._]\d{8}[\._]\d{6}\.(csv|txt|log|xls|xlsx)$/i);
     if (m2) return m2[1];
+    // Match: <prefix>-<digits>.<ext>  (e.g. DBW-1.csv, DBW-123.log, app-001.txt)
+    const m3 = name.match(/^(.+?)-(\d+)\.(csv|txt|log|xls|xlsx)$/i);
+    if (m3) return m3[1];
+    // Match: <prefix>_<digits>.<ext>  (e.g. DBW_1.csv, DBW_123.log, app_001.txt)
+    const m4 = name.match(/^(.+?)_(\d+)\.(csv|txt|log|xls|xlsx)$/i);
+    if (m4) return m4[1];
     // No timestamp in name — treat as the "latest" file; use the stem (name without extension) as prefix
     // so it groups with rotated files that share the same base name
     const stem = name.replace(/\.(csv|txt|log|xls|xlsx)$/i, '');
@@ -2547,6 +2589,231 @@ function updateGroupPreview() {
     preview.textContent = names.length
         ? names.length + ' file(s) matched'
         : 'No parsed files matched yet';
+}
+
+// =============================================================================
+// DIRECTORY SEARCH MODE
+// =============================================================================
+
+// Store directory search results
+let _dirSearchFiles = [];
+
+// Toggle directory search options visibility
+function toggleDirSearchOptions() {
+    const enable = document.getElementById('enableDirSearch').checked;
+    const fields = document.getElementById('dirSearchFields');
+    const combineOpts = document.getElementById('combineOptions');
+    const groupRow = document.getElementById('groupSelectorRow');
+    
+    if (fields) {
+        fields.style.display = enable ? 'block' : 'none';
+    }
+    
+    // Disable combine files when directory search is enabled
+    if (combineOpts) {
+        const combineCheck = document.getElementById('combineFiles');
+        if (enable) {
+            combineCheck.checked = false;
+            combineCheck.disabled = true;
+            if (groupRow) groupRow.style.display = 'none';
+        } else {
+            combineCheck.disabled = false;
+        }
+    }
+    
+    logAction('Directory Search: ' + (enable ? 'enabled' : 'disabled'));
+}
+
+// Handle directory selection from file input
+function handleDirSearchSelect(input) {
+    const files = input.files;
+    const badge = document.getElementById('dirSearchBadge');
+    
+    if (!files || !files.length) {
+        if (badge) badge.textContent = '';
+        return;
+    }
+    
+    // Get the directory path (from first file's webkitRelativePath)
+    let dirPath = '';
+    if (files[0].webkitRelativePath) {
+        const parts = files[0].webkitRelativePath.split('/');
+        if (parts.length > 1) {
+            dirPath = parts[0];
+        }
+    }
+    
+    if (badge) {
+        badge.textContent = '📁 ' + (dirPath || 'Selected') + ' (' + files.length + ' items)';
+    }
+    
+    logAction('Directory selected: ' + (dirPath || 'root') + ' with ' + files.length + ' items');
+}
+
+// Run directory search based on pattern
+function runDirSearch() {
+    const pattern = (document.getElementById('dirSearchPattern')?.value || '').trim();
+    const input = document.getElementById('dirSearchInput');
+    const files = input?.files;
+    
+    if (!files || !files.length) {
+        logAction('Directory Search: No directory selected.');
+        alert('Please select a directory first.');
+        return;
+    }
+    
+    if (!pattern) {
+        logAction('Directory Search: No pattern specified.');
+        alert('Please enter a file name pattern.');
+        return;
+    }
+    
+    // Build regex from pattern
+    // Support: * (any chars), ? (single char), exact match
+    let regexPattern = pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')  // escape special regex chars except * and ?
+        .replace(/\*/g, '.*')                   // * -> .*
+        .replace(/\?/g, '.');                  // ? -> .
+    regexPattern = '^' + regexPattern + '$';
+    
+    const regex = new RegExp(regexPattern, 'i');
+    
+    // Filter files matching the pattern
+    _dirSearchFiles = [];
+    const matchedNames = [];
+    
+    for (let i = 0; i < files.length; i++) {
+        const name = files[i].name;
+        if (regex.test(name)) {
+            // Check if it's a data file type
+            if (/\.(csv|txt|log|xls|xlsx)$/i.test(name)) {
+                _dirSearchFiles.push(files[i]);
+                matchedNames.push(name);
+            }
+        }
+    }
+    
+    // Display results
+    const resultsDiv = document.getElementById('dirSearchResults');
+    const countSpan = document.getElementById('dirSearchFileCount');
+    const listDiv = document.getElementById('dirSearchFileList');
+    
+    if (resultsDiv) resultsDiv.style.display = 'block';
+    if (countSpan) countSpan.textContent = _dirSearchFiles.length;
+    
+    if (listDiv) {
+        if (_dirSearchFiles.length === 0) {
+            listDiv.innerHTML = '<span style="color:#dc3545;">No matching data files found.</span>';
+        } else {
+            listDiv.innerHTML = matchedNames.slice(0, 20).join('<br>') 
+                + (matchedNames.length > 20 ? '<br>... and ' + (matchedNames.length - 20) + ' more' : '');
+        }
+    }
+    
+    logAction('Directory Search: Found ' + _dirSearchFiles.length + ' matching file(s) for pattern "' + pattern + '"');
+}
+
+// Process files from directory search - integrates with existing logic
+async function processDirSearchFiles() {
+    if (_dirSearchFiles.length === 0) {
+        return [];
+    }
+    
+    const results = [];
+    const fileReader = new FileReader();
+    
+    for (let i = 0; i < _dirSearchFiles.length; i++) {
+        const file = _dirSearchFiles[i];
+        try {
+            const content = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = e => reject(e);
+                reader.readAsText(file);
+            });
+            
+            results.push({
+                name: file.name,
+                content: content,
+                size: file.size
+            });
+        } catch (err) {
+            logAction('Error reading file: ' + file.name + ' — ' + err.message);
+        }
+    }
+    
+    return results;
+}
+
+// Process directory search files and initialize analysis
+async function processDirSearchAndInitialize() {
+    // Read all directory search files
+    const fileData = await processDirSearchFiles();
+    
+    if (fileData.length === 0) {
+        logAction('Directory Search: No files to process.');
+        return;
+    }
+    
+    // Store in rawFilesStore (same as regular file upload)
+    let loaded = 0;
+    const newFileNames = [];
+    const binaryRejected = [];
+    
+    for (const fd of fileData) {
+        // Check for binary content
+        const isBin = _isBinaryFileContent(fd.content);
+        const ext = '.' + fd.name.split('.').pop().toLowerCase();
+        
+        if (isBin && ext === '.xls') {
+            // True binary XLS — convert to CSV via SheetJS
+            try {
+                const buffer = fd.content.split('').map(c => c.charCodeAt(0));
+                const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const csvContent = XLSX.utils.sheet_to_csv(ws, { blankrows: false });
+                rawFilesStore[fd.name] = csvContent;
+                loaded++;
+                newFileNames.push(fd.name);
+            } catch (err) {
+                logAction('Error converting XLS: ' + fd.name + ' — ' + err.message);
+            }
+        } else if (isBin) {
+            logAction('Warning: "' + fd.name + '" is binary, skipped.');
+            binaryRejected.push(fd.name);
+        } else {
+            rawFilesStore[fd.name] = fd.content;
+            loaded++;
+            newFileNames.push(fd.name);
+        }
+    }
+    
+    if (binaryRejected.length) {
+        _showBinaryErrorModal(binaryRejected);
+    }
+    
+    // Update file status
+    document.getElementById('file-status').textContent = Object.keys(rawFilesStore).length + ' file(s) ready.';
+    logAction('Directory Search: ' + loaded + ' of ' + fileData.length + ' file(s) loaded.');
+    
+    // Now proceed with the normal file processing flow
+    // This will trigger profile matching, parsing, and dashboard generation
+    processFilesFromUI();
+}
+
+// Helper: check if content is binary
+function _isBinaryFileContent(content) {
+    if (!content) return false;
+    const sample = content.slice(0, 8192);
+    let controlCount = 0;
+    for (let i = 0; i < sample.length; i++) {
+        const code = sample.charCodeAt(i);
+        if (code === 0) return true;  // null byte = binary
+        if ((code < 9 || code === 11 || code === 12 || (code > 31 && code < 127)) && code !== 10 && code !== 13) {
+            controlCount++;
+        }
+    }
+    return controlCount / sample.length > 0.10;
 }
 
 function renderInventoryRow(tbody,name,count,index,profileName) {
@@ -2787,6 +3054,16 @@ function softReset() {
     document.getElementById('kpiPattern').value     = '';
     document.getElementById('csvHasHeader').checked = false;
     document.getElementById('csvManualHeaders').value = '';
+    
+    // Reset directory search state
+    _dirSearchFiles = [];
+    document.getElementById('enableDirSearch').checked = false;
+    document.getElementById('dirSearchInput').value = '';
+    document.getElementById('dirSearchPattern').value = '';
+    document.getElementById('dirSearchBadge').textContent = '';
+    document.getElementById('dirSearchFields').style.display = 'none';
+    document.getElementById('dirSearchResults').style.display = 'none';
+    document.getElementById('combineFiles').disabled = false;
     document.getElementById('csvTsFormat').value    = 'auto';
     var _gcReset=document.getElementById('mcKeyCol');
     if(_gcReset){ _gcReset.innerHTML='<option value="">Auto-detect</option>'; }
