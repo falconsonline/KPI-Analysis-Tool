@@ -1,6 +1,6 @@
 # KPI Analysis Tool — User Guide
 
-**Version:** 3.2.5 | **Author:** Shiju Abraham | **Updated:** 2026-04-25
+**Version:** 3.3.0 | **Author:** Shiju Abraham | **Updated:** 2026-04-26
 
 ---
 
@@ -131,7 +131,15 @@ Time,Device,r/s,w/s,rkB/s,wkB/s,avgrq-sz,avgqu-sz,await,svctm,%util
 
 ### 4.1 Upload
 
-Drag files onto the drop zone, or click the zone to open the file picker. Multiple files can be selected at once. Supported extensions: `.csv`, `.txt`, `.log`.
+Drag files onto the drop zone, or click the zone to open the file picker. Multiple files can be selected at once. Supported extensions: `.csv`, `.txt`, `.log`, `.xls`.
+
+> **`.xls` files:** The tool accepts `.xls` files in two forms:
+> - **True binary XLS** (Excel 97–2003 Workbook format): automatically detected and converted to CSV via SheetJS. The first sheet is used; the sheet name and count are logged. If your data is on a later sheet, move it to Sheet 1 and re-save.
+> - **Plain-text CSV renamed to `.xls`** (a common practice): automatically detected as text and read directly — no conversion step needed.
+>
+> Note: `.xlsx` (Office Open XML format) is **not** supported. Save as `.xls` or export to `.csv` first.
+
+> **Binary file guard (v3.3.0):** When a file is uploaded, the tool samples its first 8 KB to confirm it contains comma-separated text. If a null byte or more than 10% control characters are detected, the file is rejected and a pop-up error lists the skipped filenames. All other files in the same upload load normally. A `.xls` file that tests as binary is routed to the XLS converter instead of being rejected.
 
 ### 4.2 Parser Mode
 
@@ -2272,3 +2280,66 @@ Add `mcHeaderFile` with static annotations to make the profile unique when multi
 **Symptom B — multi-file alerts run against wrong file's data:** When Refresh All generates charts for multiple files, all threshold rules were checked against the first file's data only. Rules for `free.txt` (memory, millions) were checked against CPU data or vice versa, producing spurious breaches or missing real ones.
 
 **v3.2.3 fix:** Threshold checks in `_generateAllFileDashboards()` now run per-file: each file's matching rules are evaluated against that file's own parsed data. MC rules continue to use `compIndexStore` independently. The combined breach list is then rendered once in the Alert Panel.
+
+---
+
+### Dashboard progress bar stuck at 30% / browser freezes during chart generation (fixed in v3.3.0)
+
+**Symptom:** After clicking **Generate Dashboard** or **↺ Refresh All**, the progress bar fills to 30% and then the browser tab becomes unresponsive for several seconds before suddenly jumping to 100%. With many charts or large datasets the freeze could last 10–30 seconds.
+
+**Root cause:** `generateDashboard()` was a synchronous function. It set the progress bar to 30% and then immediately rendered all Chart.js instances in a single blocking JS call — the browser could not repaint between the 30% update and the 100% completion update, so the tab appeared frozen.
+
+**v3.3.0 fix:** `generateDashboard()` is now an `async` function. It yields control to the browser immediately after setting 30% (via `setTimeout(0)`) so the progress bar paints before rendering starts. Charts render in a `for` loop with a yield and a progress update between each chart:
+- **Standalone call** (single file, "Generate Dashboard"): progress advances from 30% → 90% across all charts, then 100% on completion.
+- **Multi-file call** (↺ Refresh All): each file is allocated a proportional slice of the 0–88% range; charts within that file advance the bar through their file's slice. MC sections use 90–98%. No backward jumps between files.
+
+---
+
+### Multi-file Refresh All: "Error processing … _doClear is not defined — skipping to next file" (fixed in v3.3.0)
+
+**Symptom:** Loading more than one data file and clicking **↺ Refresh All** produces a log entry for every file:
+
+```
+Refresh All: Error processing "KPI-2026-04-22.csv": _doClear is not defined — skipping to next file.
+```
+
+No charts are generated for any file.
+
+**Root cause:** `const _doClear` was declared inside the `try { }` block of `generateDashboard()`, but was also referenced in the `finally { }` block. In JavaScript, `const`/`let` are block-scoped — `try` and `finally` are separate block scopes, so `_doClear` was not visible in `finally`. When `generateDashboard()` was synchronous and called without `await`, this `ReferenceError` from `finally` propagated silently (uncaught). After v3.3.0 made `generateDashboard()` async and `_generateAllFileDashboards()` started `await`-ing it, the rejected Promise was caught and the error was logged for every file.
+
+**v3.3.0 fix:** `const _doClear` is now declared before the `try` block, at function scope, where it is visible to both `try` and `finally`.
+
+---
+
+### Uploading a binary or non-text file: "Binary File Detected" popup (v3.3.0)
+
+**Symptom:** After dragging in one or more files, a red pop-up appears:
+
+> **⚠ Binary File Detected**
+> The following file(s) appear to be binary (not comma-separated text) and were skipped. All other files have been loaded normally.
+
+The listed filenames are skipped; any remaining files in the same upload load and parse normally.
+
+**Cause:** The tool samples the first 8 KB of every uploaded file:
+- A **null byte** (`\x00`) in the sample → definitive binary.
+- More than **10% control characters** (anything below ASCII 32 excluding TAB, LF, CR, plus DEL) → likely binary.
+
+If either condition is met and the file extension is not `.xls`, the file is rejected. `.xls` files pass this check through the XLS converter regardless.
+
+**Resolution:** Ensure the file is comma-separated plain text (`.csv`, `.txt`, `.log`) or a genuine `.xls` Excel file. Binary formats such as `.xlsx`, `.db`, `.bin`, executables, or archive files are not supported — convert to CSV first.
+
+---
+
+### `.xls` file support (v3.3.0)
+
+The tool now accepts `.xls` files alongside `.csv`, `.txt`, and `.log`. The binary-file check (Section 16 above) determines which path is taken:
+
+| File content | Detected as | Action |
+|---|---|---|
+| True Excel binary (BIFF8) | Binary | Converted to CSV via SheetJS (first sheet); rest of pipeline unchanged |
+| Plain-text CSV saved/renamed as `.xls` | Text | Read directly as CSV text; no conversion needed |
+
+**Limitations:**
+- For true binary `.xls`: only the **first sheet** is used. If your data lives on a later sheet, open the file in Excel or LibreOffice, move or copy the data to Sheet 1, and re-save.
+- `.xlsx` (modern Office Open XML format) is **not** supported. Use *Save As → Excel 97–2003 Workbook (.xls)* or *Save As → CSV* instead.
+- Dates exported from Excel may carry a time component (`2026-04-22 00:00:00`). The parser handles the most common combined timestamp formats; if timestamps are not recognised, switch the **Timestamp Format** option in CSV Options.

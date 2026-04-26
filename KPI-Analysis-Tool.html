@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@3.0.0" integrity="sha384-dwwI6ICEN/0ZQlS5owhUa/6ZzvwUPmjH45bFVCAcjgjTulbHJvlE+TGU3g1k0N3R" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
     <style>
         :root { --primary:#007bff;--success:#28a745;--danger:#dc3545;--warning:#ffc107;--info:#17a2b8;--dark:#343a40;--bg-body:#f0f2f5;--bg-panel:#ffffff;--text-main:#333333;--border-color:#dddddd;--row-active-bg:#e7f1ff; }
         [data-theme="dark"] { --bg-body:#121212;--bg-panel:#1e1e1e;--text-main:#e0e0e0;--border-color:#444444;--row-active-bg:#1a3a5a; }
@@ -125,6 +126,14 @@
         .profile-format-tag { display:inline-block; font-size:0.72em; padding:1px 6px; border-radius:3px; background:var(--info); color:white; font-weight:600; }
         #profile-modal-btns { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
         #profile-modal-btns button { padding:8px 18px; border-radius:6px; border:none; font-weight:600; cursor:pointer; font-size:0.88em; }
+        /* Binary file error modal */
+        #binary-error-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; justify-content:center; align-items:center; }
+        #binary-error-modal.active { display:flex; }
+        #binary-error-modal-box { background:var(--bg-panel); color:var(--text-main); border-radius:10px; padding:28px 32px; min-width:340px; max-width:480px; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+        #binary-error-modal-box h3 { margin:0 0 8px; font-size:1.05em; color:var(--danger); }
+        #binary-error-modal-box p { margin:0 0 12px; font-size:0.88em; color:#888; line-height:1.5; }
+        #binary-error-modal-box ul { margin:0 0 18px; padding-left:20px; }
+        #binary-error-modal-btns { display:flex; justify-content:flex-end; }
         .pf-file-row { margin-bottom:12px; padding:10px 12px; border:1px solid var(--border-color); border-radius:6px; }
         .pf-file-row .pf-fname { font-weight:600; font-size:0.88em; margin-bottom:5px; display:flex; align-items:center; gap:6px; }
         .pf-file-row .pf-fname .pf-auto-badge { font-size:0.72em; padding:1px 5px; border-radius:3px; background:rgba(25,135,84,0.15); color:#198754; font-weight:600; }
@@ -176,6 +185,17 @@
   </div>
 </div>
 
+<div id="binary-error-modal">
+  <div id="binary-error-modal-box">
+    <h3>&#9888; Binary File Detected</h3>
+    <p>The following file(s) appear to be binary (not comma-separated text) and were skipped. All other files have been loaded normally.</p>
+    <ul id="binary-error-list"></ul>
+    <div id="binary-error-modal-btns">
+      <button onclick="document.getElementById('binary-error-modal').classList.remove('active')" style="background:var(--danger);color:white;padding:8px 22px;border-radius:6px;border:none;font-weight:600;cursor:pointer;font-size:0.88em;">Dismiss</button>
+    </div>
+  </div>
+</div>
+
 <div class="container">
     <div class="header-main">
         <div>
@@ -199,9 +219,9 @@
     <div class="panel">
         <div id="drop-zone" style="border:2px dashed var(--primary);border-radius:10px;padding:30px;text-align:center;cursor:pointer;">
             <strong>Drop Files or Click to Upload Logs</strong><br>
-            <small id="file-status">Ready (.txt, .log, .csv)</small>
+            <small id="file-status">Ready (.txt, .log, .csv, .xls)</small>
             <div id="parse-progress" style="display:none;margin-top:10px;"><div style="background:#e9ecef;border-radius:4px;height:12px;overflow:hidden;"><div id="parse-progress-bar" style="height:100%;background:var(--primary);width:0%;transition:width .15s;border-radius:4px;"></div></div><small id="parse-progress-label" style="color:#888;font-size:0.8em;">Parsing…</small></div>
-            <input type="file" id="dataFile" multiple style="display:none">
+            <input type="file" id="dataFile" multiple accept=".txt,.log,.csv,.xls" style="display:none">
         </div>
         <div class="grid" style="margin-top:20px;">
             <div>
@@ -597,7 +617,7 @@ let   _logWriteBatch      = [];     // in-memory batch; flushed every LOG_FLUSH_
 let   _logTotalCount      = 0;      // total entries written this session
 try { localStorage.setItem(_logSessionKey, ''); } catch(e) {}
 const MAX_FILE_SIZE = 50 * 1024 * 1024;  // [SEC9] 50MB
-const ALLOWED_EXTENSIONS = ['.txt', '.log', '.csv', '.json'];  // [SEC9]
+const ALLOWED_EXTENSIONS = ['.txt', '.log', '.csv', '.json', '.xls'];  // [SEC9]
 
 // =============================================================================
 // VERBOSE LOGGING — developer-only troubleshooting flag
@@ -978,12 +998,79 @@ function validateFile(file) {  // [SEC9]
     }
     return true;
 }
+// Samples the first 8 KB of a file to detect binary content.
+// A single null byte is definitive; >10% control chars (excluding TAB/LF/CR) is treated as binary.
+async function _isBinaryFile(file) {
+    const sampleSize = Math.min(file.size, 8192);
+    const buffer = await file.slice(0, sampleSize).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let controlCount = 0;
+    for (let i = 0; i < bytes.length; i++) {
+        const b = bytes[i];
+        if (b === 0) return true;  // null byte = definitive binary
+        // Control chars outside normal text whitespace (TAB=9, LF=10, CR=13)
+        if (b < 9 || b === 11 || b === 12 || (b > 13 && b < 32) || b === 127) controlCount++;
+    }
+    return bytes.length > 0 && (controlCount / bytes.length) > 0.10;
+}
+
+// Shows the binary-error modal listing the rejected filenames.
+function _showBinaryErrorModal(fileNames) {
+    var el   = document.getElementById('binary-error-modal');
+    var list = document.getElementById('binary-error-list');
+    if (!el || !list) return;
+    list.innerHTML = fileNames.map(function(n) {
+        return '<li style="font-family:monospace;font-size:0.88em;margin:3px 0;">'
+            + n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>';
+    }).join('');
+    el.classList.add('active');
+}
+
+// Converts a .xls File object → CSV string using SheetJS (first sheet only).
+// Called only when XLSX global is available; falls back to plain text on error.
+async function _xlsToCsv(file) {
+    try {
+        if (typeof XLSX === 'undefined') throw new Error('SheetJS (XLSX) library not loaded');
+        const buffer = await file.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+        if (!wb.SheetNames.length) throw new Error('No sheets found in ' + file.name);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        logAction('XLS: "' + file.name + '" — sheet "' + wb.SheetNames[0] + '"'
+            + (wb.SheetNames.length > 1 ? ' (of ' + wb.SheetNames.length + ' sheets; using first)' : '') + ' converted to CSV.');
+        return XLSX.utils.sheet_to_csv(ws, { blankrows: false });
+    } catch (e) {
+        logAction('Warning: Could not parse XLS "' + file.name + '": ' + e.message + ' — skipping.');
+        return null;
+    }
+}
+
 async function ingestFiles(fileList) {
     let loaded = 0;
     var newFileNames = [];
+    var binaryRejected = [];
     for (const f of fileList) {
-        if (validateFile(f)) { rawFilesStore[f.name] = await f.text(); loaded++; newFileNames.push(f.name); }
+        if (validateFile(f)) {
+            const ext = '.' + f.name.split('.').pop().toLowerCase();
+            const isBin = await _isBinaryFile(f);
+            let content;
+            if (isBin && ext === '.xls') {
+                // True binary XLS — convert to CSV via SheetJS.
+                // Note: .xls files that are plain-text CSV (just renamed) will have isBin=false
+                // and fall through to the f.text() branch below — handled transparently.
+                content = await _xlsToCsv(f);
+            } else if (isBin) {
+                // Binary content in a file that should be comma-separated text — reject with popup
+                logAction('Warning: "' + f.name + '" is a binary file, not comma-separated text — skipped.');
+                binaryRejected.push(f.name);
+                continue;
+            } else {
+                // Plain text (covers .csv, .txt, .log, and .xls files that are really CSV)
+                content = await f.text();
+            }
+            if (content !== null) { rawFilesStore[f.name] = content; loaded++; newFileNames.push(f.name); }
+        }
     }
+    if (binaryRejected.length) _showBinaryErrorModal(binaryRejected);
     document.getElementById('file-status').textContent = Object.keys(rawFilesStore).length + ' file(s) ready.';
     prefillMcKeyColDropdown();  // populate Group-by column from first header row if MC format is active
     logAction('Filesystem: ' + loaded + ' of ' + fileList.length + ' file(s) loaded.');
@@ -2518,7 +2605,7 @@ function removeFile(fileName) {
     delete parsedFilesStore[fileName];
     delete fileProfileMap[fileName];
     var remaining = Object.keys(rawFilesStore).length;
-    document.getElementById('file-status').textContent = remaining ? remaining + ' file(s) ready.' : 'Ready (.txt, .log, .csv)';
+    document.getElementById('file-status').textContent = remaining ? remaining + ' file(s) ready.' : 'Ready (.txt, .log, .csv, .xls)';
     logAction('Filesystem: Removed "' + fileName + '". ' + remaining + ' file(s) remaining.');
     if (remaining === 0) {
         activeLogData=[]; activeFileName=''; availableTokens=[];
@@ -2684,7 +2771,7 @@ function softReset() {
     document.getElementById('dashboard').innerHTML        = '';
     document.getElementById('queueList').innerHTML        = '';
     document.getElementById('mcQueueList').innerHTML      = '';
-    document.getElementById('file-status').textContent   = 'Ready (.txt, .log, .csv)';
+    document.getElementById('file-status').textContent   = 'Ready (.txt, .log, .csv, .xls)';
     document.getElementById('dataFile').value            = '';
 
     // Hide panels
@@ -3115,11 +3202,11 @@ function makeChartWrap(title,canvasId,container,subtitle) {
 // =============================================================================
 // DASHBOARD
 // =============================================================================
-function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand) {
+async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _progressStart, _progressEnd) {
     if (isGeneratingDashboard) return;  // [H1] prevent re-entry
     isGeneratingDashboard = true;
+    const _doClear = (_clearFirst !== false);   // declared outside try so finally block can read it
     try {
-    const _doClear = (_clearFirst !== false);   // true unless explicitly false
     const _rules = _ruleSubset || ruleQueue;
     if (!activeLogData.length) {
         const fk=Object.keys(parsedFilesStore);
@@ -3143,6 +3230,7 @@ function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand) {
     }
     logAction('Dashboard: ' + (_doClear ? 'Rebuilding' : 'Appending for "' + activeFileName + '"') + '.');
     if (_doClear) _showGenProgress('Generating charts for ' + (activeFileName || 'data') + '…', 30);
+    await new Promise(function(r){ setTimeout(r, 0); }); // yield so browser paints progress bar before heavy rendering
     // [DBG-B] Log state at dashboard build time
     logDebug('chart', '=== generateDashboard ===  rules=' + _rules.length + '  clearFirst=' + _doClear
         + '  activeLogData=' + activeLogData.length
@@ -3162,7 +3250,7 @@ function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand) {
     // Build gap-aware timeline for standard rules (shared across all non-MC rules)
     const { labels, rows: gappedStdData, gapIndices: stdGapIndices } = buildTimelineWithGaps(activeLogData);
 
-    _rules.forEach((rule,idx)=>{
+    for (let idx = 0; idx < _rules.length; idx++) { const rule = _rules[idx]; await (async function() {
         if (rule._mc) {
             const isRatio=rule.mode==='ratio', isFormulaMc=rule.mode==='formula', bt=rule.tokens[0];
             const plotT=isRatio?rule.tokens.slice(1):rule.tokens; if(!plotT.length) return;
@@ -3274,10 +3362,6 @@ function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand) {
                         title: { display: true, text: 'Source Metrics', font: { size: 11 } } };
                 }
                 logDebug('chart', '[CHART MC-agg] "' + rule.header + '"  datasets=' + aggDatasets.length + '  labels=' + aggLabels.length);
-                if (aggDatasets.length > 5) {
-                    logDebug('warn', '[DBG-B] TOOLTIP OVERFLOW LIKELY: MC-agg rule "' + rule.header + '" has '
-                        + aggDatasets.length + ' datasets.');
-                }
                 chartInstances.push(new Chart(canvas.getContext('2d'), { type: 'line', data: { labels: aggLabels, datasets: aggDatasets }, options: _aggOpts }));
                 wrap.appendChild(buildStatsTable(aggDatasets, isRatio && !isFormulaMc));
                 return;
@@ -3846,10 +3930,6 @@ function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand) {
                             title: { display: true, text: 'Source Metrics', font: { size: 11 } } };
                     }
                     logDebug('chart', '[CHART MC-pc] "' + title + '"  datasets=' + cd.length + '  labels=' + cl.length);
-                    if (cd.length > 5) {
-                        logDebug('warn', '[DBG-B] TOOLTIP OVERFLOW LIKELY: MC per-component chart "' + title
-                            + '" has ' + cd.length + ' datasets.');
-                    }
                     // [DBG-D] Warn if any dataset label is a raw KPI_N key
                     var _kpiNDatasets = cd.filter(function(d){ return /^KPI_\d+$/.test(d.label); });
                     if (_kpiNDatasets.length) {
@@ -4012,14 +4092,8 @@ function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand) {
             _makeThresholdLines(rule.thresholds, labels.length).forEach(function(tl){ ds.push(tl); });
             const _stdGapCfg=makeGapPlugin(stdGapIndices);
             const _stdOpts=makeChartOptions(); if(_stdGapCfg) _stdOpts.plugins.gapShader=_stdGapCfg;
-            // [DBG-B] Dataset count warning for tooltip overflow diagnosis
             logDebug('chart', '[CHART std] "' + rule.header + '"  datasets=' + ds.length + '  labels=' + labels.length
                 + '  mode=' + rule.mode);
-            if (ds.length > 5) {
-                logDebug('warn', '[DBG-B] TOOLTIP OVERFLOW LIKELY: rule "' + rule.header + '" has ' + ds.length
-                    + ' datasets. Default mode:index shows all simultaneously.'
-                    + ' Estimated tooltip height ~' + (ds.length * 18 + 60) + 'px on 450px canvas.');
-            }
             // [DBG-B] Check which tokens have zero data (might indicate wrong key names)
             var _emptyTokens = plotT.filter(function(t) {
                 return gappedStdData.every(function(d) { return !d.tokens || d.tokens[t] === undefined || d.tokens[t] === null; });
@@ -4032,7 +4106,20 @@ function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand) {
             chartInstances.push(new Chart(canvas.getContext('2d'),{type:'line',data:{labels,datasets:ds},options:_stdOpts}));
             wrap.appendChild(buildStatsTable(ds,isRatio));
         }
-    });
+    }()); // end async IIFE — return statements inside exit the IIFE (not the for loop)
+    // Update progress between chart renders.
+    // Standalone mode (_doClear=true, no range): progress 30→90% across charts.
+    // Multi-file/append mode (_progressStart/_progressEnd set): interpolate within the file's slice
+    //   so the bar advances smoothly inside each file's share of the overall range.
+    if (_progressStart !== undefined && _progressEnd !== undefined) {
+        const _chartPct = _progressStart + Math.round(((idx + 1) / _rules.length) * (_progressEnd - _progressStart));
+        _showGenProgress('Chart ' + (idx + 1) + '/' + _rules.length + '…', _chartPct);
+    } else if (_doClear) {
+        const _chartPct = 30 + Math.round(((idx + 1) / _rules.length) * 60);
+        _showGenProgress('Chart ' + (idx + 1) + ' / ' + _rules.length + '…', _chartPct);
+    }
+    await new Promise(function(r){ setTimeout(r, 0); }); // yield between charts regardless of mode
+    } // end for loop over _rules
     // ── Stats panel and threshold alerts — only on first/full call ───────────
     if (_doClear) {
     var _sp = document.getElementById('statsPanel');
@@ -4164,8 +4251,10 @@ async function _generateAllFileDashboards(_calledFromAuto) {
             return !fp;
         });
         _doneSections++;
-        _showGenProgress('File ' + _doneSections + ' / ' + fk.length + ': ' + fname,
-            (_doneSections - 1) / Math.max(1, fk.length) * 100);
+        // Std files share 0–88% of the bar (88–90% reserved for MC, 90–98% for MC charts, 98–100% for finalise)
+        var _fProgressStart = (_doneSections - 1) / Math.max(1, fk.length) * 88;
+        var _fProgressEnd   = _doneSections       / Math.max(1, fk.length) * 88;
+        _showGenProgress('File ' + _doneSections + ' / ' + fk.length + ': ' + fname, _fProgressStart);
         // Log BEFORE the yield so this entry always appears in an exported log
         logAction('Refresh All [' + _doneSections + '/' + fk.length + ']: "' + fname + '"'
             + '  profile=' + (fp ? fp.name : 'none')
@@ -4247,10 +4336,9 @@ async function _generateAllFileDashboards(_calledFromAuto) {
                 + '</div>';
             _cont.appendChild(_mwDiv);
         }
-        generateDashboard(false, fileRules);  // false = append; pre-cleared above
+        await generateDashboard(false, fileRules, false, _fProgressStart, _fProgressEnd);  // false = append; pre-cleared above
         _anyGenerated = true;
-        _showGenProgress('File ' + _doneSections + ' / ' + fk.length + ': ' + fname + ' ✓',
-            _doneSections / Math.max(1, fk.length) * 100);
+        _showGenProgress('File ' + _doneSections + ' / ' + fk.length + ': ' + fname + ' ✓', _fProgressEnd);
 
         } catch(_fileErr) {
             logAction('Refresh All: Error processing "' + fname + '": ' + _fileErr.message
@@ -4297,8 +4385,10 @@ async function _generateAllFileDashboards(_calledFromAuto) {
                 var sec = _mcByFile[sectionFname];
                 if (!sec.rules.length) continue;
                 var _secLabel = sectionFname === '__manual__' ? 'Multi-Component Analysis' : sectionFname;
-                _showGenProgress('MC charts: ' + _secLabel + ' (' + (_mi + 1) + ' / ' + _mcKeys.length + ')',
-                    90 + (_mi / Math.max(1, _mcKeys.length)) * 8);
+                // MC sections share 90–98%; each section gets an equal slice within that range
+                var _mcProgressStart = 90 + (_mi       / Math.max(1, _mcKeys.length)) * 8;
+                var _mcProgressEnd   = 90 + ((_mi + 1) / Math.max(1, _mcKeys.length)) * 8;
+                _showGenProgress('MC charts: ' + _secLabel + ' (' + (_mi + 1) + ' / ' + _mcKeys.length + ')', _mcProgressStart);
                 await new Promise(function(r){ setTimeout(r, 0); });
                 var _secCompSet = new Set(sec.compKeys);
                 sec.rules.forEach(function(r) {
@@ -4314,7 +4404,7 @@ async function _generateAllFileDashboards(_calledFromAuto) {
                 });
                 _insertDashboardSectionHeader(_secLabel, sectionFname === '__manual__');
                 try {
-                    generateDashboard(false, sec.rules, true);
+                    await generateDashboard(false, sec.rules, true, _mcProgressStart, _mcProgressEnd);
                 } catch(_mcErr) {
                     logAction('Refresh All MC: Error in section "' + _secLabel + '": ' + _mcErr.message + ' — skipping.');
                     console.error('_generateAllFileDashboards MC error [' + _secLabel + ']:', _mcErr);
