@@ -93,8 +93,10 @@
         .stats-summary-table td { padding:4px 8px; border-bottom:1px solid var(--border-color); }
         .stats-summary-table tr:nth-child(even) td { background:rgba(0,0,0,0.03); }
         /* Overlay */
-        #busy-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; color:#fff; font-size:1.3em; font-weight:600; }
+        #busy-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center; color:#fff; font-size:1.3em; font-weight:600; flex-direction:column; gap:16px; }
         #busy-overlay.active { display:flex; }
+        #busy-overlay-cancel { margin-top:8px; padding:7px 22px; border-radius:6px; border:2px solid rgba(255,255,255,0.6); background:rgba(255,255,255,0.12); color:#fff; font-size:0.72em; font-weight:600; cursor:pointer; letter-spacing:0.03em; }
+        #busy-overlay-cancel:hover { background:rgba(255,255,255,0.25); }
         /* Chart generation progress bar */
         #gen-progress { display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9999; background:var(--bg-panel,#fff); border:2px solid var(--primary,#4a90e2); border-radius:10px; padding:10px 20px; box-shadow:0 4px 20px rgba(0,0,0,0.18); min-width:320px; max-width:500px; }
         #gen-progress.active { display:block; }
@@ -140,6 +142,12 @@
         #binary-error-modal-box p { margin:0 0 12px; font-size:0.88em; color:#888; line-height:1.5; }
         #binary-error-modal-box ul { margin:0 0 18px; padding-left:20px; }
         #binary-error-modal-btns { display:flex; justify-content:flex-end; }
+        #dirsearch-warn-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; justify-content:center; align-items:center; }
+        #dirsearch-warn-modal.active { display:flex; }
+        #dirsearch-warn-modal-box { background:var(--bg-panel); color:var(--text-main); border-radius:10px; padding:28px 32px; min-width:340px; max-width:480px; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+        #dirsearch-warn-modal-box h3 { margin:0 0 8px; font-size:1.05em; color:#e6a817; }
+        #dirsearch-warn-modal-box p { margin:0 0 16px; font-size:0.88em; color:#888; line-height:1.5; }
+        #dirsearch-warn-modal-btns { display:flex; gap:10px; justify-content:flex-end; }
         .pf-file-row { margin-bottom:12px; padding:10px 12px; border:1px solid var(--border-color); border-radius:6px; }
         .pf-file-row .pf-fname { font-weight:600; font-size:0.88em; margin-bottom:5px; display:flex; align-items:center; gap:6px; }
         .pf-file-row .pf-fname .pf-auto-badge { font-size:0.72em; padding:1px 5px; border-radius:3px; background:rgba(25,135,84,0.15); color:#198754; font-weight:600; }
@@ -155,7 +163,10 @@
 </head>
 <body>
 
-<div id="busy-overlay">&#9203; Generating PDF&#8230;</div>
+<div id="busy-overlay">
+  <span id="busy-overlay-msg">&#9203; Generating PDF&#8230;</span>
+  <button id="busy-overlay-cancel" onclick="(function(){document.getElementById('busy-overlay').classList.remove('active');document.body.classList.remove('pdf-exporting');window._pdfAborted=true;logAction('PDF: Force-dismissed by user.');})()">&#x2715; Force Cancel</button>
+</div>
 
 <div id="pdf-modal">
   <div id="pdf-modal-box">
@@ -198,6 +209,17 @@
     <ul id="binary-error-list"></ul>
     <div id="binary-error-modal-btns">
       <button onclick="document.getElementById('binary-error-modal').classList.remove('active')" style="background:var(--danger);color:white;padding:8px 22px;border-radius:6px;border:none;font-weight:600;cursor:pointer;font-size:0.88em;">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<div id="dirsearch-warn-modal">
+  <div id="dirsearch-warn-modal-box">
+    <h3>&#9888; No Files Found</h3>
+    <p id="dirsearch-warn-msg">No files matched the specified pattern in the selected directory.</p>
+    <div id="dirsearch-warn-modal-btns">
+      <button onclick="document.getElementById('dirsearch-warn-modal').classList.remove('active')" style="background:#6c757d;color:white;padding:8px 22px;border-radius:6px;border:none;font-weight:600;cursor:pointer;font-size:0.88em;">Dismiss</button>
+      <button onclick="document.getElementById('dirsearch-warn-modal').classList.remove('active'); if(Object.keys(rawFilesStore).length) processFilesFromUI();" style="background:var(--primary);color:white;padding:8px 22px;border-radius:6px;border:none;font-weight:600;cursor:pointer;font-size:0.88em;">Continue with Existing Data</button>
     </div>
   </div>
 </div>
@@ -310,7 +332,7 @@
                 </div>
                 <div>
                     <label style="font-size:0.82em;margin-bottom:4px;color:var(--text-main);">File Name Pattern <span style="font-weight:400;color:#888;">(comma-separated for multiple: DBW,free,load or *.csv,*.log)</span></label>
-                    <input type="text" id="dirSearchPattern" placeholder="e.g. DBW.csv or *free*.txt or DBW,free,load" style="width:100%;margin-top:4px;">
+                    <input type="text" id="dirSearchPattern" placeholder="e.g. load.txt or *free*.txt or load.txt;free.txt;cpu.log" style="width:100%;margin-top:4px;">
                 </div>
                 <div id="dirSearchResults" style="margin-top:8px;display:none;padding:8px;background:rgba(0,0,0,0.04);border-radius:4px;font-size:0.82em;">
                     <strong>Found files:</strong> <span id="dirSearchFileCount">0</span>
@@ -549,7 +571,10 @@
         <div id="gen-progress">
           <div id="gen-progress-track"><div id="gen-progress-fill"></div></div>
           <div id="gen-progress-label"><span><span class="gen-spinner"></span><span id="gen-progress-text">Generating charts…</span></span><span id="gen-progress-pct">0%</span></div>
-          <div style="margin-top:6px;text-align:right;"><button id="gen-progress-dismiss" onclick="document.getElementById('gen-progress').classList.remove('active')" style="font-size:0.75em;padding:2px 10px;cursor:pointer;border:1px solid #aaa;border-radius:4px;background:transparent;color:#666;">Dismiss</button></div>
+          <div style="margin-top:6px;display:flex;justify-content:flex-end;gap:8px;">
+            <button id="gen-progress-cancel" onclick="(function(){window._genAborted=true;document.getElementById('gen-progress-text').textContent='Cancelling…';logAction('Graph: User cancelled generation — waiting for current chart to finish.');})()" style="font-size:0.75em;padding:2px 12px;cursor:pointer;border:1px solid #e74c3c;border-radius:4px;background:#e74c3c;color:white;font-weight:600;">&#x2715; Cancel</button>
+            <button id="gen-progress-dismiss" onclick="document.getElementById('gen-progress').classList.remove('active')" style="font-size:0.75em;padding:2px 10px;cursor:pointer;border:1px solid #aaa;border-radius:4px;background:transparent;color:#666;">Dismiss</button>
+          </div>
         </div>
         <div id="dashboard"></div>
         <div id="statsPanel" class="panel hidden" style="margin-top:15px;"></div>
@@ -619,6 +644,7 @@ var availableTokens  = [];
 var ruleQueue        = [];
 var chartInstances   = [];
 var isInternalSync   = false;
+var _chartsAreZoomed = false;  // set true when any chart is zoomed/panned; reset by resetAllZoom()
 var editingRuleIndex    = -1;
 var compIndexStore      = {};
 var mcEditingIndex      = -1;
@@ -646,7 +672,13 @@ var _thresholdAlertsEnabled = false; // global toggle — disabling hides the al
 var dropJustHappened = false;       // [M4] drop/click debounce
 const MAX_CONSOLE_ENTRIES = 1000;   // UI DOM cap
 const LOG_FLUSH_EVERY     = 50;     // flush to localStorage every N entries
-const _logSessionKey      = 'kpi_log_' + new Date().toISOString().replace(/[:.]/g,'_').slice(0,19);
+const _logNow = new Date();
+const _logSessionKey = 'kpi_log_' + _logNow.getFullYear()
+    + '-' + String(_logNow.getMonth()+1).padStart(2,'0')
+    + '-' + String(_logNow.getDate()).padStart(2,'0')
+    + 'T' + String(_logNow.getHours()).padStart(2,'0')
+    + '_' + String(_logNow.getMinutes()).padStart(2,'0')
+    + '_' + String(_logNow.getSeconds()).padStart(2,'0');
 let   _logWriteBatch      = [];     // in-memory batch; flushed every LOG_FLUSH_EVERY entries
 let   _logTotalCount      = 0;      // total entries written this session
 try { localStorage.setItem(_logSessionKey, ''); } catch(e) {}
@@ -671,6 +703,24 @@ const ALLOWED_EXTENSIONS = ['.txt', '.log', '.csv', '.json', '.xls'];  // [SEC9]
 // WARNING: verbose=true on large files (>10K rows) generates many entries.
 // =============================================================================
 const VERBOSE_LOGGING = true;
+
+// =============================================================================
+// GENERATION TRACE LOGGING — millisecond-granularity step log for graph/PDF
+// =============================================================================
+// Set TRACE_GEN_LOG = true  → [TRACE HH:MM:SS.mmm] entries appear in Activity
+//                             Console at every critical sub-step of chart and
+//                             PDF generation so you can pinpoint exactly which
+//                             step stalls.
+// Set TRACE_GEN_LOG = false → all trace entries are suppressed (zero overhead).
+// These do NOT require VERBOSE_LOGGING — they are controlled independently.
+// =============================================================================
+const TRACE_GEN_LOG = true;
+function logTrace(msg) {
+    if (!TRACE_GEN_LOG) return;
+    var _d = new Date();
+    var _ms = ('000' + _d.getMilliseconds()).slice(-3);
+    logAction('[TRACE ' + _d.toLocaleTimeString() + '.' + _ms + '] ' + msg);
+}
 
 // =============================================================================
 // CONSOLE — localStorage-backed persistent logging
@@ -863,6 +913,16 @@ function copyConsole(e) {
 // =============================================================================
 // TIMESTAMP HELPERS
 // =============================================================================
+
+// Helper: split by comma OR semicolon (for CSV and semicolon-delimited files)
+function _splitDelim(line) {
+    // Find the delimiter - use semicolon if present, otherwise comma
+    if (line.includes(';')) {
+        return line.split(';');
+    }
+    return line.split(',');
+}
+
 function getUnix(ts) {
     if (!ts) return 0;
     const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
@@ -875,8 +935,8 @@ function getUnix(ts) {
         const t = (parts.length > 1 ? parts[1].trim() : '').replace(/[:.]/g,'').substring(0,6);  // [M1]
         return parseInt(yr+m+d+t) || 0;
     }
-    if (clean.includes(',')) {
-        const parts = clean.split(',');
+    if (clean.includes(',') || clean.includes(';')) {
+        const parts = clean.includes(';') ? clean.split(';') : clean.split(',');
         let ds = parts[0].trim().replace(/-/g,'');
         if (ds.length<=4) ds = String(new Date().getFullYear()) + ds.padStart(4,'0');
         const t = (parts.length > 1 ? parts[1].trim() : '').replace(/[:.]/g,'').substring(0,6);  // [M1]
@@ -894,7 +954,7 @@ function getUnix(ts) {
 function formatLabel(ts) {
     if (!ts) return '';
     const c = ts.replace(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/gi,'').trim();
-    if (c.includes(',')) { const p=c.split(','); if(p.length<2) return p[0]?p[0].trim():ts; return p[0].trim()+' '+p[1].trim().substring(0,5); }  // [M2]
+    if (c.includes(',') || c.includes(';')) { const p=_splitDelim(c); if(p.length<2) return p[0]?p[0].trim():ts; return p[0].trim()+' '+p[1].trim().substring(0,5); }  // [M2]
     if (c.includes('|')) { const p=c.split('|'),dp=p[0].trim().split(/\s+/); if(dp.length<2||p.length<2) return c; return dp[0]+' '+dp[1]+' '+p[1].trim().substring(0,5); }  // [M2]
     if (c.includes(' ')) { const p=c.split(' '); let dp=p[0]; if(/^\d{6}$/.test(dp)){const fy=String(new Date().getFullYear()).substring(0,2)+dp;dp=fy.substring(0,4)+'-'+fy.substring(4,6)+'-'+fy.substring(6,8);} return dp+' '+(p[1]||'').substring(0,5); }
     return ts;
@@ -1191,7 +1251,7 @@ function detectCsvTsFormat(dataLines) {
     const reDate   = /^[\d\-\/]+$/;
     let vs=0, vd=0;
     dataLines.filter(l=>l.trim()).slice(0,10).forEach(line => {
-        const c0 = line.split(',')[0].trim();
+        const c0 = _splitDelim(line)[0].trim();
         if (reSingle.test(c0)) vs++; else vd++;
     });
     return vs > vd ? 'singleTs' : 'dateTime';
@@ -2476,14 +2536,17 @@ function processFilesFromUI() {
         }
         // If profile-loaded rules exist, render queues and auto-select first file for dashboard
         var _hasProfileRules = ruleQueue.some(function(r) { return r._sourceProfile || r._profileLoaded; });
+        // Directory search mode: always merge all files into one dataset.
+        // Check enableDirSearch directly (not via combine checkbox, which can be stale across re-runs).
+        var _isDirSearch = !!(document.getElementById('enableDirSearch')?.checked);
         if (_hasProfileRules) {
             var stdRules = ruleQueue.filter(function(r) { return !r._mc; });
             var mcRules  = ruleQueue.filter(function(r) { return r._mc; });
             if (stdRules.length && hasStdData) {
                 renderQueue();
-                // Auto-select first file so dashboard can generate
+                // Auto-select first file — skipped for dir search (combine block sets activeLogData)
                 var fk = Object.keys(parsedFilesStore);
-                if (fk.length >= 1 && !activeLogData.length) {
+                if (fk.length >= 1 && !activeLogData.length && !_isDirSearch) {
                     activeLogData = parsedFilesStore[fk[0]]; activeFileName = fk[0];
                     logAction('Config: Auto-selected "' + fk[0] + '" for dashboard.');
                 }
@@ -2491,8 +2554,10 @@ function processFilesFromUI() {
             if (mcRules.length && hasMcData) {
                 renderMcQueue();
             }
-            // Auto-generate dashboard if rules and data are ready
-            if (ruleQueue.length && (activeLogData.length || hasMcData)) {
+            // Dir search: combine block below handles ALL chart generation (standard + MC).
+            // compIndexStore already contains merged MC data from all files, so a single
+            // generateDashboard() call covers everything — no per-file sectioning needed.
+            if (ruleQueue.length && (activeLogData.length || hasMcData) && !_isDirSearch) {
                 var _fkAll = Object.keys(parsedFilesStore);
                 if (_fkAll.length > 1) {
                     _generateAllFileDashboards(true).catch(function(err) {
@@ -2513,9 +2578,24 @@ function processFilesFromUI() {
     // is set to a specific prefix; otherwise merges all files together.
     if (document.getElementById('combineFiles').checked) {
         const fileCount = Object.keys(parsedFilesStore).length;
+
+        if (_isDirSearch) {
+            // Dir search: _generateAllFileDashboards handles per-group generation grouped by
+            // base filename. Direct call avoids the _mcFileCount redirect inside generateDashboard().
+            if (ruleQueue.length > 0 && (fileCount > 0 || hasMcData)) {
+                document.getElementById('builderPanel').classList.remove('hidden');
+                _generateAllFileDashboards(true).catch(function(err) {
+                    logAction('Dir Search: Unhandled error — ' + (err && err.message ? err.message : String(err)));
+                    console.error('_generateAllFileDashboards unhandled rejection:', err);
+                    _hideGenProgress();
+                });
+            }
+            return;
+        }
+
+        // ── Non-dir-search combine logic (unchanged) ──────────────────────────────
         if (fileCount === 0) return;
 
-        // Populate prefix groups into the selector
         updateGroupSelector();
 
         const selectedGroup = document.getElementById('prefixGroupSelect').value;
@@ -2539,7 +2619,6 @@ function processFilesFromUI() {
             ? 'Combined (' + filesToMerge.length + ' files)'
             : selectedGroup + ' (' + filesToMerge.length + ' file(s))';
         document.getElementById('builderPanel').classList.remove('hidden');
-        // Highlight rows belonging to the selected group
         document.querySelectorAll('.file-row').forEach((r,i) => {
             const name = Object.keys(parsedFilesStore)[i];
             if (filesToMerge.includes(name)) r.classList.add('active-row');
@@ -2721,8 +2800,8 @@ function runDirSearch() {
         return;
     }
     
-    // Split by comma and trim each pattern
-    const patterns = patternInput.split(',').map(p => p.trim()).filter(p => p.length > 0);
+    // Split by comma or semicolon and trim each pattern
+    const patterns = patternInput.split(/[,;]/).map(p => p.trim()).filter(p => p.length > 0);
     
     if (patterns.length === 0) {
         logAction('Directory Search: No valid patterns specified.');
@@ -2777,10 +2856,10 @@ function runDirSearch() {
         if (_dirSearchFiles.length === 0) {
             listDiv.innerHTML = '<span style="color:#dc3545;">No matching data files found.</span>';
         } else {
-            // Show breakdown by pattern
+            // Show breakdown by pattern, then full relative-path list
             let html = '';
             for (const [pat, matchedFiles] of Object.entries(matchedByPattern)) {
-                html += `<strong>${pat}</strong>: ${matchedFiles.length} file(s)<br>`;
+                html += '<strong>' + pat + '</strong>: ' + matchedFiles.length + ' file(s)<br>';
             }
             html += matchedPaths.slice(0, 15).join('<br>');
             if (matchedPaths.length > 15) {
@@ -2791,6 +2870,13 @@ function runDirSearch() {
     }
 
     logAction('Directory Search: Found ' + _dirSearchFiles.length + ' matching file(s) for ' + patterns.length + ' pattern(s): ' + patterns.join(', '));
+
+    // Show warning popup when no files matched any pattern
+    if (_dirSearchFiles.length === 0) {
+        const warnMsg = document.getElementById('dirsearch-warn-msg');
+        if (warnMsg) warnMsg.textContent = 'No files matched the pattern(s) "' + patterns.join('; ') + '" in the selected directory. Check the pattern or choose a different directory.';
+        document.getElementById('dirsearch-warn-modal').classList.add('active');
+    }
 }
 
 // Process files from directory search - integrates with existing logic
@@ -2864,16 +2950,17 @@ async function processDirSearchFiles() {
 
 // Process directory search files and initialize analysis
 async function processDirSearchAndInitialize() {
-    // Auto-expand the console so the log and Download Log button are visible during processing
-    const cp = document.getElementById('console-panel');
-    if (cp && cp.classList.contains('collapsed')) { cp.classList.remove('collapsed'); }
-
     // Read all directory search files (binary detection done in processDirSearchFiles)
     const fileData = await processDirSearchFiles();
 
     if (fileData.length === 0) {
-        logAction('Directory Search: No files to process.');
-        window._dirSearchProcessed = false;
+        logAction('Directory Search: No files could be loaded (all skipped or cancelled).');
+        window._dirSearchProcessed = true;
+        // Show warning and let user continue with any data already in rawFilesStore
+        const warnMsg = document.getElementById('dirsearch-warn-msg');
+        if (warnMsg) warnMsg.textContent = 'None of the matched files could be loaded (all were binary or cancelled). Any previously loaded data remains available.';
+        document.getElementById('dirsearch-warn-modal').classList.add('active');
+        if (Object.keys(rawFilesStore).length > 0) processFilesFromUI();
         return;
     }
 
@@ -3113,7 +3200,7 @@ function syncCharts(sourceChart) {
     chartInstances.forEach(c=>{if(c!==sourceChart) c.zoomScale('x',{min,max},'original');});
     isInternalSync=false;
 }
-function resetAllZoom() { logAction('View: Zoom reset.'); isInternalSync=true; chartInstances.forEach(c=>c.resetZoom()); isInternalSync=false; }
+function resetAllZoom() { logAction('View: Zoom reset.'); isInternalSync=true; chartInstances.forEach(c=>c.resetZoom()); isInternalSync=false; _chartsAreZoomed=false; }
 
 // ── Soft Reset: clears all data/rules/charts/UI but PRESERVES masterConfig ──
 // The MasterConfig file does not need to be re-uploaded after every Reset.
@@ -3537,12 +3624,12 @@ function makeChartOptions() {
                 zoom:{
                     drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},
                     mode:'x',
-                    onZoomComplete:({chart})=>{syncCharts(chart); logAction('View: Chart zoomed.');}
+                    onZoomComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart); logAction('View: Chart zoomed.');}
                 },
                 pan:{
                     enabled:true, mode:'x',
                     modifierKey:'ctrl',
-                    onPanComplete:({chart})=>{syncCharts(chart); logAction('View: Chart panned.');}
+                    onPanComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart); logAction('View: Chart panned.');}
                 }
             }
         },
@@ -3578,8 +3665,8 @@ function makeOverlayChartOptions(ovKeyLabel, kpiLabel) {
                 }
             },
             zoom:{
-            zoom:{drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},mode:'x',onZoomComplete:({chart})=>{syncCharts(chart);logAction('View: Chart zoomed.');}},
-            pan:{enabled:true,mode:'x',modifierKey:'ctrl',onPanComplete:({chart})=>{syncCharts(chart);logAction('View: Chart panned.');}}
+            zoom:{drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},mode:'x',onZoomComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart);logAction('View: Chart zoomed.');}},
+            pan:{enabled:true,mode:'x',modifierKey:'ctrl',onPanComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart);logAction('View: Chart panned.');}}
         }},
         scales:{
             x:{},
@@ -3612,6 +3699,11 @@ function makeChartWrap(title,canvasId,container,subtitle) {
 async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _progressStart, _progressEnd) {
     if (isGeneratingDashboard) return;  // [H1] prevent re-entry
     isGeneratingDashboard = true;
+    logTrace('generateDashboard ENTER — clearFirst=' + (_clearFirst !== false)
+        + '  ruleSubset=' + (!!_ruleSubset ? _ruleSubset.length + ' rules' : 'none')
+        + '  progressRange=[' + _progressStart + ',' + _progressEnd + ']'
+        + '  activeLogData=' + activeLogData.length
+        + '  compKeys=' + Object.keys(compIndexStore).length);
     const _doClear = (_clearFirst !== false);   // declared outside try so finally block can read it
     try {
     const _rules = _ruleSubset || ruleQueue;
@@ -3625,11 +3717,14 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
     // Skip when called from _generateAllFileDashboards — per-file _liveCompKeys already set
     if (!_skipAutoExpand) {
         // When multiple MC files are loaded, route through per-file isolation to prevent
-        // component mixing (e.g. disk mounts + network interfaces + usernames on same chart)
+        // component mixing (e.g. disk mounts + network interfaces + usernames on same chart).
+        // In dir search mode skip this redirect — _generateAllFileDashboards() is already
+        // called directly from the combine block with base-filename grouping.
         var _mcFileCount = Object.keys(parsedFileMeta).filter(function(f) {
             return parsedFileMeta[f] && parsedFileMeta[f].isMc;
         }).length;
-        if (_mcFileCount > 1 && !_ruleSubset) {
+        var _isDirSearchCtx = !!(document.getElementById('enableDirSearch')?.checked);
+        if (_mcFileCount > 1 && !_ruleSubset && !_isDirSearchCtx) {
             _generateAllFileDashboards(false);
             return;
         }
@@ -3650,14 +3745,18 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
             + (r.compKeys ? ('  compKeys=' + (r.compKeys.length===1&&r.compKeys[0]==='__auto__' ? '★all('+_effCompKeys(r).length+')' : r.compKeys.length)) : ''));
     });
     const container=document.getElementById('dashboard');
-    if (_doClear) { chartInstances.forEach(c=>c.destroy()); chartInstances=[]; container.innerHTML=''; }
+    if (_doClear) { chartInstances.forEach(c=>c.destroy()); chartInstances=[]; container.innerHTML=''; _chartsAreZoomed=false; }
     const _idPfx = ++_chartGenSeq;  // unique canvas-ID prefix per generation call
     document.getElementById('dashboard-meta').classList.remove('hidden');
     if (_doClear) document.getElementById('active-file-label').textContent=activeFileName;
     // Build gap-aware timeline for standard rules (shared across all non-MC rules)
+    logTrace('generateDashboard: buildTimelineWithGaps START — ' + activeLogData.length + ' rows');
     const { labels, rows: gappedStdData, gapIndices: stdGapIndices } = buildTimelineWithGaps(activeLogData);
+    logTrace('generateDashboard: buildTimelineWithGaps DONE — ' + labels.length + ' labels, ' + stdGapIndices.length + ' gaps');
 
+    logTrace('generateDashboard: rule loop START — ' + _rules.length + ' rule(s)');
     for (let idx = 0; idx < _rules.length; idx++) { const rule = _rules[idx]; await (async function() {
+    logTrace('generateDashboard: rule[' + idx + '] "' + rule.header + '"  mode=' + rule.mode + '  mc=' + !!rule._mc + '  tokens=' + (rule.tokens ? rule.tokens.length : 0));
         if (rule._mc) {
             const isRatio=rule.mode==='ratio', isFormulaMc=rule.mode==='formula', bt=rule.tokens[0];
             const plotT=isRatio?rule.tokens.slice(1):rule.tokens; if(!plotT.length) return;
@@ -3668,10 +3767,12 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
 
             // ── AGGREGATION MODE ─────────────────────────────────────────────
             const _eck = _effCompKeys(rule);
+            logTrace('generateDashboard: rule[' + idx + '] effCompKeys=' + _eck.length + '  aggregate=' + !!rule._aggregate + '  groupOverlay=' + !!rule._groupOverlay);
             if (rule._aggregate && _eck.length > 1) {
                 const aggMode = rule._aggMode || 'sum';
                 const aggLabel = aggMode === 'sum' ? 'SUM' : 'AVG';
                 logAction('Aggregation: ' + aggLabel + ' across ' + _eck.length + ' components' + _perSecSuffix);
+                logTrace('generateDashboard: agg COLLECT START — ' + _eck.length + ' components, tokens=' + (plotT ? plotT.length : 0));
 
                 // Collect all timestamps and data across components
                 const allTsSet = new Set();
@@ -3713,8 +3814,12 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     return { timestamp: ts, tokens };
                 });
 
+                logTrace('generateDashboard: agg COLLECT DONE — allTsSet=' + allTsSet.size + '  sortedTs=' + sortedTs.length + '  aggRows=' + aggRows.length);
+                logTrace('generateDashboard: agg buildTimelineWithGaps START');
                 const { labels: aggLabels, rows: gappedAggRows, gapIndices: aggGapIndices } = buildTimelineWithGaps(aggRows);
+                logTrace('generateDashboard: agg buildTimelineWithGaps DONE — ' + aggLabels.length + ' labels');
                 const aggTitle = aggLabel + ': ' + rule.header + _perSecSuffix;
+                logTrace('generateDashboard: agg new Chart() START — "' + aggTitle + '"');
                 const { wrap, canvas } = makeChartWrap(aggTitle, 'canvas-agg-' + _idPfx + '-' + idx, container);
 
                 let aggDatasets;
@@ -3769,8 +3874,10 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         title: { display: true, text: 'Source Metrics', font: { size: 11 } } };
                 }
                 logDebug('chart', '[CHART MC-agg] "' + rule.header + '"  datasets=' + aggDatasets.length + '  labels=' + aggLabels.length);
+                logTrace('generateDashboard: agg new Chart() RENDER — datasets=' + aggDatasets.length + ' labels=' + aggLabels.length);
                 chartInstances.push(new Chart(canvas.getContext('2d'), { type: 'line', data: { labels: aggLabels, datasets: aggDatasets }, options: _aggOpts }));
                 wrap.appendChild(buildStatsTable(aggDatasets, isRatio && !isFormulaMc));
+                logTrace('generateDashboard: agg chart DONE — total charts=' + chartInstances.length);
                 return;
             }
 
@@ -4062,6 +4169,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     wrap._refreshOvStats = _refreshOvStats;
                 });
             } else if (rule._groupOverlay && _eck.length > 0) {
+                logTrace('generateDashboard: GROUP OVERLAY branch — rule="' + rule.header + '"  components=' + _eck.length + '  tokens=' + plotT.length);
                 // ── GROUP OVERLAY MODE: one chart per KPI token, all components as lines on each ────
                 const _goPtStyles = ['circle','triangle','rect','rectRot','star','cross','crossRot'];
                 const _goPtSvgPaths = {
@@ -4075,8 +4183,10 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                 };
 
                 // Build union timeline across all selected components
+                logTrace('generateDashboard: GO union timeline START — ' + _eck.length + ' components');
                 const _goTsSet = new Set();
                 _eck.forEach(compKey => { const rows=compIndexStore[compKey]; if(rows) rows.forEach(row=>_goTsSet.add(row.timestamp)); });
+                logTrace('generateDashboard: GO union timeline DONE — ' + _goTsSet.size + ' unique timestamps');
                 // 🔍 DIAG: GROUP OVERLAY timeline summary
                 const _goTsArr2 = Array.from(_goTsSet);
                 const _goFirstComp = _eck[0];
@@ -4114,11 +4224,17 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     const maxRow = rows.reduce((a,b)=>Object.keys(a.tokens).length>=Object.keys(b.tokens).length?a:b, {tokens:{}});
                     _goCompNameMaps.push(buildTokenNameMap(Object.keys(maxRow.tokens), hdr ? hdr.kpiNames : []));
                 });
+                logTrace('generateDashboard: GO comp data built — ' + _goCompNames.length + ' names, goLabels=' + _goLabels.length + ' pts=' + _goNPts);
 
                 // Formula → one chart; multiple tokens → one chart per token
                 const _goTokenList = (isFormulaMc && rule.formula) ? [null] : plotT;
+                logTrace('generateDashboard: GO token loop START — ' + _goTokenList.length + ' chart(s) to render');
 
-                _goTokenList.forEach((token, ti) => {
+                for (let ti = 0; ti < _goTokenList.length; ti++) { const token = _goTokenList[ti];
+                await new Promise(r => setTimeout(r, 0)); // yield between overlay charts to keep browser responsive
+                if (window._genAborted) { logAction('Graph: Cancelled during MC overlay chart ' + (ti+1) + '/' + _goTokenList.length + ' for rule "' + rule.header + '".'); break; }
+                logAction('Graph: MC overlay chart ' + (ti+1) + '/' + _goTokenList.length + ' — rule "' + rule.header + '"' + (token ? ' token=' + token : '') + ', ' + _eck.length + ' component(s).');
+                logTrace('generateDashboard: GO chart[' + ti + '] dataset build START — ' + _eck.length + ' component(s)');
                     const _goDatasets = [];
 
                     _eck.forEach((compKey, ci) => {
@@ -4240,8 +4356,10 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     _goOpts.plugins.legend = { display: false };
                     _goOpts.scales.x = {};  // no maxTicksLimit — show full X-axis (matches overlay behaviour)
                     if (_goGapCfg) _goOpts.plugins.gapShader = _goGapCfg;
+                    logTrace('generateDashboard: GO chart[' + ti + '] new Chart() — datasets=' + _goDatasets.length + ' labels=' + _goLabels.length);
                     const _goChartInst = new Chart(goCanvas.getContext('2d'), {type:'line', data:{labels:[..._goLabels], datasets:_goDatasets}, options:_goOpts});
                     chartInstances.push(_goChartInst);
+                    logTrace('generateDashboard: GO chart[' + ti + '] new Chart() DONE — total=' + chartInstances.length);
                     goWrap._chartRef = _goChartInst;
                     goWrap._allDatasets = _goDatasets;
                     goWrap._isRatio = isRatio && !isFormulaMc;
@@ -4252,9 +4370,12 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         const newTbl=buildStatsTable(visible.length?visible:[], goWrap._isRatio);
                         if(oldTbl) goWrap.replaceChild(newTbl, oldTbl); else goWrap.appendChild(newTbl);
                     };
+                    logTrace('generateDashboard: GO chart[' + ti + '] buildStatsTable START');
                     goWrap.appendChild(buildStatsTable(_goDatasets, goWrap._isRatio));
-                }); // end _goTokenList.forEach
+                    logTrace('generateDashboard: GO chart[' + ti + '] buildStatsTable DONE');
+                } // end _goTokenList for loop
                 logAction('MC Group Overlay: "'+rule.header+'" — '+_goCompNames.length+' component(s), '+plotT.length+' KPI(s) = '+_goTokenList.length+' chart(s).');
+                logTrace('generateDashboard: GO token loop DONE — rendered ' + _goTokenList.length + ' chart(s) for "' + rule.header + '"');
             } else {
                 // ── PER-COMPONENT MODE: one chart per component, all KPIs on it ─────
                 _eck.forEach((compKey,ci)=>{
@@ -4510,8 +4631,12 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     + rule.header + '": [' + _emptyTokens.join(', ') + ']'
                     + '  — check token names match parsed keys.');
             }
+            logTrace('generateDashboard: std new Chart() — rule="' + rule.header + '"  datasets=' + ds.length + ' labels=' + labels.length);
             chartInstances.push(new Chart(canvas.getContext('2d'),{type:'line',data:{labels,datasets:ds},options:_stdOpts}));
+            logTrace('generateDashboard: std new Chart() DONE — total=' + chartInstances.length);
+            logTrace('generateDashboard: std buildStatsTable START');
             wrap.appendChild(buildStatsTable(ds,isRatio));
+            logTrace('generateDashboard: std buildStatsTable DONE');
         }
     }()); // end async IIFE — return statements inside exit the IIFE (not the for loop)
     // Update progress between chart renders.
@@ -4526,9 +4651,13 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
         _showGenProgress('Chart ' + (idx + 1) + ' / ' + _rules.length + '…', _chartPct);
     }
     await new Promise(function(r){ setTimeout(r, 0); }); // yield between charts regardless of mode
+    if (window._genAborted) { logAction('Graph: Cancelled after rule "' + _rules[idx].header + '" (' + (idx+1) + '/' + _rules.length + ').'); break; }
+    logTrace('generateDashboard: rule[' + idx + '] COMPLETE — ' + chartInstances.length + ' total charts so far');
     } // end for loop over _rules
+    logTrace('generateDashboard: rule loop END — ' + chartInstances.length + ' chart(s) created');
     // ── Stats panel and threshold alerts — only on first/full call ───────────
     if (_doClear) {
+    logTrace('generateDashboard: stats panel START');
     var _sp = document.getElementById('statsPanel');
     if (_sp) {
         _sp.innerHTML = '';
@@ -4553,9 +4682,12 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
             _sp.classList.add('hidden');
         }
     }
+    logTrace('generateDashboard: threshold check START — alertsEnabled=' + _thresholdAlertsEnabled);
     var _breaches = _thresholdAlertsEnabled ? checkThresholds(activeLogData, ruleQueue) : [];
+    logTrace('generateDashboard: threshold check DONE — ' + _breaches.length + ' breach(es)');
     renderAlerts(_breaches);
     } // end _doClear
+    logTrace('generateDashboard: EXIT — ' + chartInstances.length + ' chart(s) total');
     } catch(e) {
         logAction('Dashboard ERROR: ' + e.message + ' (line: ' + (e.stack ? e.stack.split('\n')[1] : 'unknown') + ')');
         console.error('Dashboard error:', e);
@@ -4627,28 +4759,60 @@ async function _generateAllFileDashboards(_calledFromAuto) {
         generateDashboard(); return;
     }
 
+    // Dir search mode: group parsedFilesStore by base filename so same-named files from
+    // different subdirectories are merged into one chart section per file type.
+    var _isDirSearch = !!(document.getElementById('enableDirSearch')?.checked);
+    var _iterGroups; // [{label, relPaths, fp}]
+    if (_isDirSearch && fk.length > 0) {
+        var _baseGroups = {};
+        fk.forEach(function(relPath) {
+            var base = relPath.split('/').pop();
+            if (!_baseGroups[base]) _baseGroups[base] = [];
+            _baseGroups[base].push(relPath);
+        });
+        _iterGroups = Object.keys(_baseGroups).map(function(base) {
+            var relPaths = _baseGroups[base];
+            var fp = (fileProfileMap[relPaths[0]] && fileProfileMap[relPaths[0]].profile)
+                     ? fileProfileMap[relPaths[0]].profile : null;
+            return { label: base, relPaths: relPaths, fp: fp };
+        });
+    } else {
+        _iterGroups = fk.map(function(fname) {
+            var fp = (fileProfileMap[fname] && fileProfileMap[fname].profile)
+                     ? fileProfileMap[fname].profile : null;
+            return { label: fname, relPaths: [fname], fp: fp };
+        });
+    }
+
     // Pre-clear once so all file calls can use append mode (false) and section headers aren't wiped
-    chartInstances.forEach(function(c){ c.destroy(); }); chartInstances = [];
+    chartInstances.forEach(function(c){ c.destroy(); }); chartInstances = []; _chartsAreZoomed = false;
     var _cont = document.getElementById('dashboard');
     if (_cont) _cont.innerHTML = '';
     document.getElementById('dashboard-meta').classList.remove('hidden');
-    var _multiLabel = fk.length > 0 ? 'Multiple files (' + fk.length + ')' : 'Multiple sources (' + _mcSourceCount + ')';
+    var _groupCount = _iterGroups.length;
+    var _multiLabel = _groupCount > 0 ? 'Multiple files (' + (_isDirSearch ? _groupCount + ' type(s)' : fk.length) + ')' : 'Multiple sources (' + _mcSourceCount + ')';
     document.getElementById('active-file-label').textContent = _multiLabel;
     var _sp = document.getElementById('statsPanel');
     if (_sp) { _sp.innerHTML = ''; _sp.classList.add('hidden'); }
 
     // Count total sections for progress tracking
     var _anyGenerated = false;
-    var _totalSections = fk.length + (hasMcData ? Object.keys(Object.keys(fileProfileMap).reduce(function(acc, fn) {
+    var _totalSections = _groupCount + (hasMcData ? Object.keys(Object.keys(fileProfileMap).reduce(function(acc, fn) {
         var e = fileProfileMap[fn]; if (e && e.profile) { var p = e.profile.name; if (!acc[p]) acc[p] = true; } return acc;
-    }, {})).length : 0) || fk.length + 1;
+    }, {})).length : 0) || _groupCount + 1;
     var _doneSections = 0;
+    window._genAborted = false;
+    var _genStartMs = Date.now();
+    logAction('Graph: Starting dashboard generation — ' + (fk.length > 0 ? fk.length + ' file(s)' : '') + (hasMcData ? (fk.length ? ' + ' : '') + Object.keys(compIndexStore).length + ' MC component(s)' : '') + ', ' + ruleQueue.length + ' rule(s).');
+    logTrace('_generateAllFileDashboards ENTER — isDirSearch=' + _isDirSearch + '  iterGroups=' + _iterGroups.length + '  [' + _iterGroups.map(function(g){return g.label+'('+g.relPaths.length+'files)';}).join(', ') + ']'
+        + '  fk=' + fk.length + '  hasMcData=' + hasMcData + '  ruleQueue=' + ruleQueue.length);
     _showGenProgress('Starting…', 0);
     await new Promise(function(r){ setTimeout(r, 0); }); // yield so progress bar paints
 
-    for (var _fi = 0; _fi < fk.length; _fi++) {
-        var fname = fk[_fi];
-        var fp = (fileProfileMap[fname] && fileProfileMap[fname].profile) ? fileProfileMap[fname].profile : null;
+    for (var _fi = 0; _fi < _iterGroups.length; _fi++) {
+        var _grp = _iterGroups[_fi];
+        var fname = _grp.label;  // base filename in dir-search, full relPath in normal mode
+        var fp = _grp.fp;
         // Route rules: profiled rules → only their matching profile's file;
         // non-profiled (manually added) rules → only files that also have no profile.
         var fileRules = ruleQueue.filter(function(r) {
@@ -4659,14 +4823,16 @@ async function _generateAllFileDashboards(_calledFromAuto) {
         });
         _doneSections++;
         // Std files share 0–88% of the bar (88–90% reserved for MC, 90–98% for MC charts, 98–100% for finalise)
-        var _fProgressStart = (_doneSections - 1) / Math.max(1, fk.length) * 88;
-        var _fProgressEnd   = _doneSections       / Math.max(1, fk.length) * 88;
-        _showGenProgress('File ' + _doneSections + ' / ' + fk.length + ': ' + fname, _fProgressStart);
+        var _fProgressStart = (_doneSections - 1) / Math.max(1, _iterGroups.length) * 88;
+        var _fProgressEnd   = _doneSections       / Math.max(1, _iterGroups.length) * 88;
+        _showGenProgress('File ' + _doneSections + ' / ' + _iterGroups.length + ': ' + fname, _fProgressStart);
         // Log BEFORE the yield so this entry always appears in an exported log
-        logAction('Refresh All [' + _doneSections + '/' + fk.length + ']: "' + fname + '"'
+        logAction('Refresh All [' + _doneSections + '/' + _iterGroups.length + ']: "' + fname + '"'
             + '  profile=' + (fp ? fp.name : 'none')
+            + (_grp.relPaths.length > 1 ? '  files=' + _grp.relPaths.length : '')
             + '  stdRules=' + fileRules.length);
         await new Promise(function(r){ setTimeout(r, 0); }); // yield → browser repaints progress
+        if (window._genAborted) { logAction('Graph: Cancelled before file "' + fname + '".'); break; }
 
         try {
 
@@ -4710,13 +4876,18 @@ async function _generateAllFileDashboards(_calledFromAuto) {
             _anyGenerated = true;
             continue;
         }
-        // Section header visually separates each file's charts
+        // Section header visually separates each file group's charts
         _insertDashboardSectionHeader(fname, false);
-        activeLogData = parsedFilesStore[fname];
+        // Merge all relPaths in this group (in dir search: multiple files with same base name)
+        var _grpRows = [];
+        _grp.relPaths.forEach(function(rp) { _grpRows = _grpRows.concat(parsedFilesStore[rp] || []); });
+        if (_grp.relPaths.length > 1) {
+            _grpRows.sort(function(a, b) { return getUnix(a.timestamp) - getUnix(b.timestamp); });
+        }
+        activeLogData = _grpRows;
         activeFileName = fname;
-        // Check for token mismatch before generating: if no rule token exists in file's
-        // parsed token list, the charts will be empty. Warn the user up front.
-        var _fileMeta = parsedFileMeta[fname];
+        // Check for token mismatch: use first relPath's metadata for token list
+        var _fileMeta = parsedFileMeta[_grp.relPaths[0]];
         var _fileTokSet = new Set(((_fileMeta && _fileMeta.tokens) ? _fileMeta.tokens : [])
             .map(function(t){ return t.toLowerCase(); }));
         var _ruleHasData = fileRules.some(function(r){
@@ -4743,9 +4914,12 @@ async function _generateAllFileDashboards(_calledFromAuto) {
                 + '</div>';
             _cont.appendChild(_mwDiv);
         }
+        logTrace('_generateAllFileDashboards: file[' + (_fi+1) + '/' + _iterGroups.length + '] generateDashboard START — "' + fname + '"  rows=' + activeLogData.length + '  rules=' + fileRules.length);
+        var _fileGenStart = Date.now();
         await generateDashboard(false, fileRules, false, _fProgressStart, _fProgressEnd);  // false = append; pre-cleared above
+        logTrace('_generateAllFileDashboards: file[' + (_fi+1) + '/' + _iterGroups.length + '] generateDashboard DONE — "' + fname + '"  elapsed=' + (Date.now()-_fileGenStart) + 'ms');
         _anyGenerated = true;
-        _showGenProgress('File ' + _doneSections + ' / ' + fk.length + ': ' + fname + ' ✓', _fProgressEnd);
+        _showGenProgress('File ' + _doneSections + ' / ' + _iterGroups.length + ': ' + fname + ' ✓', _fProgressEnd);
 
         } catch(_fileErr) {
             logAction('Refresh All: Error processing "' + fname + '": ' + _fileErr.message
@@ -4763,19 +4937,26 @@ async function _generateAllFileDashboards(_calledFromAuto) {
             // Group MC rules by source profile, then match each profile to its file's
             // component keys. This prevents charts from mixing components across files
             // (e.g. disk filesystems + network interfaces + PIDs on the same chart).
-            var _mcByFile = {};   // fname (or '__manual__') → { rules, compKeys }
+            // In dir search mode, consolidate same-profile files under their base filename
+            // (e.g. two iostat_device.txt files → one "iostat_device.txt (MC)" section).
+            var _mcByFile = {};   // label → { rules, compKeys }
             var _handledRules = new Set();
 
-            // Map profiled rules to their source file
-            Object.keys(fileProfileMap).forEach(function(fname) {
-                var entry = fileProfileMap[fname];
+            // Map profiled rules to their source file (or base filename in dir search)
+            Object.keys(fileProfileMap).forEach(function(fmapKey) {
+                var entry = fileProfileMap[fmapKey];
                 if (!entry || !entry.profile) return;
                 var pname = entry.profile.name;
                 var fileRulesForMc = mcRules.filter(function(r) { return r._sourceProfile === pname; });
                 if (!fileRulesForMc.length) return;
-                var meta = parsedFileMeta[fname];
-                var compKeys = (meta && meta.mcComponents && meta.mcComponents.length) ? meta.mcComponents : Object.keys(compIndexStore);
-                _mcByFile[fname] = { rules: fileRulesForMc, compKeys: compKeys };
+                // In dir search mode, key by base filename so duplicate profiles consolidate
+                var _mcSectionKey = _isDirSearch ? fmapKey.split('/').pop() : fmapKey;
+                if (_mcByFile[_mcSectionKey]) return; // already processed (dir search dedup)
+                // In dir search, compIndexStore is already merged from all files
+                var compKeys = _isDirSearch ? Object.keys(compIndexStore)
+                    : ((parsedFileMeta[fmapKey] && parsedFileMeta[fmapKey].mcComponents && parsedFileMeta[fmapKey].mcComponents.length)
+                       ? parsedFileMeta[fmapKey].mcComponents : Object.keys(compIndexStore));
+                _mcByFile[_mcSectionKey] = { rules: fileRulesForMc, compKeys: compKeys };
                 fileRulesForMc.forEach(function(r) { _handledRules.add(r); });
             });
 
@@ -4787,7 +4968,9 @@ async function _generateAllFileDashboards(_calledFromAuto) {
 
             // Generate a chart section per file (async with per-section yields)
             var _mcKeys = Object.keys(_mcByFile);
+            logAction('Graph: Starting MC overlay — ' + _mcKeys.length + ' section(s), ' + mcRules.length + ' rule(s), ' + Object.keys(compIndexStore).length + ' component(s).');
             for (var _mi = 0; _mi < _mcKeys.length; _mi++) {
+                if (window._genAborted) { logAction('Graph: Cancelled before MC section "' + _mcKeys[_mi] + '".'); break; }
                 var sectionFname = _mcKeys[_mi];
                 var sec = _mcByFile[sectionFname];
                 if (!sec.rules.length) continue;
@@ -4795,6 +4978,7 @@ async function _generateAllFileDashboards(_calledFromAuto) {
                 // MC sections share 90–98%; each section gets an equal slice within that range
                 var _mcProgressStart = 90 + (_mi       / Math.max(1, _mcKeys.length)) * 8;
                 var _mcProgressEnd   = 90 + ((_mi + 1) / Math.max(1, _mcKeys.length)) * 8;
+                logAction('Graph: MC section [' + (_mi+1) + '/' + _mcKeys.length + '] "' + _secLabel + '" — ' + sec.rules.length + ' rule(s), ' + sec.compKeys.length + ' component(s).');
                 _showGenProgress('MC charts: ' + _secLabel + ' (' + (_mi + 1) + ' / ' + _mcKeys.length + ')', _mcProgressStart);
                 await new Promise(function(r){ setTimeout(r, 0); });
                 var _secCompSet = new Set(sec.compKeys);
@@ -4810,12 +4994,15 @@ async function _generateAllFileDashboards(_calledFromAuto) {
                     }
                 });
                 _insertDashboardSectionHeader(_secLabel, sectionFname === '__manual__');
+                logTrace('_generateAllFileDashboards: MC[' + (_mi+1) + '/' + _mcKeys.length + '] generateDashboard START — "' + _secLabel + '"  rules=' + sec.rules.length + '  compKeys=' + sec.compKeys.length);
+                var _mcGenStart = Date.now();
                 try {
                     await generateDashboard(false, sec.rules, true, _mcProgressStart, _mcProgressEnd);
                 } catch(_mcErr) {
                     logAction('Refresh All MC: Error in section "' + _secLabel + '": ' + _mcErr.message + ' — skipping.');
                     console.error('_generateAllFileDashboards MC error [' + _secLabel + ']:', _mcErr);
                 }
+                logTrace('_generateAllFileDashboards: MC[' + (_mi+1) + '/' + _mcKeys.length + '] generateDashboard DONE — "' + _secLabel + '"  elapsed=' + (Date.now()-_mcGenStart) + 'ms');
                 sec.rules.forEach(function(r) { r._liveCompKeys = null; });
                 _anyGenerated = true;
             }
@@ -4826,23 +5013,40 @@ async function _generateAllFileDashboards(_calledFromAuto) {
     _showGenProgress('Finalising…', 98);
     await new Promise(function(r){ setTimeout(r, 0); });
 
-    // Per-file threshold checks — each file's rules run against that file's data only
+    // Per-file/group threshold checks
     if (_thresholdAlertsEnabled) {
         var _allBreaches = [];
-        fk.forEach(function(fname) {
-            if (!parsedFilesStore[fname]) return;
-            var fp2 = fileProfileMap[fname] && fileProfileMap[fname].profile;
-            var fr = ruleQueue.filter(function(r) {
-                if (r._mc) return false;
-                if (r._sourceProfile && fp2) return r._sourceProfile === fp2.name;
-                if (r._sourceProfile && !fp2) return false;
-                return !fp2;
+        if (_isDirSearch) {
+            // Dir search: check thresholds against merged rows per group
+            _iterGroups.forEach(function(grp) {
+                var fp2 = grp.fp;
+                var fr = ruleQueue.filter(function(r) {
+                    if (r._mc) return false;
+                    if (r._sourceProfile && fp2) return r._sourceProfile === fp2.name;
+                    if (r._sourceProfile && !fp2) return false;
+                    return !fp2;
+                });
+                if (fr.length) {
+                    var mergedRows = [];
+                    grp.relPaths.forEach(function(rp) { mergedRows = mergedRows.concat(parsedFilesStore[rp] || []); });
+                    _allBreaches = _allBreaches.concat(checkThresholds(mergedRows, fr));
+                }
             });
-            if (fr.length) {
-                var _fb = checkThresholds(parsedFilesStore[fname], fr);
-                _allBreaches = _allBreaches.concat(_fb);
-            }
-        });
+        } else {
+            fk.forEach(function(fname) {
+                if (!parsedFilesStore[fname]) return;
+                var fp2 = fileProfileMap[fname] && fileProfileMap[fname].profile;
+                var fr = ruleQueue.filter(function(r) {
+                    if (r._mc) return false;
+                    if (r._sourceProfile && fp2) return r._sourceProfile === fp2.name;
+                    if (r._sourceProfile && !fp2) return false;
+                    return !fp2;
+                });
+                if (fr.length) {
+                    _allBreaches = _allBreaches.concat(checkThresholds(parsedFilesStore[fname], fr));
+                }
+            });
+        }
         if (hasMcData) {
             var _mcr = ruleQueue.filter(function(r) { return r._mc; });
             if (_mcr.length) _allBreaches = _allBreaches.concat(checkThresholds([], _mcr));
@@ -4853,12 +5057,22 @@ async function _generateAllFileDashboards(_calledFromAuto) {
     }
 
     var _lbl = document.getElementById('active-file-label');
-    if (_lbl && fk.length > 1) _lbl.textContent = 'Multiple files (' + fk.length + ')';
+    var _dispCount = _isDirSearch ? _iterGroups.length : fk.length;
+    if (_lbl && _dispCount > 1) _lbl.textContent = 'Multiple files (' + (_isDirSearch ? _dispCount + ' type(s)' : _dispCount) + ')';
 
+    var _genElapsed = ((Date.now() - _genStartMs) / 1000).toFixed(1);
+    window._genAborted = false;
+    if (!_anyGenerated) {
+        _showGenProgress('Cancelled', 0);
+        setTimeout(_hideGenProgress, 1200);
+        logAction('Graph: Generation cancelled or nothing produced — ' + _genElapsed + 's elapsed.');
+        return;
+    }
     _showGenProgress('Done', 100);
     setTimeout(_hideGenProgress, 800); // brief "Done 100%" flash then hide
-    logAction('Refresh All: Generated dashboard for ' + fk.length + ' file(s)'
-        + (hasMcData ? ' + MC overlay data' : '') + '.');
+    logAction('Graph: Dashboard complete — ' + chartInstances.length + ' chart(s), '
+        + (_isDirSearch ? _iterGroups.length + ' file type(s) from ' + fk.length + ' file(s)' : fk.length + ' file(s)')
+        + (hasMcData ? ' + MC overlay' : '') + ' in ' + _genElapsed + 's.');
 }
 
 // =============================================================================
@@ -7989,51 +8203,83 @@ async function _runPdfExport(fullData) {
     const _pdfImgQuality = _pdfFmtSel === 'jpeg-70' ? 0.70
                          : _pdfFmtSel === 'jpeg-95' ? 0.95
                          : 0.85;
+    const _pdfStartMs = Date.now();
+    logAction('PDF: Export requested — mode=' + (fullData ? 'Full Data' : 'Current View') + '  format=' + _pdfFmtSel + '  filename="' + fn + '"  charts=' + chartInstances.length + '.');
 
     // [F101] Acquire file handle FIRST while user gesture is still active.
     // showSaveFilePicker() requires a transient user activation that expires
     // after ~5 seconds — calling it after chart reset + PDF build would fail.
     let fileHandle = null;
     if (window.showSaveFilePicker) {
+        logAction('PDF: Opening system file picker (showSaveFilePicker)…');
         try {
             fileHandle = await window.showSaveFilePicker({
                 suggestedName: fn,
                 types: [{description: 'PDF Files', accept: {'application/pdf': ['.pdf']}}]
             });
+            logAction('PDF: File picker — user selected "' + fileHandle.name + '".');
         } catch(e) {
             if (e.name === 'AbortError') {
-                logAction('PDF: Export cancelled.');
+                modal.classList.remove('active');
+                logAction('PDF: Export cancelled — user dismissed file picker.');
                 return;   // User cancelled the picker — abort entirely
             }
-            // Other error (e.g. SecurityError) — fall through to doc.save() later
+            logAction('PDF: File picker error (' + e.name + ') — will fall back to doc.save().');
         }
+    } else {
+        logAction('PDF: showSaveFilePicker not available — will use doc.save() fallback.');
     }
 
     modal.classList.remove('active');
+    window._pdfAborted = false;
     overlay.classList.add('active');
+    document.getElementById('busy-overlay-msg').textContent = '⏳ Generating PDF…';
     document.body.classList.add('pdf-exporting');
 
     if(fullData) {
-        // [F100] Reset zoom/pan on every chart so the PDF captures full data.
-        // resetZoom() restores original scale limits but may schedule internal
-        // animation frames inside the zoom plugin. We must wait long enough
-        // for ALL internal Chart.js + plugin callbacks, microtasks, and
-        // animation frames to settle before reading the canvas via toDataURL().
-        isInternalSync=true;
-        chartInstances.forEach(c=>{ c.stop(); c.resetZoom(); });
-        isInternalSync=false;
-        logAction('PDF: Charts reset to full data view.');
-        // Allow zoom plugin internals and any queued animation frames to settle
-        await new Promise(r => setTimeout(r, 500));
-        // Force a final synchronous redraw with zero animation to guarantee
-        // every canvas backing-store pixel reflects the reset state
-        chartInstances.forEach(c=>{ c.update('none'); });
+        // [F100] Reset zoom/pan so PDF captures full data — only needed if user actually zoomed.
+        // _chartsAreZoomed is set by onZoomComplete/onPanComplete and cleared by resetAllZoom().
+        // Skipping when not zoomed avoids a 20-minute synchronous re-render of large MC charts.
+        var _step1Start = Date.now();
+        if (!_chartsAreZoomed) {
+            logTrace('PDF: Step1 SKIP — _chartsAreZoomed=false, charts already in full data view');
+            logAction('PDF: Step 1/5 — Charts already at full data view (no zoom active).');
+        } else {
+            logAction('PDF: Step 1/5 — Resetting ' + chartInstances.length + ' chart(s) to full data view…');
+            logTrace('PDF: Step1 resetZoom START — ' + chartInstances.length + ' chart(s)  (async, one at a time)');
+            // Async per-chart reset: yield between each chart so the main thread
+            // never blocks and the user can Force Cancel at any time.
+            isInternalSync = true;
+            for (var _rzi = 0; _rzi < chartInstances.length; _rzi++) {
+                if (window._pdfAborted) { isInternalSync=false; logAction('PDF: Aborted during chart reset at chart ' + _rzi + '.'); return; }
+                var _rzc = chartInstances[_rzi];
+                logTrace('PDF: Step1 chart[' + _rzi + '/' + chartInstances.length + '] stop+resetZoom START');
+                _rzc.stop();
+                _rzc.resetZoom();
+                logTrace('PDF: Step1 chart[' + _rzi + '/' + chartInstances.length + '] stop+resetZoom DONE');
+                await new Promise(function(r){ setTimeout(r, 0); }); // yield — browser stays responsive
+            }
+            isInternalSync = false;
+            _chartsAreZoomed = false;
+            logTrace('PDF: Step1 all ' + chartInstances.length + ' resets DONE in ' + (Date.now()-_step1Start) + 'ms — waiting 600ms for rAF frames…');
+            // Wait for zoom-plugin rAF animation frames to complete and canvases to settle.
+            await new Promise(r => setTimeout(r, 600));
+            logTrace('PDF: Step1 600ms wait DONE — total Step1 time=' + (Date.now()-_step1Start) + 'ms');
+            if (window._pdfAborted) { logAction('PDF: Aborted during chart reset.'); return; }
+            logAction('PDF: Step 1/5 — Chart reset complete in ' + ((Date.now()-_step1Start)/1000).toFixed(1) + 's.');
+        }
     } else {
-        logAction('PDF: Exporting current zoom view.');
+        logTrace('PDF: Step1 SKIP (Current View mode)');
+        logAction('PDF: Step 1/5 — Skipped chart reset (Current View mode).');
     }
 
+    if (window._pdfAborted) { logAction('PDF: Aborted before build.'); return; }
+
     try {
+        logAction('PDF: Step 2/5 — Initialising jsPDF document (A4 portrait)…');
+        logTrace('PDF: Step2 jsPDF init START');
         const{jsPDF}=window.jspdf; const doc=new jsPDF('p','mm','a4');
+        logTrace('PDF: Step2 jsPDF init DONE — A4 portrait, margin=' + 10 + 'mm');
         const PAGE_W=190, MARGIN=10, PAGE_H=277;
         let y=MARGIN;
 
@@ -8048,9 +8294,14 @@ async function _runPdfExport(fullData) {
         // Audit: track files present in DOM vs files actually exported
         const _pdfAudit = {}; // sectionName → { expected: N (section headers seen), charts: N }
         var _pdfAuditCurrent = null;
+        var _pdfChartCount = 0;
 
         // Iterate dashboard children in DOM order so section file headers appear before their charts
         var _dashChildren = Array.from(document.getElementById('dashboard').children);
+        var _pdfTotalCharts = _dashChildren.filter(function(el){ return el.classList.contains('chart-wrapper') && el.querySelector('canvas'); }).length;
+        logAction('PDF: Step 3/5 — Rendering ' + _pdfTotalCharts + ' chart(s) across ' + _dashChildren.length + ' dashboard element(s)…');
+        logTrace('PDF: Step3 render loop START — ' + _pdfTotalCharts + ' chart(s)  format=' + _pdfImgFormat + '  quality=' + _pdfImgQuality);
+        var _step3Start = Date.now();
         var _pdfCurrentSection = '';
         _dashChildren.forEach(function(el) {
             // Section header (inserted by _insertDashboardSectionHeader)
@@ -8085,6 +8336,8 @@ async function _runPdfExport(fullData) {
 
             // For JPEG: composite chart onto a white background first, because JPEG
             // cannot encode transparency — transparent pixels would render black.
+            logTrace('PDF: chart ' + (_pdfChartCount+1) + '/' + _pdfTotalCharts + ' toDataURL START — canvas=' + canvas.width + 'x' + canvas.height + '  "' + (title||'(no title)') + '"');
+            var _toDataUrlStart = Date.now();
             let imgData;
             if (_pdfImgFormat === 'png') {
                 imgData = canvas.toDataURL('image/png');
@@ -8098,6 +8351,9 @@ async function _runPdfExport(fullData) {
                 imgData = _tc.toDataURL('image/jpeg', _pdfImgQuality);
             }
             if (_pdfAuditCurrent && _pdfAudit[_pdfAuditCurrent]) _pdfAudit[_pdfAuditCurrent].charts++;
+            _pdfChartCount++;
+            logTrace('PDF: chart ' + _pdfChartCount + '/' + _pdfTotalCharts + ' toDataURL DONE in ' + (Date.now()-_toDataUrlStart) + 'ms — imgData=' + Math.round(imgData.length/1024) + 'KB  y=' + y.toFixed(1) + 'mm');
+            logAction('PDF: Chart ' + _pdfChartCount + '/' + _pdfTotalCharts + ' — "' + (title || '(no title)') + '"  canvas=' + canvas.width + 'x' + canvas.height + 'px  format=' + _pdfImgFormat + '.');
 
             const ratio    = canvas.height / canvas.width;
             const imgH     = PAGE_W * ratio;
@@ -8158,6 +8414,7 @@ async function _runPdfExport(fullData) {
             }
         });
 
+        logTrace('PDF: Step3 render loop DONE — ' + _pdfChartCount + ' charts in ' + (Date.now()-_step3Start) + 'ms  pages=' + doc.getNumberOfPages());
         // Audit: check all loaded files got charts in the PDF
         const _auditKeys = Object.keys(_pdfAudit);
         const _missingFiles = _auditKeys.filter(k => _pdfAudit[k].charts === 0);
@@ -8171,23 +8428,43 @@ async function _runPdfExport(fullData) {
             + _auditKeys.length + ' section(s), '
             + _auditKeys.reduce(function(s,k){return s+_pdfAudit[k].charts;},0) + ' chart(s) total'
             + (_missingFiles.length || _notInPdf.length ? ' — WARNINGS: ' + (_missingFiles.concat(_notInPdf)).join(', ') : '');
-        logAction('PDF: ' + _auditSummary);
+        logAction('PDF: Step 4/5 — Audit: ' + _auditSummary);
         logDebug('chart', 'PDF audit detail:\n' + _auditLines.join('\n'));
 
         // [F101] Save using pre-acquired file handle or fallback
+        logAction('PDF: Step 5/5 — Saving PDF ("' + fn + '") via ' + (fileHandle ? 'FileSystemWritable' : 'doc.save()') + '…');
+        document.getElementById('busy-overlay-msg').textContent = '⏳ Saving PDF…';
+        logTrace('PDF: Step5 save START — ' + (fileHandle ? 'FileSystemWritable' : 'doc.save() fallback'));
+        var _step5Start = Date.now();
         if (fileHandle) {
+            logTrace('PDF: Step5 doc.output("blob") START');
+            var _pdfBlob = doc.output('blob');
+            logTrace('PDF: Step5 doc.output("blob") DONE — ' + Math.round(_pdfBlob.size/1024) + 'KB');
+            logTrace('PDF: Step5 createWritable START');
             const writable = await fileHandle.createWritable();
-            await writable.write(doc.output('blob'));
+            logTrace('PDF: Step5 writable.write START');
+            await writable.write(_pdfBlob);
+            logTrace('PDF: Step5 writable.close START');
             await writable.close();
-            logAction('PDF: Saved as ' + fileHandle.name + '.');
+            logTrace('PDF: Step5 writable.close DONE in ' + (Date.now()-_step5Start) + 'ms');
+            const _pdfElapsed = ((Date.now() - _pdfStartMs) / 1000).toFixed(1);
+            logAction('PDF: Saved as "' + fileHandle.name + '" — ' + _pdfChartCount + ' chart(s), ' + doc.getNumberOfPages() + ' page(s), ' + _pdfElapsed + 's total.');
         } else {
+            logTrace('PDF: Step5 doc.save() START');
             doc.save(fn);
-            logAction('PDF: Saved as ' + fn + '.');
+            logTrace('PDF: Step5 doc.save() DONE in ' + (Date.now()-_step5Start) + 'ms');
+            const _pdfElapsed = ((Date.now() - _pdfStartMs) / 1000).toFixed(1);
+            logAction('PDF: Saved as "' + fn + '" — ' + _pdfChartCount + ' chart(s), ' + doc.getNumberOfPages() + ' page(s), ' + _pdfElapsed + 's total.');
         }
-    } catch(err){ logAction('Error: PDF export failed — ' + (err&&err.message)); }
+    } catch(err){
+        logTrace('PDF: EXCEPTION — ' + (err&&err.name) + ': ' + (err&&err.message) + (err&&err.stack ? ' at ' + err.stack.split('\n')[1] : ''));
+        logAction('PDF: Export failed at step — ' + (err&&err.message) + (err&&err.stack ? '\n  ' + err.stack.split('\n')[1] : ''));
+    }
     finally{
+        logTrace('PDF: FINALLY — overlay off, pdf-exporting class removed');
         overlay.classList.remove('active');
         document.body.classList.remove('pdf-exporting');
+        window._pdfAborted = false;
     }
 }
 
