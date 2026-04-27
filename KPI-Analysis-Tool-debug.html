@@ -714,7 +714,7 @@ const VERBOSE_LOGGING = true;
 // Set TRACE_GEN_LOG = false → all trace entries are suppressed (zero overhead).
 // These do NOT require VERBOSE_LOGGING — they are controlled independently.
 // =============================================================================
-const TRACE_GEN_LOG = true;
+const TRACE_GEN_LOG = false;
 function logTrace(msg) {
     if (!TRACE_GEN_LOG) return;
     var _d = new Date();
