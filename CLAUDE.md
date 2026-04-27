@@ -666,3 +666,33 @@ The converted CSV string is stored in `rawFilesStore` under the original `.xls` 
 4. `document.getElementById('file-status').textContent = 'Ready (...)'` in `removeFile()` and `resetAll()`.
 
 Missing any one of these causes a confusing experience: the OS picker may hide the file, or the security gate rejects it, or the status hint is wrong.
+
+---
+
+### 18.10 Directory search: use `webkitRelativePath` as `rawFilesStore` key, not `file.name`
+
+**Discovery:** The directory search feature keyed `rawFilesStore` by `file.name` (bare filename). When two matched files from different sub-folders had the same name (e.g. `server1/iostat_cpu.txt` and `server2/iostat_cpu.txt`), the second silently overwrote the first. The log confirmed "Found 2 matching file(s)" but `rawFilesStore keys: [iostat_cpu.txt]` — only one key.
+
+**Fix (v3.4.0):** `processDirSearchFiles()` now includes `relPath: file.webkitRelativePath || file.name` in each result object. `processDirSearchAndInitialize()` uses `fd.relPath` as the `rawFilesStore` key. The found-files display in `runDirSearch()` also shows `webkitRelativePath` instead of `file.name`.
+
+**Rule:** For any feature that reads files from a directory picker (`webkitdirectory` input), ALWAYS use `file.webkitRelativePath` (not `file.name`) as the key for any store that must distinguish same-named files across sub-folders.
+
+---
+
+### 18.11 Directory search must enable Combine Files, not disable it
+
+**Discovery:** The original `toggleDirSearchOptions()` *unchecked and disabled* the Combine Files checkbox when directory search was enabled, reasoning that directory search handled its own multi-file flow. This caused `_generateAllFileDashboards()` to produce a separate chart section per file instead of a single merged dataset.
+
+**Fix (v3.4.0):** `toggleDirSearchOptions()` now *checks and enables* the Combine Files checkbox when directory search is active. The existing Combine Files merge logic (sorts all `parsedFilesStore` rows into one `activeLogData`) handles the merge automatically — no duplicate code needed.
+
+**Rule:** Directory search is conceptually "load many files and treat them as one dataset." Always enable Combine Files automatically when directory search activates.
+
+---
+
+### 18.12 `processDirSearchAndInitialize()` must set `_dirSearchProcessed = true` before calling `processFilesFromUI()`
+
+**Discovery:** `processFilesFromUI()` has a re-entry guard: if `enableDirSearch` is checked AND `_dirSearchFiles.length > 0` AND `!window._dirSearchProcessed`, it calls `processDirSearchAndInitialize()` and returns. When the auto-trigger path set `_dirSearchProcessed = false` then called `processDirSearchAndInitialize()` directly, the terminal `processFilesFromUI()` call at the end would see `_dirSearchProcessed = false` and re-enter `processDirSearchAndInitialize()` → infinite async loop.
+
+**Fix:** `processDirSearchAndInitialize()` now sets `window._dirSearchProcessed = true` immediately before calling `processFilesFromUI()`, so the guard check always fails on re-entry.
+
+**Rule:** Any function that ends by calling `processFilesFromUI()` in directory-search context MUST set `window._dirSearchProcessed = true` first.

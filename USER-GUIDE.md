@@ -1,6 +1,6 @@
 # KPI Analysis Tool — User Guide
 
-**Version:** 3.3.0 | **Author:** Shiju Abraham | **Updated:** 2026-04-26
+**Version:** 3.4.0 | **Author:** Shiju Abraham | **Updated:** 2026-04-27
 
 ---
 
@@ -166,11 +166,46 @@ Enter a text pattern to restrict which KPI lines are loaded (Log-Pipe mode). Sup
 - Label syntax: `MyLabel:CPU` — loads lines matching "CPU" and labels them "MyLabel".
 - Upload a pattern file for bulk filter lists.
 
-### 4.5 Initialize Analysis
+### 4.5 Search Directory for Files (v3.4.0)
+
+The **Search Directory for Files** feature lets you recursively search a local folder by filename pattern, load all matching files, and merge them into a single continuous dataset per rule — without manually selecting files one by one.
+
+**How to use:**
+
+1. Tick **Search Directory for Files** to reveal the panel.
+2. Click **Choose Directory** and select the root folder to search.
+3. Type a **File Name Pattern** such as `iostat_cpu.txt`, `*free*.log`, or `DBW.csv`.
+4. The tool automatically runs the search and starts **Initialize Analysis** as soon as **both** a directory is selected and a pattern is entered — regardless of order. You do not need to click any button.
+
+**Behaviour:**
+
+- The found-files list displays the **relative path** from the chosen directory root (e.g. `server1/iostat_cpu.txt`, `server2/iostat_cpu.txt`), so files with identical names in different sub-folders are shown and stored distinctly.
+- All matched files are automatically **combined** into a single dataset. Charts produced by the Rule Builder span the entire dataset from all files, sorted by timestamp — one graph per rule, not one graph per file.
+- A **Cancel Search** button appears while the tool is reading files. Click it to stop mid-way; any files already read are retained.
+- The **Activity Console** opens automatically when directory search starts, so the **⬇ Download Log** button is immediately accessible without needing to click the console header.
+
+**Supported patterns:**
+
+| Pattern | Matches |
+|---------|---------|
+| `iostat_cpu.txt` | Exact filename |
+| `*cpu*` | Any filename containing "cpu" |
+| `free?.log` | "free" + one character + ".log" |
+
+**Notes:**
+
+- Only `.csv`, `.txt`, `.log`, and `.xls` files are considered. Other extensions are silently skipped.
+- Binary files found during the search are logged and skipped (or converted if `.xls`).
+- The search is case-insensitive.
+- If you want to search a different directory or change the pattern, update the fields — the auto-trigger fires again on each change.
+
+### 4.6 Initialize Analysis
 
 After uploading files and configuring options, click **Initialize Analysis**. The tool parses all files and populates the metric selector in the Rule Builder. The **Inventory** panel shows each parsed file with its row count.
 
-### 4.6 Selecting a File
+> When using **Search Directory for Files**, Initialize Analysis runs automatically — you do not need to click this button.
+
+### 4.7 Selecting a File
 
 Click a file row in the Inventory to make it the active dataset for dashboard generation. The active row is highlighted.
 
@@ -516,6 +551,8 @@ app.20260322-000000.csv   ← prefix: "app"
 **Naming patterns recognised:**
 - `<prefix>.<YYYYMMDD>-<HHMMSS>.<ext>` — e.g. `iostat.20260131-000000.csv`
 - `<prefix>_<YYYYMMDD>_<HHMMSS>.<ext>` — e.g. `iostat_20260131_000000.csv`
+- `<prefix>-<digits>.<ext>` — e.g. `DBW-1.csv`, `DBW-123.log`, `app-001.txt`
+- `<prefix>_<digits>.<ext>` — e.g. `DBW_1.csv`, `DBW_123.log`, `app_001.txt`
 - Files without a timestamp suffix: treated individually, grouped by stem name.
 
 When 2+ files share a prefix, they are **collated** — all rows merged and sorted by timestamp — and displayed as one section labelled:
@@ -2343,3 +2380,29 @@ The tool now accepts `.xls` files alongside `.csv`, `.txt`, and `.log`. The bina
 - For true binary `.xls`: only the **first sheet** is used. If your data lives on a later sheet, open the file in Excel or LibreOffice, move or copy the data to Sheet 1, and re-save.
 - `.xlsx` (modern Office Open XML format) is **not** supported. Use *Save As → Excel 97–2003 Workbook (.xls)* or *Save As → CSV* instead.
 - Dates exported from Excel may carry a time component (`2026-04-22 00:00:00`). The parser handles the most common combined timestamp formats; if timestamps are not recognised, switch the **Timestamp Format** option in CSV Options.
+
+---
+
+### Directory search finds files but only one chart section appears, not per-file sections (v3.4.0 behaviour)
+
+This is correct behaviour. When **Search Directory for Files** is active, all matched files are automatically combined into a single merged dataset (sorted by timestamp). The Rule Builder produces **one chart per rule** spanning the complete dataset across all files — not one chart section per file. This matches the intent of searching a directory: you want a single continuous view across multiple data captures.
+
+If you need per-file sections, upload the files manually (drag-and-drop or file picker) and leave the Combine Files checkbox unchecked.
+
+---
+
+### Directory search: two files with the same name from different sub-folders were being overwritten (fixed in v3.4.0)
+
+**Symptom:** Directory search reported "Found 2 matching file(s)" but the log showed `rawFilesStore keys: [iostat_cpu.txt]` — only one key. One file's data was silently overwriting the other.
+
+**Root cause:** The store used the bare filename (`iostat_cpu.txt`) as the key. Two files with the same name in different sub-folders collided.
+
+**v3.4.0 fix:** The store now uses the relative path from the chosen directory root as the key (e.g. `server1/iostat_cpu.txt`, `server2/iostat_cpu.txt`). Both files are loaded correctly and both contribute to the merged dataset.
+
+---
+
+### Activity Console is too small to see all log entries
+
+The console panel is resizable. Drag the thin bar at the very top of the console panel upward to increase its height. A blue grip indicator appears on hover to mark the drag zone.
+
+The default height was increased from 280 px to 400 px in **v3.4.0**. When a directory search starts, the console is also expanded automatically.
