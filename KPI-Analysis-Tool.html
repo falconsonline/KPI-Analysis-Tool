@@ -140,6 +140,12 @@
         #binary-error-modal-box p { margin:0 0 12px; font-size:0.88em; color:#888; line-height:1.5; }
         #binary-error-modal-box ul { margin:0 0 18px; padding-left:20px; }
         #binary-error-modal-btns { display:flex; justify-content:flex-end; }
+        #dirsearch-warn-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; justify-content:center; align-items:center; }
+        #dirsearch-warn-modal.active { display:flex; }
+        #dirsearch-warn-modal-box { background:var(--bg-panel); color:var(--text-main); border-radius:10px; padding:28px 32px; min-width:340px; max-width:480px; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+        #dirsearch-warn-modal-box h3 { margin:0 0 8px; font-size:1.05em; color:#e6a817; }
+        #dirsearch-warn-modal-box p { margin:0 0 16px; font-size:0.88em; color:#888; line-height:1.5; }
+        #dirsearch-warn-modal-btns { display:flex; gap:10px; justify-content:flex-end; }
         .pf-file-row { margin-bottom:12px; padding:10px 12px; border:1px solid var(--border-color); border-radius:6px; }
         .pf-file-row .pf-fname { font-weight:600; font-size:0.88em; margin-bottom:5px; display:flex; align-items:center; gap:6px; }
         .pf-file-row .pf-fname .pf-auto-badge { font-size:0.72em; padding:1px 5px; border-radius:3px; background:rgba(25,135,84,0.15); color:#198754; font-weight:600; }
@@ -198,6 +204,17 @@
     <ul id="binary-error-list"></ul>
     <div id="binary-error-modal-btns">
       <button onclick="document.getElementById('binary-error-modal').classList.remove('active')" style="background:var(--danger);color:white;padding:8px 22px;border-radius:6px;border:none;font-weight:600;cursor:pointer;font-size:0.88em;">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<div id="dirsearch-warn-modal">
+  <div id="dirsearch-warn-modal-box">
+    <h3>&#9888; No Files Found</h3>
+    <p id="dirsearch-warn-msg">No files matched the specified pattern in the selected directory.</p>
+    <div id="dirsearch-warn-modal-btns">
+      <button onclick="document.getElementById('dirsearch-warn-modal').classList.remove('active')" style="background:#6c757d;color:white;padding:8px 22px;border-radius:6px;border:none;font-weight:600;cursor:pointer;font-size:0.88em;">Dismiss</button>
+      <button onclick="document.getElementById('dirsearch-warn-modal').classList.remove('active'); if(Object.keys(rawFilesStore).length) processFilesFromUI();" style="background:var(--primary);color:white;padding:8px 22px;border-radius:6px;border:none;font-weight:600;cursor:pointer;font-size:0.88em;">Continue with Existing Data</button>
     </div>
   </div>
 </div>
@@ -310,7 +327,7 @@
                 </div>
                 <div>
                     <label style="font-size:0.82em;margin-bottom:4px;color:var(--text-main);">File Name Pattern <span style="font-weight:400;color:#888;">(comma-separated for multiple: DBW,free,load or *.csv,*.log)</span></label>
-                    <input type="text" id="dirSearchPattern" placeholder="e.g. DBW.csv or *free*.txt or DBW,free,load" style="width:100%;margin-top:4px;">
+                    <input type="text" id="dirSearchPattern" placeholder="e.g. load.txt or *free*.txt or load.txt;free.txt;cpu.log" style="width:100%;margin-top:4px;">
                 </div>
                 <div id="dirSearchResults" style="margin-top:8px;display:none;padding:8px;background:rgba(0,0,0,0.04);border-radius:4px;font-size:0.82em;">
                     <strong>Found files:</strong> <span id="dirSearchFileCount">0</span>
@@ -646,7 +663,13 @@ var _thresholdAlertsEnabled = false; // global toggle — disabling hides the al
 var dropJustHappened = false;       // [M4] drop/click debounce
 const MAX_CONSOLE_ENTRIES = 1000;   // UI DOM cap
 const LOG_FLUSH_EVERY     = 50;     // flush to localStorage every N entries
-const _logSessionKey      = 'kpi_log_' + new Date().toISOString().replace(/[:.]/g,'_').slice(0,19);
+const _logNow = new Date();
+const _logSessionKey = 'kpi_log_' + _logNow.getFullYear()
+    + '-' + String(_logNow.getMonth()+1).padStart(2,'0')
+    + '-' + String(_logNow.getDate()).padStart(2,'0')
+    + 'T' + String(_logNow.getHours()).padStart(2,'0')
+    + '_' + String(_logNow.getMinutes()).padStart(2,'0')
+    + '_' + String(_logNow.getSeconds()).padStart(2,'0');
 let   _logWriteBatch      = [];     // in-memory batch; flushed every LOG_FLUSH_EVERY entries
 let   _logTotalCount      = 0;      // total entries written this session
 try { localStorage.setItem(_logSessionKey, ''); } catch(e) {}
@@ -863,6 +886,16 @@ function copyConsole(e) {
 // =============================================================================
 // TIMESTAMP HELPERS
 // =============================================================================
+
+// Helper: split by comma OR semicolon (for CSV and semicolon-delimited files)
+function _splitDelim(line) {
+    // Find the delimiter - use semicolon if present, otherwise comma
+    if (line.includes(';')) {
+        return line.split(';');
+    }
+    return line.split(',');
+}
+
 function getUnix(ts) {
     if (!ts) return 0;
     const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
@@ -875,8 +908,8 @@ function getUnix(ts) {
         const t = (parts.length > 1 ? parts[1].trim() : '').replace(/[:.]/g,'').substring(0,6);  // [M1]
         return parseInt(yr+m+d+t) || 0;
     }
-    if (clean.includes(',')) {
-        const parts = clean.split(',');
+    if (clean.includes(',') || clean.includes(';')) {
+        const parts = clean.includes(';') ? clean.split(';') : clean.split(',');
         let ds = parts[0].trim().replace(/-/g,'');
         if (ds.length<=4) ds = String(new Date().getFullYear()) + ds.padStart(4,'0');
         const t = (parts.length > 1 ? parts[1].trim() : '').replace(/[:.]/g,'').substring(0,6);  // [M1]
@@ -894,7 +927,7 @@ function getUnix(ts) {
 function formatLabel(ts) {
     if (!ts) return '';
     const c = ts.replace(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/gi,'').trim();
-    if (c.includes(',')) { const p=c.split(','); if(p.length<2) return p[0]?p[0].trim():ts; return p[0].trim()+' '+p[1].trim().substring(0,5); }  // [M2]
+    if (c.includes(',') || c.includes(';')) { const p=_splitDelim(c); if(p.length<2) return p[0]?p[0].trim():ts; return p[0].trim()+' '+p[1].trim().substring(0,5); }  // [M2]
     if (c.includes('|')) { const p=c.split('|'),dp=p[0].trim().split(/\s+/); if(dp.length<2||p.length<2) return c; return dp[0]+' '+dp[1]+' '+p[1].trim().substring(0,5); }  // [M2]
     if (c.includes(' ')) { const p=c.split(' '); let dp=p[0]; if(/^\d{6}$/.test(dp)){const fy=String(new Date().getFullYear()).substring(0,2)+dp;dp=fy.substring(0,4)+'-'+fy.substring(4,6)+'-'+fy.substring(6,8);} return dp+' '+(p[1]||'').substring(0,5); }
     return ts;
@@ -1191,7 +1224,7 @@ function detectCsvTsFormat(dataLines) {
     const reDate   = /^[\d\-\/]+$/;
     let vs=0, vd=0;
     dataLines.filter(l=>l.trim()).slice(0,10).forEach(line => {
-        const c0 = line.split(',')[0].trim();
+        const c0 = _splitDelim(line)[0].trim();
         if (reSingle.test(c0)) vs++; else vd++;
     });
     return vs > vd ? 'singleTs' : 'dateTime';
@@ -2476,14 +2509,17 @@ function processFilesFromUI() {
         }
         // If profile-loaded rules exist, render queues and auto-select first file for dashboard
         var _hasProfileRules = ruleQueue.some(function(r) { return r._sourceProfile || r._profileLoaded; });
+        // Directory search mode: always merge all files into one dataset.
+        // Check enableDirSearch directly (not via combine checkbox, which can be stale across re-runs).
+        var _isDirSearch = !!(document.getElementById('enableDirSearch')?.checked);
         if (_hasProfileRules) {
             var stdRules = ruleQueue.filter(function(r) { return !r._mc; });
             var mcRules  = ruleQueue.filter(function(r) { return r._mc; });
             if (stdRules.length && hasStdData) {
                 renderQueue();
-                // Auto-select first file so dashboard can generate
+                // Auto-select first file — skipped for dir search (combine block sets activeLogData)
                 var fk = Object.keys(parsedFilesStore);
-                if (fk.length >= 1 && !activeLogData.length) {
+                if (fk.length >= 1 && !activeLogData.length && !_isDirSearch) {
                     activeLogData = parsedFilesStore[fk[0]]; activeFileName = fk[0];
                     logAction('Config: Auto-selected "' + fk[0] + '" for dashboard.');
                 }
@@ -2491,8 +2527,10 @@ function processFilesFromUI() {
             if (mcRules.length && hasMcData) {
                 renderMcQueue();
             }
-            // Auto-generate dashboard if rules and data are ready
-            if (ruleQueue.length && (activeLogData.length || hasMcData)) {
+            // Dir search: combine block below handles ALL chart generation (standard + MC).
+            // compIndexStore already contains merged MC data from all files, so a single
+            // generateDashboard() call covers everything — no per-file sectioning needed.
+            if (ruleQueue.length && (activeLogData.length || hasMcData) && !_isDirSearch) {
                 var _fkAll = Object.keys(parsedFilesStore);
                 if (_fkAll.length > 1) {
                     _generateAllFileDashboards(true).catch(function(err) {
@@ -2513,9 +2551,24 @@ function processFilesFromUI() {
     // is set to a specific prefix; otherwise merges all files together.
     if (document.getElementById('combineFiles').checked) {
         const fileCount = Object.keys(parsedFilesStore).length;
+
+        if (_isDirSearch) {
+            // Dir search: _generateAllFileDashboards handles per-group generation grouped by
+            // base filename. Direct call avoids the _mcFileCount redirect inside generateDashboard().
+            if (ruleQueue.length > 0 && (fileCount > 0 || hasMcData)) {
+                document.getElementById('builderPanel').classList.remove('hidden');
+                _generateAllFileDashboards(true).catch(function(err) {
+                    logAction('Dir Search: Unhandled error — ' + (err && err.message ? err.message : String(err)));
+                    console.error('_generateAllFileDashboards unhandled rejection:', err);
+                    _hideGenProgress();
+                });
+            }
+            return;
+        }
+
+        // ── Non-dir-search combine logic (unchanged) ──────────────────────────────
         if (fileCount === 0) return;
 
-        // Populate prefix groups into the selector
         updateGroupSelector();
 
         const selectedGroup = document.getElementById('prefixGroupSelect').value;
@@ -2539,7 +2592,6 @@ function processFilesFromUI() {
             ? 'Combined (' + filesToMerge.length + ' files)'
             : selectedGroup + ' (' + filesToMerge.length + ' file(s))';
         document.getElementById('builderPanel').classList.remove('hidden');
-        // Highlight rows belonging to the selected group
         document.querySelectorAll('.file-row').forEach((r,i) => {
             const name = Object.keys(parsedFilesStore)[i];
             if (filesToMerge.includes(name)) r.classList.add('active-row');
@@ -2721,8 +2773,8 @@ function runDirSearch() {
         return;
     }
     
-    // Split by comma and trim each pattern
-    const patterns = patternInput.split(',').map(p => p.trim()).filter(p => p.length > 0);
+    // Split by comma or semicolon and trim each pattern
+    const patterns = patternInput.split(/[,;]/).map(p => p.trim()).filter(p => p.length > 0);
     
     if (patterns.length === 0) {
         logAction('Directory Search: No valid patterns specified.');
@@ -2777,10 +2829,10 @@ function runDirSearch() {
         if (_dirSearchFiles.length === 0) {
             listDiv.innerHTML = '<span style="color:#dc3545;">No matching data files found.</span>';
         } else {
-            // Show breakdown by pattern
+            // Show breakdown by pattern, then full relative-path list
             let html = '';
             for (const [pat, matchedFiles] of Object.entries(matchedByPattern)) {
-                html += `<strong>${pat}</strong>: ${matchedFiles.length} file(s)<br>`;
+                html += '<strong>' + pat + '</strong>: ' + matchedFiles.length + ' file(s)<br>';
             }
             html += matchedPaths.slice(0, 15).join('<br>');
             if (matchedPaths.length > 15) {
@@ -2791,6 +2843,13 @@ function runDirSearch() {
     }
 
     logAction('Directory Search: Found ' + _dirSearchFiles.length + ' matching file(s) for ' + patterns.length + ' pattern(s): ' + patterns.join(', '));
+
+    // Show warning popup when no files matched any pattern
+    if (_dirSearchFiles.length === 0) {
+        const warnMsg = document.getElementById('dirsearch-warn-msg');
+        if (warnMsg) warnMsg.textContent = 'No files matched the pattern(s) "' + patterns.join('; ') + '" in the selected directory. Check the pattern or choose a different directory.';
+        document.getElementById('dirsearch-warn-modal').classList.add('active');
+    }
 }
 
 // Process files from directory search - integrates with existing logic
@@ -2864,16 +2923,17 @@ async function processDirSearchFiles() {
 
 // Process directory search files and initialize analysis
 async function processDirSearchAndInitialize() {
-    // Auto-expand the console so the log and Download Log button are visible during processing
-    const cp = document.getElementById('console-panel');
-    if (cp && cp.classList.contains('collapsed')) { cp.classList.remove('collapsed'); }
-
     // Read all directory search files (binary detection done in processDirSearchFiles)
     const fileData = await processDirSearchFiles();
 
     if (fileData.length === 0) {
-        logAction('Directory Search: No files to process.');
-        window._dirSearchProcessed = false;
+        logAction('Directory Search: No files could be loaded (all skipped or cancelled).');
+        window._dirSearchProcessed = true;
+        // Show warning and let user continue with any data already in rawFilesStore
+        const warnMsg = document.getElementById('dirsearch-warn-msg');
+        if (warnMsg) warnMsg.textContent = 'None of the matched files could be loaded (all were binary or cancelled). Any previously loaded data remains available.';
+        document.getElementById('dirsearch-warn-modal').classList.add('active');
+        if (Object.keys(rawFilesStore).length > 0) processFilesFromUI();
         return;
     }
 
@@ -3625,11 +3685,14 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
     // Skip when called from _generateAllFileDashboards — per-file _liveCompKeys already set
     if (!_skipAutoExpand) {
         // When multiple MC files are loaded, route through per-file isolation to prevent
-        // component mixing (e.g. disk mounts + network interfaces + usernames on same chart)
+        // component mixing (e.g. disk mounts + network interfaces + usernames on same chart).
+        // In dir search mode skip this redirect — _generateAllFileDashboards() is already
+        // called directly from the combine block with base-filename grouping.
         var _mcFileCount = Object.keys(parsedFileMeta).filter(function(f) {
             return parsedFileMeta[f] && parsedFileMeta[f].isMc;
         }).length;
-        if (_mcFileCount > 1 && !_ruleSubset) {
+        var _isDirSearchCtx = !!(document.getElementById('enableDirSearch')?.checked);
+        if (_mcFileCount > 1 && !_ruleSubset && !_isDirSearchCtx) {
             _generateAllFileDashboards(false);
             return;
         }
@@ -4627,28 +4690,55 @@ async function _generateAllFileDashboards(_calledFromAuto) {
         generateDashboard(); return;
     }
 
+    // Dir search mode: group parsedFilesStore by base filename so same-named files from
+    // different subdirectories are merged into one chart section per file type.
+    var _isDirSearch = !!(document.getElementById('enableDirSearch')?.checked);
+    var _iterGroups; // [{label, relPaths, fp}]
+    if (_isDirSearch && fk.length > 0) {
+        var _baseGroups = {};
+        fk.forEach(function(relPath) {
+            var base = relPath.split('/').pop();
+            if (!_baseGroups[base]) _baseGroups[base] = [];
+            _baseGroups[base].push(relPath);
+        });
+        _iterGroups = Object.keys(_baseGroups).map(function(base) {
+            var relPaths = _baseGroups[base];
+            var fp = (fileProfileMap[relPaths[0]] && fileProfileMap[relPaths[0]].profile)
+                     ? fileProfileMap[relPaths[0]].profile : null;
+            return { label: base, relPaths: relPaths, fp: fp };
+        });
+    } else {
+        _iterGroups = fk.map(function(fname) {
+            var fp = (fileProfileMap[fname] && fileProfileMap[fname].profile)
+                     ? fileProfileMap[fname].profile : null;
+            return { label: fname, relPaths: [fname], fp: fp };
+        });
+    }
+
     // Pre-clear once so all file calls can use append mode (false) and section headers aren't wiped
     chartInstances.forEach(function(c){ c.destroy(); }); chartInstances = [];
     var _cont = document.getElementById('dashboard');
     if (_cont) _cont.innerHTML = '';
     document.getElementById('dashboard-meta').classList.remove('hidden');
-    var _multiLabel = fk.length > 0 ? 'Multiple files (' + fk.length + ')' : 'Multiple sources (' + _mcSourceCount + ')';
+    var _groupCount = _iterGroups.length;
+    var _multiLabel = _groupCount > 0 ? 'Multiple files (' + (_isDirSearch ? _groupCount + ' type(s)' : fk.length) + ')' : 'Multiple sources (' + _mcSourceCount + ')';
     document.getElementById('active-file-label').textContent = _multiLabel;
     var _sp = document.getElementById('statsPanel');
     if (_sp) { _sp.innerHTML = ''; _sp.classList.add('hidden'); }
 
     // Count total sections for progress tracking
     var _anyGenerated = false;
-    var _totalSections = fk.length + (hasMcData ? Object.keys(Object.keys(fileProfileMap).reduce(function(acc, fn) {
+    var _totalSections = _groupCount + (hasMcData ? Object.keys(Object.keys(fileProfileMap).reduce(function(acc, fn) {
         var e = fileProfileMap[fn]; if (e && e.profile) { var p = e.profile.name; if (!acc[p]) acc[p] = true; } return acc;
-    }, {})).length : 0) || fk.length + 1;
+    }, {})).length : 0) || _groupCount + 1;
     var _doneSections = 0;
     _showGenProgress('Starting…', 0);
     await new Promise(function(r){ setTimeout(r, 0); }); // yield so progress bar paints
 
-    for (var _fi = 0; _fi < fk.length; _fi++) {
-        var fname = fk[_fi];
-        var fp = (fileProfileMap[fname] && fileProfileMap[fname].profile) ? fileProfileMap[fname].profile : null;
+    for (var _fi = 0; _fi < _iterGroups.length; _fi++) {
+        var _grp = _iterGroups[_fi];
+        var fname = _grp.label;  // base filename in dir-search, full relPath in normal mode
+        var fp = _grp.fp;
         // Route rules: profiled rules → only their matching profile's file;
         // non-profiled (manually added) rules → only files that also have no profile.
         var fileRules = ruleQueue.filter(function(r) {
@@ -4659,12 +4749,13 @@ async function _generateAllFileDashboards(_calledFromAuto) {
         });
         _doneSections++;
         // Std files share 0–88% of the bar (88–90% reserved for MC, 90–98% for MC charts, 98–100% for finalise)
-        var _fProgressStart = (_doneSections - 1) / Math.max(1, fk.length) * 88;
-        var _fProgressEnd   = _doneSections       / Math.max(1, fk.length) * 88;
-        _showGenProgress('File ' + _doneSections + ' / ' + fk.length + ': ' + fname, _fProgressStart);
+        var _fProgressStart = (_doneSections - 1) / Math.max(1, _iterGroups.length) * 88;
+        var _fProgressEnd   = _doneSections       / Math.max(1, _iterGroups.length) * 88;
+        _showGenProgress('File ' + _doneSections + ' / ' + _iterGroups.length + ': ' + fname, _fProgressStart);
         // Log BEFORE the yield so this entry always appears in an exported log
-        logAction('Refresh All [' + _doneSections + '/' + fk.length + ']: "' + fname + '"'
+        logAction('Refresh All [' + _doneSections + '/' + _iterGroups.length + ']: "' + fname + '"'
             + '  profile=' + (fp ? fp.name : 'none')
+            + (_grp.relPaths.length > 1 ? '  files=' + _grp.relPaths.length : '')
             + '  stdRules=' + fileRules.length);
         await new Promise(function(r){ setTimeout(r, 0); }); // yield → browser repaints progress
 
@@ -4710,13 +4801,18 @@ async function _generateAllFileDashboards(_calledFromAuto) {
             _anyGenerated = true;
             continue;
         }
-        // Section header visually separates each file's charts
+        // Section header visually separates each file group's charts
         _insertDashboardSectionHeader(fname, false);
-        activeLogData = parsedFilesStore[fname];
+        // Merge all relPaths in this group (in dir search: multiple files with same base name)
+        var _grpRows = [];
+        _grp.relPaths.forEach(function(rp) { _grpRows = _grpRows.concat(parsedFilesStore[rp] || []); });
+        if (_grp.relPaths.length > 1) {
+            _grpRows.sort(function(a, b) { return getUnix(a.timestamp) - getUnix(b.timestamp); });
+        }
+        activeLogData = _grpRows;
         activeFileName = fname;
-        // Check for token mismatch before generating: if no rule token exists in file's
-        // parsed token list, the charts will be empty. Warn the user up front.
-        var _fileMeta = parsedFileMeta[fname];
+        // Check for token mismatch: use first relPath's metadata for token list
+        var _fileMeta = parsedFileMeta[_grp.relPaths[0]];
         var _fileTokSet = new Set(((_fileMeta && _fileMeta.tokens) ? _fileMeta.tokens : [])
             .map(function(t){ return t.toLowerCase(); }));
         var _ruleHasData = fileRules.some(function(r){
@@ -4745,7 +4841,7 @@ async function _generateAllFileDashboards(_calledFromAuto) {
         }
         await generateDashboard(false, fileRules, false, _fProgressStart, _fProgressEnd);  // false = append; pre-cleared above
         _anyGenerated = true;
-        _showGenProgress('File ' + _doneSections + ' / ' + fk.length + ': ' + fname + ' ✓', _fProgressEnd);
+        _showGenProgress('File ' + _doneSections + ' / ' + _iterGroups.length + ': ' + fname + ' ✓', _fProgressEnd);
 
         } catch(_fileErr) {
             logAction('Refresh All: Error processing "' + fname + '": ' + _fileErr.message
@@ -4763,19 +4859,26 @@ async function _generateAllFileDashboards(_calledFromAuto) {
             // Group MC rules by source profile, then match each profile to its file's
             // component keys. This prevents charts from mixing components across files
             // (e.g. disk filesystems + network interfaces + PIDs on the same chart).
-            var _mcByFile = {};   // fname (or '__manual__') → { rules, compKeys }
+            // In dir search mode, consolidate same-profile files under their base filename
+            // (e.g. two iostat_device.txt files → one "iostat_device.txt (MC)" section).
+            var _mcByFile = {};   // label → { rules, compKeys }
             var _handledRules = new Set();
 
-            // Map profiled rules to their source file
-            Object.keys(fileProfileMap).forEach(function(fname) {
-                var entry = fileProfileMap[fname];
+            // Map profiled rules to their source file (or base filename in dir search)
+            Object.keys(fileProfileMap).forEach(function(fmapKey) {
+                var entry = fileProfileMap[fmapKey];
                 if (!entry || !entry.profile) return;
                 var pname = entry.profile.name;
                 var fileRulesForMc = mcRules.filter(function(r) { return r._sourceProfile === pname; });
                 if (!fileRulesForMc.length) return;
-                var meta = parsedFileMeta[fname];
-                var compKeys = (meta && meta.mcComponents && meta.mcComponents.length) ? meta.mcComponents : Object.keys(compIndexStore);
-                _mcByFile[fname] = { rules: fileRulesForMc, compKeys: compKeys };
+                // In dir search mode, key by base filename so duplicate profiles consolidate
+                var _mcSectionKey = _isDirSearch ? fmapKey.split('/').pop() : fmapKey;
+                if (_mcByFile[_mcSectionKey]) return; // already processed (dir search dedup)
+                // In dir search, compIndexStore is already merged from all files
+                var compKeys = _isDirSearch ? Object.keys(compIndexStore)
+                    : ((parsedFileMeta[fmapKey] && parsedFileMeta[fmapKey].mcComponents && parsedFileMeta[fmapKey].mcComponents.length)
+                       ? parsedFileMeta[fmapKey].mcComponents : Object.keys(compIndexStore));
+                _mcByFile[_mcSectionKey] = { rules: fileRulesForMc, compKeys: compKeys };
                 fileRulesForMc.forEach(function(r) { _handledRules.add(r); });
             });
 
@@ -4826,23 +4929,40 @@ async function _generateAllFileDashboards(_calledFromAuto) {
     _showGenProgress('Finalising…', 98);
     await new Promise(function(r){ setTimeout(r, 0); });
 
-    // Per-file threshold checks — each file's rules run against that file's data only
+    // Per-file/group threshold checks
     if (_thresholdAlertsEnabled) {
         var _allBreaches = [];
-        fk.forEach(function(fname) {
-            if (!parsedFilesStore[fname]) return;
-            var fp2 = fileProfileMap[fname] && fileProfileMap[fname].profile;
-            var fr = ruleQueue.filter(function(r) {
-                if (r._mc) return false;
-                if (r._sourceProfile && fp2) return r._sourceProfile === fp2.name;
-                if (r._sourceProfile && !fp2) return false;
-                return !fp2;
+        if (_isDirSearch) {
+            // Dir search: check thresholds against merged rows per group
+            _iterGroups.forEach(function(grp) {
+                var fp2 = grp.fp;
+                var fr = ruleQueue.filter(function(r) {
+                    if (r._mc) return false;
+                    if (r._sourceProfile && fp2) return r._sourceProfile === fp2.name;
+                    if (r._sourceProfile && !fp2) return false;
+                    return !fp2;
+                });
+                if (fr.length) {
+                    var mergedRows = [];
+                    grp.relPaths.forEach(function(rp) { mergedRows = mergedRows.concat(parsedFilesStore[rp] || []); });
+                    _allBreaches = _allBreaches.concat(checkThresholds(mergedRows, fr));
+                }
             });
-            if (fr.length) {
-                var _fb = checkThresholds(parsedFilesStore[fname], fr);
-                _allBreaches = _allBreaches.concat(_fb);
-            }
-        });
+        } else {
+            fk.forEach(function(fname) {
+                if (!parsedFilesStore[fname]) return;
+                var fp2 = fileProfileMap[fname] && fileProfileMap[fname].profile;
+                var fr = ruleQueue.filter(function(r) {
+                    if (r._mc) return false;
+                    if (r._sourceProfile && fp2) return r._sourceProfile === fp2.name;
+                    if (r._sourceProfile && !fp2) return false;
+                    return !fp2;
+                });
+                if (fr.length) {
+                    _allBreaches = _allBreaches.concat(checkThresholds(parsedFilesStore[fname], fr));
+                }
+            });
+        }
         if (hasMcData) {
             var _mcr = ruleQueue.filter(function(r) { return r._mc; });
             if (_mcr.length) _allBreaches = _allBreaches.concat(checkThresholds([], _mcr));
@@ -4853,11 +4973,13 @@ async function _generateAllFileDashboards(_calledFromAuto) {
     }
 
     var _lbl = document.getElementById('active-file-label');
-    if (_lbl && fk.length > 1) _lbl.textContent = 'Multiple files (' + fk.length + ')';
+    var _dispCount = _isDirSearch ? _iterGroups.length : fk.length;
+    if (_lbl && _dispCount > 1) _lbl.textContent = 'Multiple files (' + (_isDirSearch ? _dispCount + ' type(s)' : _dispCount) + ')';
 
     _showGenProgress('Done', 100);
     setTimeout(_hideGenProgress, 800); // brief "Done 100%" flash then hide
-    logAction('Refresh All: Generated dashboard for ' + fk.length + ' file(s)'
+    logAction('Refresh All: Generated dashboard for '
+        + (_isDirSearch ? _iterGroups.length + ' file type(s) from ' + fk.length + ' file(s)' : fk.length + ' file(s)')
         + (hasMcData ? ' + MC overlay data' : '') + '.');
 }
 
