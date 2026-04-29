@@ -17,7 +17,7 @@
    - [6.10 Wildcard Component Selection — ★ All](#610-wildcard-component-selection---all)
    - [6.11 Component Overlay — All Components in One Chart](#611-component-overlay--all-components-in-one-chart)
 7. [Multi-File Analysis & Running Sequences](#7-multi-file-analysis--running-sequences)
-8. [Dashboard & Charts](#8-dashboard--charts) *(v3.1: Refresh All button)*
+8. [Dashboard & Charts](#8-dashboard--charts) *(v3.1: Refresh All button · 8.7 Line Colours · 8.8 X-Axis Time Labels)*
 9. [Threshold Alerts & Visual Indicators](#9-threshold-alerts--visual-indicators)
 10. [Formula Mode](#10-formula-mode)
 11. [Mixed Mode — Direct + Formula on One Chart](#11-mixed-mode--direct--formula-on-one-chart)
@@ -572,7 +572,8 @@ Each file/group gets a left-bordered section header in the dashboard. The existi
 
 Each rule produces one chart card containing:
 - **Title bar** with the chart name and a **Copy** button.
-- **Line chart** (Chart.js) with the metric lines and optional threshold indicator lines.
+- **Line chart** (Chart.js) with the metric lines and optional threshold indicator lines. Each metric series gets a distinct colour from the 12-colour palette (see [§8.7](#87-line-colours)).
+- **X-axis** with up to 24 time labels, angled to fit more ticks (see [§8.8](#88-x-axis-time-labels)).
 - **Stats table** below the chart showing Min, Max, Avg, and Count for each metric.
 
 ### 8.2 Zoom & Pan
@@ -624,6 +625,37 @@ After adding rules via the builder, click **↺ Refresh All** to regenerate all 
 ### 8.6 Stats Panel
 
 A summary stats table appears below the charts showing per-metric Min, Max, Mean, and Count across the full active dataset. Threshold indicator lines are excluded from stats.
+
+### 8.7 Line Colours
+
+Every dataset on a chart is drawn in a distinct colour from a fixed 12-colour palette. The same index always maps to the same colour, so a rule with tokens `[A, B, C]` always draws A in red, B in green, C in amber regardless of the data loaded.
+
+| Series index | Colour |
+|---|---|
+| 0 | Red |
+| 1 | Green |
+| 2 | Amber / Orange |
+| 3 | Purple |
+| 4 | Cyan / Teal |
+| 5 | Deep Orange |
+| 6 | Teal / Mint |
+| 7 | Crimson / Pink |
+| 8 | Yellow |
+| 9 | Violet |
+| 10 | Lime |
+| 11 | Steel Blue |
+
+**Special series:**
+- **Formula result** — always drawn as a solid blue (`hsl(210)`) line, heavier weight (2.5 px), independent of index.
+- **Source metrics** (when *Show source metrics* is enabled in formula/mixed mode) — drawn with the same hue as their index position but lighter and muted, on a dashed line `[4 px dash · 3 px gap]` to visually separate them from the formula result.
+- **Threshold lines** — amber (`⚠ warn`) and dark red (`✕ critical`), dashed.
+- **Overlay / component-overlay groups** — each group or component uses the same palette with 65–75 % opacity so overlapping groups remain readable.
+
+### 8.8 X-Axis Time Labels
+
+The X-axis displays up to **24 time labels** across the chart width (raised from 14 in earlier versions). Labels are auto-skipped when they would overlap, always angled at 30–55° to maximise density. For dense datasets (e.g. 5-minute samples over 24 hours) this provides a label roughly every hour; for coarser data (hourly samples) you will see a label for most rows.
+
+Zooming in with drag-to-zoom increases label density for the visible time window automatically.
 
 ---
 
@@ -707,6 +739,7 @@ If you also want to see the source metrics alongside the formula result, use [Mi
 1. Set **Analysis Mode** → `Formula f(x)`.
 2. In the **Metrics** multi-select, choose **all metrics referenced** in your formula. The tool uses this list to know which columns to fetch from the data.
 3. Enter the expression in the **Formula** field.
+   > **Tip — double-click to insert:** When Formula (or Mixed) mode is active, **double-clicking any item** in the Metrics list inserts its name into the Formula field at the current cursor position. Smart spacing is added automatically so you can build expressions by clicking rather than typing long column names.
 4. Enter a **Result Label** — this is the name shown on the chart line and in the legend (and in the saved profile JSON).
 5. Optionally tick **"Also show source metrics on secondary axis"** to render source metrics as thin dashed lines on the right Y-axis.
 6. Set optional **Warning / Critical** thresholds — these apply to the **formula result**, not the source metrics.
@@ -922,7 +955,7 @@ Instead of selecting metrics from a list, you build a **series list** — each s
 | Direct | Solid, medium weight | Raw metric value |
 | Formula | Dashed, heavier weight | Derived / computed result |
 
-Direct series rotate through a colour palette. Formula series use a blue-family palette starting at `hsl(200)`.
+Direct series rotate through the 12-colour palette (red, green, amber, purple, …). Formula series always render in fixed blue (`hsl(210)`) with a heavier line to stand out from direct series.
 
 ### 12.5 Example A — Memory Overview (same axis)
 
@@ -1143,18 +1176,52 @@ The result is one combined dashboard showing all files' charts in order.
   "version": "1.0",
   "profiles": [
     {
-      "name": "IO Statistics",
+      "name": "iCampaign App Statistics",
+      "app": "iCampaign-NewFormat",
       "format": "multiComp",
-      "headers": {
-        "hasHeader": true,
-        "keyLabels": {"1": "Device"},
-        "kpiColumns": ["r/s", "w/s", "svctm", "%util"]
-      },
-      "rules": [...]
+      "headers": { ... },
+      "rules": [...],
+      "overlayNames": {
+        "0|150|1": { "InstanceName": "iCampaign Instance" }
+      }
+    },
+    {
+      "name": "ProbeFilter Statistics",
+      "app": "ProbeFilter",
+      "format": "multiComp",
+      "headers": { ... },
+      "rules": [...],
+      "overlayNames": {
+        "1|75": { "ProbeIPAddr": "Probe IP Address", "ProbePort": "Port" },
+        "2|75": { "Port": "Probe Port" }
+      }
     }
   ]
 }
 ```
+
+#### `overlayNames` — Per-Profile Overlay Field Display Names
+
+The optional `overlayNames` block lives **inside each profile** (not at the top level). It maps component group keys to a nested object of `{ fieldName: displayLabel }` pairs. When overlay mode is active for a component that has an entry, each matching overlay field shows the mapped label in the dropdown and in all chart titles/legends.
+
+| Field | Type | Description |
+|---|---|---|
+| `overlayNames` | `{ compKey: { fieldName: string } }` | Per-profile map: component key → field name → display label |
+
+**Rules:**
+- `compKey` must exactly match the **Component Group** selector value (`\|`-separated), e.g. `"0|150|1"`
+- `fieldName` must exactly match the overlay field name as it appears in the header annotation, e.g. `"InstanceName"` for a column annotated `InstanceName(XXX)`
+- Only fields present in the header for that component are relevant — unrecognised field names are silently ignored
+- When multiple profiles define an entry for the same `compKey`, the last loaded profile wins
+- Fields with no mapping fall back to their header-resolved name (e.g. `StatType`)
+
+**This override applies in:**
+- The **Overlay Key Column(s)** dropdown — matching options show the mapped label
+- The **chart title subtitle** (e.g. "Overlay by: iCampaign Instance · 3 groups")
+- The **chart legend** series names (e.g. "TotalEvents (iCampaign Instance: icamp01)")
+
+**Example — selecting both ProbeFilter overlay keys:**
+If the user selects both `ProbeIPAddr` and `ProbePort` for component `1|75`, the chart label reads `"Probe IP Address | Port"`. Selecting only `ProbeIPAddr` gives `"Probe IP Address"` — each selected key is resolved independently.
 
 ### 15.2 Match Spec — Profile Identification Criteria
 
@@ -1694,7 +1761,7 @@ After all key columns, the remaining columns are the KPI metrics. In `headers.kp
 "kpiColumns": ["MSU_Recv", "MSU_Sent", "Errors", "Retransmits"]
 ```
 
-In rules, KPIs are referenced as **positional tokens** `KPI_1`, `KPI_2`, etc. (`KPI_1` = first kpiColumn name, `KPI_2` = second, and so on).
+In rules, KPIs are referenced by their **actual header names** (e.g. `MSU_Recv`, `ActiveCalls`). When a header file or `mcHeaderFile` entry is available for a component, the tool automatically maps and renames data columns to those names — no `KPI_N` tokens appear in rules or saved profiles. `KPI_N` positional fallbacks (`KPI_1`, `KPI_2`, …) are used only for columns that have no header entry (extra data columns beyond the header length).
 
 #### The `mcHeaderFile` annotation — the most powerful matching tool
 
@@ -1705,8 +1772,9 @@ Date,Time,Col2,RecordType(STATIC_VALUE),CompId(XXX),KPI_Label_1,...
 ```
 
 - `ColName(STATIC_VALUE)` — this column always contains `STATIC_VALUE` in real data rows (e.g. `RecordType(SS7)` means col 3 always = `SS7`)
-- `ColName(XXX)` — this column varies per row (component ID)
+- `ColName(XXX)` — this column varies per row (component ID or overlay grouping field)
 - Labels after the key columns name the KPIs for the header inspector
+- **KPI-zone `(XXX)` columns** — `(XXX)` may also appear on a KPI data column (after the key block), e.g. `InstanceAddr(XXX)`. This marks it as an overlay-grouping field: its distinct values are used to split rows into separate overlay lines. These columns are excluded from the KPI Metrics selector and appear only in the **Overlay Key** dropdown.
 
 The scoring engine uses the static-value annotations as a **fingerprint** to identify which profile a file belongs to. If the real data matches the annotation values (e.g. col 3 = `SS7`, col 4 = any value per row), the profile scores high.
 
@@ -1763,7 +1831,7 @@ For files with **multiple record types** (e.g. SS7 rows and SIP rows mixed in th
       "header": "Link Traffic — Per Component",
       "_mc": true,
       "mode": "direct",
-      "tokens": ["KPI_1", "KPI_2"],
+      "tokens": ["MSU_Recv", "MSU_Sent"],
       "compKeys": ["__auto__"],
       "_overlay": false,
       "_overlayKeys": [],
@@ -1775,6 +1843,8 @@ For files with **multiple record types** (e.g. SS7 rows and SIP rows mixed in th
   ]
 }
 ```
+
+> **Note:** Token names match the `mcHeaderFile` / `kpiColumns` entries exactly. When you add a rule via the UI with a header file loaded, the tool stores actual column names automatically — you never need to write `KPI_N` by hand.
 
 **What this chart looks like:**
 
@@ -1788,7 +1858,7 @@ Y-axis (count)
       00:00  00:05  00:10  ...
 ```
 
-Each component's KPI becomes one line. Solid = KPI_1, dashed = KPI_2. The legend shows `ComponentKey KPI_Name`.
+Each component's KPI becomes one line. Solid = MSU_Recv, dashed = MSU_Sent. The legend shows `ComponentKey KPI_Name`.
 
 ---
 
@@ -1801,7 +1871,7 @@ Each component's KPI becomes one line. Solid = KPI_1, dashed = KPI_2. The legend
   "header": "Link Traffic — Overlay All Links",
   "_mc": true,
   "mode": "direct",
-  "tokens": ["KPI_1"],
+  "tokens": ["MSU_Recv"],
   "compKeys": ["__auto__"],
   "_overlay": false,
   "_overlayKeys": [],
@@ -1821,10 +1891,10 @@ Each component's KPI becomes one line. Solid = KPI_1, dashed = KPI_2. The legend
   "header": "Traffic by Band — Overlay",
   "_mc": true,
   "mode": "direct",
-  "tokens": ["KPI_2", "KPI_3"],
+  "tokens": ["MSU_Sent", "Link_Errors"],
   "compKeys": ["__auto__"],
   "_overlay": true,
-  "_overlayKeys": ["KPI_1"],
+  "_overlayKeys": ["Band"],
   "_excludeOverlay": ["Unknown"],
   "_aggregate": false,
   "_aggMode": "sum",
@@ -1832,7 +1902,7 @@ Each component's KPI becomes one line. Solid = KPI_1, dashed = KPI_2. The legend
 }
 ```
 
-Here `KPI_1` holds the band value (`700MHz`, `1800MHz`, etc.). The chart groups and colours lines by band, and excludes any component with band = `Unknown`.
+Here `Band` is a KPI-zone column annotated `Band(XXX)` in the header — its distinct values (`700MHz`, `1800MHz`, etc.) become line groups. The chart groups and colours lines by band, and excludes any component with band = `Unknown`.
 
 **What the overlay chart looks like:**
 
@@ -1857,7 +1927,7 @@ Legend: [700MHz] [1800MHz] [2100MHz]  (click to hide/show)
   "header": "Total Network Traffic (SUM)",
   "_mc": true,
   "mode": "direct",
-  "tokens": ["KPI_1", "KPI_2"],
+  "tokens": ["MSU_Recv", "MSU_Sent"],
   "compKeys": ["__auto__"],
   "_overlay": false,
   "_overlayKeys": [],
@@ -1891,7 +1961,7 @@ Set `_perSec: true` to divide each value by the interval length in seconds. This
   "header": "MSU Rate (per second)",
   "_mc": true,
   "mode": "direct",
-  "tokens": ["KPI_1"],
+  "tokens": ["MSU_Recv"],
   "compKeys": ["__auto__"],
   "_overlay": false,
   "_overlayKeys": [],
@@ -1933,7 +2003,7 @@ Set `_perSec: true` to divide each value by the interval length in seconds. This
       "header": "Channel Utilization (%) — Per Cell",
       "_mc": true,
       "mode": "ratio",
-      "tokens": ["KPI_1", "KPI_2"],
+      "tokens": ["TCH_Avail", "TCH_Used"],
       "compKeys": ["__auto__"],
       "_overlay": false,
       "_overlayKeys": [],
@@ -1942,14 +2012,14 @@ Set `_perSec: true` to divide each value by the interval length in seconds. This
       "_aggMode": "sum",
       "_perSec": false,
       "thresholds": {
-        "KPI_2": { "warn": 70, "critical": 90 }
+        "TCH_Used": { "warn": 70, "critical": 90 }
       }
     }
   ]
 }
 ```
 
-**Computed:** `KPI_2 / KPI_1 × 100 = TCH_Used / TCH_Avail × 100`
+**Computed:** `TCH_Used / TCH_Avail × 100` (ratio mode: first token = denominator)
 
 **Chart:**
 
@@ -1973,8 +2043,8 @@ Y-axis (%)
   "header": "DL-UL Imbalance — Per Cell",
   "_mc": true,
   "mode": "formula",
-  "tokens": ["KPI_1", "KPI_2"],
-  "formula": "KPI_1 - KPI_2",
+  "tokens": ["DL_PRB", "UL_PRB"],
+  "formula": "DL_PRB - UL_PRB",
   "formulaLabel": "DL minus UL Gap",
   "compKeys": ["__auto__"],
   "_overlay": false,
@@ -2008,8 +2078,8 @@ Combining `_aggregate`, `_aggMode: "avg"`, and `_perSec: true`:
   "header": "Weighted PRB — AVG Aggregated (per sec)",
   "_mc": true,
   "mode": "formula",
-  "tokens": ["KPI_1", "KPI_2", "KPI_3"],
-  "formula": "(KPI_1 + KPI_2) / 2 - KPI_3 * 0.1",
+  "tokens": ["DL_PRB", "UL_PRB", "Interference"],
+  "formula": "(DL_PRB + UL_PRB) / 2 - Interference * 0.1",
   "formulaLabel": "Adjusted PRB Usage",
   "compKeys": ["__auto__"],
   "_overlay": false,
@@ -2151,7 +2221,7 @@ Add `mcHeaderFile` with static annotations to make the profile unique when multi
       "header": "Per-Component Metrics",
       "_mc": true,
       "mode": "direct",
-      "tokens": ["KPI_1", "KPI_2"],
+      "tokens": ["Metric_1_Label", "Metric_2_Label"],
       "compKeys": ["__auto__"],
       "_overlay": false,
       "_overlayKeys": [],

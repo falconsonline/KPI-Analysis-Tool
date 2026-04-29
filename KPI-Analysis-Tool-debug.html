@@ -487,10 +487,10 @@
             <div id="mcRatioDenomRow" class="hidden" style="grid-column:span 2;"><label>Denominator (base KPI)</label><select id="selMcDenom"></select></div>
             <div style="grid-column:span 2;">
                 <label id="selMcKpiLabel">KPI Metrics
-                    <small style="font-weight:normal;color:#888;">(multi-select)</small>
+                    <small style="font-weight:normal;color:#888;">(multi-select</small><small id="mcKpiDblClickHint" style="font-weight:normal;color:#888;display:none;"> &middot; double-click to insert into formula</small><small style="font-weight:normal;color:#888;">)</small>
                     <span id="mcKpiSourceLabel" style="font-size:0.78em;font-weight:normal;color:var(--info);margin-left:6px;"></span>
                 </label>
-                <select id="selMcKpi" multiple></select>
+                <select id="selMcKpi" multiple ondblclick="mcKpiInsertToFormula(event)"></select>
             </div>
             <div id="mcFormulaRow" class="hidden" style="grid-column:span 2;">
                 <label>Formula <small style="font-weight:normal;color:#888;">Use KPI names + operators: +, -, *, /, ( )</small></label>
@@ -658,11 +658,13 @@ var mcDataStartIndex   = 5;    // first KPI data column index (after key fields)
 var mcPreKeyDataCols   = [];   // column indices BEFORE the key that should also be captured as data tokens (e.g. NPROC before USERNAME)
 var mcPreKeyDataLabels = [];   // column label names for mcPreKeyDataCols (used for overlay token naming)
 var mcInstanceIdIndices = [];   // column indices marked as (XXX) instance ID
-var mcOverlayFieldNames = new Set(); // token names that are XXX overlay-only fields (never shown in KPI Metrics)
+var mcOverlayFieldNames   = new Set(); // token names that are XXX overlay-only fields (never shown in KPI Metrics)
+var mcOverlayKeyLabelMap  = {};        // key_N → display label for mixed-XXX key positions
 var mcHeaderFileLines  = [];   // raw lines from loaded MC header file (for profile saving)
 var alertLog           = [];   // threshold breach log
 var mcAnnotatedMode    = false; // true when header annotations were used (not detectKeyStructure)
 var masterConfig       = null;  // loaded master config JSON
+var masterOverlayNames = {};   // { compKey: displayLabel } — global overlay-name overrides from master config
 var matchedProfile     = null;  // auto-matched profile for current data (backward compat)
 var fileProfileMap     = {};    // { fileName: { profile, score, candidates, needsReview } } — per-file profile
 var _profileAlreadySelected = false;  // guard to prevent re-showing profile selector on re-parse
@@ -1859,6 +1861,17 @@ function processFilesFromUI() {
                 mcDataStartIndex   = annotated.dataStartIndex;
                 mcInstanceIdIndices = annotated.instanceIdIndices;
                 mcAnnotatedMode    = true;
+                // Register data-zone (XXX) columns from original headerKeys BEFORE it is replaced.
+                // instanceIdIndices only covers key-zone positions (≤ KEY_COL_MAX); columns in the
+                // KPI data zone (≥ dataStartIndex) with (XXX) must be registered here while the raw
+                // names are still available.
+                for (var _hkdz = annotated.dataStartIndex; _hkdz < headerKeys.length; _hkdz++) {
+                    var _hkp = parseMcHeaderCol(headerKeys[_hkdz]);
+                    if (_hkp.label !== null && _hkp.val.toUpperCase() === 'XXX') {
+                        mcOverlayFieldNames.add(_hkp.label);
+                        logAction('Overlay-only field registered: "' + _hkp.label + '" (KPI-zone XXX, data file)');
+                    }
+                }
                 headerKeys = annotated.cleanHeaders;
                 logAction('Header annotations detected: keys=[' + annotated.keyLabels.join(',')
                     + '] dataStart=' + annotated.dataStartIndex
@@ -3237,7 +3250,8 @@ function softReset() {
     mcInstanceIdIndices = [];
     mcHeaderFileLines   = [];
     mcAnnotatedMode     = false;
-    mcOverlayFieldNames = new Set();
+    mcOverlayFieldNames  = new Set();
+    mcOverlayKeyLabelMap = {};
 
     // ── Clear profile selection state ──
     matchedProfile           = null;
@@ -3553,6 +3567,17 @@ function renderAlerts(breaches) {
 }
 
 // =============================================================================
+// CHART COLOUR PALETTE
+// 12 perceptually-distinct hues, consistent S/L. Formula main series keeps its
+// fixed blue (hsl 210). Direct/ratio/overlay series use this palette so that
+// any combination of 2+ lines is immediately visually distinct.
+// =============================================================================
+const _CP_HUE = [0, 120, 30, 270, 185, 15, 165, 340, 45, 295, 80, 230];
+function _cc(i)        { return 'hsl('  + _CP_HUE[i % _CP_HUE.length] + ',75%,48%)'; }
+function _ccA(i, a)    { return 'hsla(' + _CP_HUE[i % _CP_HUE.length] + ',75%,48%,' + a + ')'; }
+function _ccDim(i)     { return 'hsl('  + _CP_HUE[i % _CP_HUE.length] + ',50%,60%)'; }  // secondary/source-metric lines
+
+// =============================================================================
 // DASHBOARD HELPERS
 // =============================================================================
 function makeChartOptions() {
@@ -3633,7 +3658,7 @@ function makeChartOptions() {
                 }
             }
         },
-        scales:{x:{ticks:{maxTicksLimit:14, maxRotation:45, autoSkip:true}}}
+        scales:{x:{ticks:{maxTicksLimit:24, maxRotation:55, minRotation:30, autoSkip:true, autoSkipPadding:6}}}
     };
 }
 function makeOverlayChartOptions(ovKeyLabel, kpiLabel) {
@@ -3669,7 +3694,7 @@ function makeOverlayChartOptions(ovKeyLabel, kpiLabel) {
             pan:{enabled:true,mode:'x',modifierKey:'ctrl',onPanComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart);logAction('View: Chart panned.');}}
         }},
         scales:{
-            x:{},
+            x:{ticks:{maxTicksLimit:24, maxRotation:55, minRotation:30, autoSkip:true, autoSkipPadding:6}},
             y:{ type:'linear', position:'left',
                 title:{display:true, text: kpiLabel || 'KPI Values'},
                 grid:{drawOnChartArea:true} },
@@ -3822,6 +3847,17 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                 logTrace('generateDashboard: agg new Chart() START — "' + aggTitle + '"');
                 const { wrap, canvas } = makeChartWrap(aggTitle, 'canvas-agg-' + _idPfx + '-' + idx, container);
 
+                // Build display-name map using the first component's header (all agg components
+                // share the same KPI structure — using any one is equivalent).
+                const _aggFirstHdr = mcHeaderStore[_eck[0]] || null;
+                const _aggMaxRow   = (_eck[0] && compIndexStore[_eck[0]])
+                    ? compIndexStore[_eck[0]].reduce(
+                        function(a, b) { return Object.keys(a.tokens).length >= Object.keys(b.tokens).length ? a : b; },
+                        { tokens: {} })
+                    : { tokens: {} };
+                const _aggNameMap  = buildTokenNameMap(Object.keys(_aggMaxRow.tokens), _aggFirstHdr ? _aggFirstHdr.kpiNames : []);
+                const aggName      = function(t) { return _aggNameMap[t] || t; };
+
                 let aggDatasets;
                 if (isFormulaMc && rule.formula) {
                     const fLabel = rule.formulaLabel || rule.formula;
@@ -3839,22 +3875,22 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     if (rule._showSourceMetrics) {
                         rule.tokens.forEach((t, i) => {
                             aggDatasets.push({
-                                label: t + _perSecSuffix,
+                                label: aggName(t) + _perSecSuffix,
                                 data: gappedAggRows.map(d => d.tokens === null ? null : (d.tokens[t] !== undefined ? _applyPerSec(d.tokens[t]) : null)),
-                                borderColor: 'hsl(' + (i * 137 + 40) + ',55%,55%)', borderWidth: 1, borderDash: [4, 3],
+                                borderColor: _ccDim(i), borderWidth: 1, borderDash: [4, 3],
                                 pointRadius: 0, tension: 0.1, spanGaps: false, yAxisID: 'y1'
                             });
                         });
                     }
                 } else {
                     aggDatasets = plotT.map((t, i) => ({
-                        label: t + _perSecSuffix,
+                        label: aggName(t) + _perSecSuffix,
                         data: gappedAggRows.map(d => {
                             if (d.tokens === null) return null;
                             if (isRatio) { const b = d.tokens[bt] || 0; return b === 0 ? null : ((d.tokens[t] || 0) / b) * 100; }
                             return d.tokens[t] !== undefined ? d.tokens[t] : null;
                         }),
-                        borderColor: 'hsl(' + (i * 137) + ',70%,50%)', borderWidth: 2, pointRadius: 0, tension: 0.1, spanGaps: false
+                        borderColor: _cc(i), borderWidth: 2, pointRadius: 0, tension: 0.1, spanGaps: false
                     }));
                 }
                 // Threshold lines: for formula use single label, for direct/ratio use per-token labels
@@ -3909,11 +3945,19 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         { tokens:{} }
                     );
                     const ovCompKeys = Object.keys(ovMaxRow.tokens);
-                    // Friendly name helper: use buildTokenNameMap for correct mapping
+                    // Friendly name helper: use buildTokenNameMap for correct mapping,
+                    // with fallback to mcOverlayKeyLabelMap for mixed-XXX key columns (e.g. key_2 → StatType)
                     const _ovNameMap = buildTokenNameMap(ovCompKeys, hdr ? hdr.kpiNames : []);
-                    const fname = t => _ovNameMap[t] || t;
+                    const fname = t => _ovNameMap[t] || mcOverlayKeyLabelMap[t] || t;
 
-                    const ovKeyLabel = ovKeys.map(fname).join(' | ');
+                    // Overlay key label: resolve per selected field from master config labels,
+                    // then fall back to fname() (header-resolved or raw token key).
+                    const _compOvLabels = (masterOverlayNames[compKey] && typeof masterOverlayNames[compKey] === 'object')
+                        ? masterOverlayNames[compKey] : null;
+                    const ovKeyLabel = ovKeys.map(function(k) {
+                        const fn = fname(k);
+                        return (_compOvLabels && (_compOvLabels[fn] || _compOvLabels[k])) || fn;
+                    }).join(' | ');
                     const kpiLabel   = plotT.map(fname).join(' / ');
                     // Diagnostic
                     if(rows.length){
@@ -3955,7 +3999,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     const _ptRad = _nPts > 200 ? 0.8 : _nPts > 80 ? 1.2 : _nPts > 40 ? 1.5 : 2;
                     ovValues.forEach((ovVal, gi) => {
                         // Alpha transparency so overlapping lines show color blending
-                        const color   = 'hsla('+(gi*137)+',70%,50%,0.65)';
+                        const color   = _ccA(gi, 0.65);
                         const rowByTs = ovGroups[ovVal];
 
                         if (isFormulaMc && rule.formula) {
@@ -4051,7 +4095,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     };
                     const _kpiCountForToggle = (isFormulaMc && rule.formula) ? 1 : plotT.length;
                     ovValues.forEach((ovVal, gi) => {
-                        const chipColor = 'hsla('+(gi*137)+',70%,50%,0.65)';
+                        const chipColor = _ccA(gi, 0.65);
                         const chip = document.createElement('span');
                         chip.setAttribute('data-ov-chip', gi);
                         chip._visible = true;
@@ -4247,7 +4291,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         const _hasData = _checkTokens.some(t =>
                             Object.values(rowByTs).some(r => r.tokens[t] !== undefined));
                         if (!_hasData) return;
-                        const color = 'hsla('+(ci*137)+',70%,50%,0.75)';
+                        const color = _ccA(ci, 0.75);
                         if (isFormulaMc && rule.formula) {
                             _goDatasets.push({
                                 label: _goCompNames[ci], _compIdx: ci,
@@ -4321,7 +4365,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     goKeyBar.appendChild(_goAllBtn);
                     _eck.forEach((compKey, ci) => {
                         if (!compIndexStore[compKey]||!compIndexStore[compKey].length) return;
-                        const chipColor='hsla('+(ci*137)+',70%,50%,0.75)';
+                        const chipColor=_ccA(ci, 0.75);
                         const chip=document.createElement('span');
                         chip.setAttribute('data-go-chip',ci); chip._visible=true;
                         chip.style.cssText='display:inline-flex;align-items:center;gap:4px;font-weight:600;color:'+chipColor+';cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent;transition:all 0.15s;user-select:none;';
@@ -4424,7 +4468,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                                 cd.push({
                                     label: pcName(t) + _perSecSuffix,
                                     data: gappedRows.map(d => d.tokens === null ? null : (d.tokens[t] !== undefined ? _applyPerSec(d.tokens[t]) : null)),
-                                    borderColor: 'hsl(' + (i * 137 + 40) + ',55%,55%)', borderWidth: 1, borderDash: [4, 3],
+                                    borderColor: _ccDim(i), borderWidth: 1, borderDash: [4, 3],
                                     pointRadius: 0, tension: 0.1, spanGaps: false, yAxisID: 'y1'
                                 });
                             });
@@ -4438,7 +4482,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                                 const raw=d.tokens[t]!==undefined?d.tokens[t]:null;
                                 return _applyPerSec(raw);
                             }),
-                            borderColor:'hsl('+(i*137)+',70%,50%)',borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:false
+                            borderColor:_cc(i),borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:false
                         }));
                     }
                     // Threshold lines: formula uses single label, direct/ratio uses per-token
@@ -4485,7 +4529,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
             mSeries.forEach(function(s) {
                 var yId = hasY1 ? (s.axis || 'y') : undefined;
                 if (s.type === 'direct') {
-                    var col = 'hsl(' + (_mDirectIdx * 137) + ',70%,50%)';
+                    var col = _cc(_mDirectIdx);
                     _mDirectIdx++;
                     ds.push({
                         label: s.label || s.token,
@@ -4533,7 +4577,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                 ds.push({
                     label: t,
                     data: gappedStdData.map(function(d){ return d.tokens === null ? null : (d.tokens[t] !== undefined ? d.tokens[t] : null); }),
-                    borderColor: 'hsl(' + (i * 137) + ',70%,50%)', borderWidth: 1.5, pointRadius: 0, tension: 0.1, spanGaps: false,
+                    borderColor: _cc(i), borderWidth: 1.5, pointRadius: 0, tension: 0.1, spanGaps: false,
                     yAxisID: dualAxis ? 'y' : undefined
                 });
             });
@@ -4587,7 +4631,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     ds.push({
                         label: t,
                         data: gappedStdData.map(d => d.tokens === null ? null : (d.tokens[t] !== undefined ? d.tokens[t] : null)),
-                        borderColor: 'hsl(' + (i * 137 + 40) + ',55%,55%)', borderWidth: 1, borderDash: [4, 3],
+                        borderColor: _ccDim(i), borderWidth: 1, borderDash: [4, 3],
                         pointRadius: 0, tension: 0.1, spanGaps: false, yAxisID: 'y1'
                     });
                 });
@@ -4615,7 +4659,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     if(isRatio){const b=d.tokens[bt]||0;return b===0?null:((d.tokens[t]||0)/b)*100;}
                     return d.tokens[t]!==undefined?d.tokens[t]:null;
                 }),
-                borderColor:'hsl('+(i*137)+',70%,50%)',borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:false
+                borderColor:_cc(i),borderWidth:1.5,pointRadius:0,tension:0.1,spanGaps:false
             }));
             _makeThresholdLines(rule.thresholds, labels.length).forEach(function(tl){ ds.push(tl); });
             const _stdGapCfg=makeGapPlugin(stdGapIndices);
@@ -5132,6 +5176,11 @@ function toggleAnalysisMode(prefix) {
         else if (isFormula) lbl.childNodes[0].textContent = 'Metrics (reference) ';
         else if (isMixed) lbl.childNodes[0].textContent = 'Direct Metrics to Plot ';
         else lbl.childNodes[0].textContent = prefix ? 'KPI Metrics ' : 'Metrics';
+    }
+    // Show/hide the double-click-to-insert hint (MC formula/mixed modes only)
+    if (prefix) {
+        var _dblHint = document.getElementById('mcKpiDblClickHint');
+        if (_dblHint) _dblHint.style.display = (isFormula || isMixed) ? '' : 'none';
     }
     // Populate denominator select when ratio is chosen
     if (isRatio) {
@@ -5757,7 +5806,20 @@ function _processMcHeaderLines(lines, sourceName, forceAll, noReset) {
                 xxxKeyPositions.push(i);
                 logDebug('header', '[Pass3] position '+i+' unanimously XXX ('+_xxxVotes[i]+' lines) → demote to overlay');
             } else {
-                logDebug('header', '[Pass3] position '+i+' mixed: XXX×'+_xxxVotes[i]+' static×'+_staticVotes[i]+' → keep as key');
+                logDebug('header', '[Pass3] position '+i+' mixed: XXX×'+_xxxVotes[i]+' static×'+_staticVotes[i]+' → keep as key, register as overlay candidate');
+                // A mixed position stays as a grouping key (preserves component differentiation),
+                // but the field is ALSO an overlay dimension. Register both the display label and
+                // the raw token key (key_<i>) so populateOverlayKeySelect can find it by token key.
+                var _mixedLbl = xxxLabels[i] || ('Field' + (_keyIdx[i] + 1));
+                var _mixedRaw = 'key_' + i;
+                if (!mcOverlayFieldNames.has(_mixedLbl)) {
+                    mcOverlayFieldNames.add(_mixedLbl);
+                    logAction('Overlay candidate registered: "' + _mixedLbl + '" (mixed XXX/static key position)');
+                }
+                if (!mcOverlayFieldNames.has(_mixedRaw)) {
+                    mcOverlayFieldNames.add(_mixedRaw);
+                }
+                mcOverlayKeyLabelMap[_mixedRaw] = _mixedLbl;
             }
         });
 
@@ -5890,12 +5952,21 @@ function _processMcHeaderLines(lines, sourceName, forceAll, noReset) {
         // ── Register KPI-zone (XXX) columns as overlay-only fields ──────────
         // Columns in the DATA zone annotated with Name(XXX) e.g. ProbeIPAddr(XXX)
         // are variable per-row: they belong in Overlay Key only, not KPI Metrics.
-        kpiNameSet.forEach(function(n) {
-            if (/\(XXX\)$/i.test(n)) {
-                var cleanName = n.replace(/\(XXX\)$/i, '').trim();
-                mcOverlayFieldNames.add(cleanName);
-                logAction('Overlay-only field registered: "' + cleanName + '" (KPI-zone XXX)');
-            }
+        // NOTE: kpiNameSet already has (XXX) stripped by _parseHeaderLine (it returns
+        // _p.label, not the raw string), so we must scan the raw lines directly.
+        lines.forEach(function(line) {
+            var cols = line.split(',').map(function(c){ return c.trim(); });
+            if (cols.length < _minCols) return;
+            cols.slice(_dsi).forEach(function(n) {
+                if (!n) return;
+                var _p = parseMcHeaderCol(n);
+                if (_p.label !== null && _p.val.toUpperCase() === 'XXX') {
+                    if (!mcOverlayFieldNames.has(_p.label)) {
+                        mcOverlayFieldNames.add(_p.label);
+                        logAction('Overlay-only field registered: "' + _p.label + '" (KPI-zone XXX)');
+                    }
+                }
+            });
         });
 
         // ── Strip (XXX) from KPI names ──────────────────────────────────────
@@ -5949,6 +6020,60 @@ function _processMcHeaderLines(lines, sourceName, forceAll, noReset) {
         logAction("Header file '" + sourceName + "': " + matched + " component(s) mapped, "
                   + mcKpiNames.length + " KPI name(s). Type col=\"" + mcColLabels.typeLabel
                   + "\" CompId col=\"" + mcColLabels.compLabel + "\".");
+
+        // ── Re-key compIndexStore: KPI_N → actual header names ──────────────
+        // When data is parsed before a header is loaded, all data-zone token keys
+        // are stored as KPI_1, KPI_2, … — the positional fallback names.
+        // Now that mcHeaderStore is fully built (including any XXX demotion and
+        // multi-variant resolution), rename those KPI_N keys to the correct
+        // display names so rule tokens and chart data-access align.
+        // Only components whose tokens still contain KPI_N keys are touched;
+        // components already parsed with a header are skipped.
+        (function _rekeyCompIndexStore() {
+            var _kpiNPat = /^KPI_\d+$/;
+            var _rekeyCount = 0;
+            Object.keys(mcHeaderStore).forEach(function(ck) {
+                var rows = compIndexStore[ck];
+                if (!rows || !rows.length) return;
+                // Sample max-column row to get the full token key set for this component.
+                var maxRow = rows.reduce(function(a, b) {
+                    return Object.keys(a.tokens).length >= Object.keys(b.tokens).length ? a : b;
+                }, { tokens: {} });
+                var tokenKeys = Object.keys(maxRow.tokens);
+                if (!tokenKeys.some(function(k) { return _kpiNPat.test(k); })) return;
+                var kpiNames = mcHeaderStore[ck].kpiNames || [];
+                if (!kpiNames.length) return;
+                // Build KPI_N → displayName rename map using the same helper used everywhere.
+                var nameMap = buildTokenNameMap(tokenKeys, kpiNames);
+                var renameMap = {};
+                tokenKeys.forEach(function(k) {
+                    if (_kpiNPat.test(k) && nameMap[k] && nameMap[k] !== k) {
+                        renameMap[k] = nameMap[k];
+                    }
+                });
+                if (!Object.keys(renameMap).length) return;
+                rows.forEach(function(row) {
+                    if (!row.tokens) return;
+                    Object.keys(renameMap).forEach(function(oldKey) {
+                        if (oldKey in row.tokens) {
+                            row.tokens[renameMap[oldKey]] = row.tokens[oldKey];
+                            delete row.tokens[oldKey];
+                        }
+                    });
+                });
+                _rekeyCount++;
+                var _sample = Object.keys(renameMap).slice(0, 3).map(function(k) {
+                    return k + '→' + renameMap[k];
+                });
+                logAction('Header re-key [' + ck + ']: renamed ' + Object.keys(renameMap).length
+                    + ' column(s) (' + _sample.join(', ') + (Object.keys(renameMap).length > 3 ? ', …' : '')
+                    + ') in ' + rows.length + ' row(s).');
+            });
+            if (_rekeyCount > 0) {
+                logAction('Header re-key complete: ' + _rekeyCount + ' component(s) updated with actual column names.');
+            }
+        })();
+
         populateMcSelects();
 }
 
@@ -5986,6 +6111,21 @@ function loadMasterConfig(input) {
             masterConfig = cfg;
             matchedProfile = null;
 
+            // Collect overlay-name overrides from each profile's optional "overlayNames" block.
+            // Structure per profile: { compKey: { fieldName: displayLabel } }
+            // Merged into a flat compKey → { fieldName: label } map across all profiles.
+            masterOverlayNames = {};
+            cfg.profiles.forEach(function(p) {
+                if (p.overlayNames && typeof p.overlayNames === 'object') {
+                    Object.assign(masterOverlayNames, p.overlayNames);
+                }
+            });
+            if (Object.keys(masterOverlayNames).length > 0) {
+                logAction('Config: Overlay name overrides loaded — '
+                    + Object.keys(masterOverlayNames).length + ' component mapping(s) across profiles: '
+                    + Object.keys(masterOverlayNames).join(', '));
+            }
+
             const apps = [...new Set(cfg.profiles.map(p => p.app || 'Unknown'))];
             document.getElementById('masterConfigName').textContent = fname;
             document.getElementById('masterConfigSummary').textContent =
@@ -6009,6 +6149,7 @@ function loadMasterConfig(input) {
 function clearMasterConfig() {
     masterConfig = null;
     matchedProfile = null;
+    masterOverlayNames = {};
     document.getElementById('masterConfigBadge').style.display = 'none';
     document.getElementById('masterConfigName').textContent = '';
     document.getElementById('masterConfigSummary').textContent = '';
@@ -7114,16 +7255,29 @@ function reverseMapProfileRuleTokens() {
     });
     if (!Object.keys(reverseMap).length) return;
 
+    // Build a flat set of all actual token keys currently in compIndexStore.
+    // Tokens already present as actual keys must NOT be reverse-mapped — they are
+    // already correct display names. Only KPI_N placeholders (not yet resolved) need mapping.
+    var _allActualKeys = new Set();
+    Object.keys(compIndexStore).forEach(function(ck) {
+        var rows = compIndexStore[ck];
+        if (rows && rows.length) {
+            Object.keys(rows[0].tokens || {}).forEach(function(k) { _allActualKeys.add(k); });
+        }
+    });
+
     ruleQueue.forEach(function(rule) {
         if (!rule._profileLoaded && !rule._sourceProfile) return;
         var changed = false;
         rule.tokens = rule.tokens.map(function(t) {
-            if (reverseMap[t]) { changed = true; return reverseMap[t]; }
+            // Only reverse-map if the token is NOT already a valid actual key in the data.
+            // Guards against converting resolved display names back to KPI_N positional fallbacks.
+            if (reverseMap[t] && !_allActualKeys.has(t)) { changed = true; return reverseMap[t]; }
             return t;
         });
         if (rule._overlayKeys) {
             rule._overlayKeys = rule._overlayKeys.map(function(k) {
-                if (reverseMap[k]) { changed = true; return reverseMap[k]; }
+                if (reverseMap[k] && !_allActualKeys.has(k)) { changed = true; return reverseMap[k]; }
                 return k;
             });
         }
@@ -7317,9 +7471,14 @@ function refreshMcKpiSelector() {
             if (sampleVal !== undefined && typeof sampleVal === 'string' && isNaN(Number(sampleVal))) return;
         }
         const o = document.createElement('option');
-        o.value = rawKey;
+        // Use the display name as the option value so rule.tokens stores actual header
+        // names (e.g. "CPUUtil") instead of positional fallbacks (e.g. "KPI_1").
+        // Fallback to rawKey when no mapping exists (padding columns beyond header length).
+        o.value = tokenNameMap[rawKey] || rawKey;
         o.textContent = displayName;
-        if (prevSelected.has(rawKey)) o.selected = true;
+        // Restore prior selection: match on new display-name value first, then raw key
+        // for backwards compat with selections made before the header was loaded.
+        if (prevSelected.has(o.value) || prevSelected.has(rawKey)) o.selected = true;
         sk.appendChild(o);
     });
 
@@ -7366,6 +7525,41 @@ function refreshMcKpiSelector() {
         });
     }
 }
+
+// Double-click a KPI metric option → insert its name at the cursor in the formula bar.
+// Works in formula and mixed modes. In other modes the double-click is a no-op so the
+// user can still double-click to select a single item without accidental side effects.
+function mcKpiInsertToFormula(evt) {
+    var mode = document.getElementById('mcMode').value;
+    if (mode !== 'formula' && mode !== 'mixed') return;
+    // Resolve the double-clicked option (the option under the pointer, or the first selection).
+    var sel = document.getElementById('selMcKpi');
+    var name = null;
+    if (evt && evt.target && evt.target.tagName === 'OPTION') {
+        name = evt.target.value;
+    } else {
+        // Fallback: use the most-recently selected option
+        var opts = Array.from(sel.selectedOptions);
+        if (opts.length) name = opts[opts.length - 1].value;
+    }
+    if (!name) return;
+    var inp = document.getElementById('mcFormulaExpr');
+    if (!inp) return;
+    var start  = (inp.selectionStart !== undefined) ? inp.selectionStart : inp.value.length;
+    var end    = (inp.selectionEnd   !== undefined) ? inp.selectionEnd   : inp.value.length;
+    var before = inp.value.slice(0, start);
+    var after  = inp.value.slice(end);
+    // Auto-space: add a space before/after if the surrounding context isn't already a
+    // whitespace or an operator character, so the formula stays readable.
+    var prefix = (before.length && !/[\s(+\-*\/]$/.test(before)) ? ' ' : '';
+    var suffix = (after.length  && !/^[\s)+\-*\/]/.test(after))  ? ' ' : '';
+    inp.value = before + prefix + name + suffix + after;
+    var newPos = start + prefix.length + name.length + suffix.length;
+    inp.setSelectionRange(newPos, newPos);
+    inp.focus();
+    logAction('Formula: inserted "' + name + '" at position ' + start + '.');
+}
+
 function toggleOverlayKey() {
     const on = document.getElementById('mcOverlay').checked;
     document.getElementById('overlayKeyRow').style.display = on ? 'block' : 'none';
@@ -7407,7 +7601,8 @@ function populateOverlayKeySelect() {
     if (mcOverlayFieldNames.size > 0) {
         // Header loaded: show exactly the registered XXX fields that exist in this component's tokens
         allTokenKeys.forEach(function(rawKey) {
-            const displayName = (mcHeaderStore[selectedKey] ? (function(){ const nm = buildTokenNameMap([rawKey], mcHeaderStore[selectedKey].kpiNames || []); return nm[rawKey] || rawKey; })() : rawKey);
+            // Resolve display name: prefer header-driven mapping, then key-label map (mixed-XXX key positions), then raw key
+            const displayName = (mcHeaderStore[selectedKey] ? (function(){ const nm = buildTokenNameMap([rawKey], mcHeaderStore[selectedKey].kpiNames || []); return nm[rawKey] || mcOverlayKeyLabelMap[rawKey] || rawKey; })() : (mcOverlayKeyLabelMap[rawKey] || rawKey));
             if (mcOverlayFieldNames.has(rawKey) || mcOverlayFieldNames.has(displayName)) {
                 overlayKeys.push({ raw: rawKey, display: displayName });
             }
@@ -7427,6 +7622,20 @@ function populateOverlayKeySelect() {
                 overlayKeys.push({ raw: rawKey, display: rawKey });
             }
         });
+    }
+
+    // Apply per-field display labels from master config overlayNames (profile-level).
+    // masterOverlayNames[compKey] = { fieldName: displayLabel } — look up each option by
+    // its raw key or current display name and replace with the mapped label when found.
+    const compOverlayLabels = (masterOverlayNames[selectedKey] && typeof masterOverlayNames[selectedKey] === 'object')
+        ? masterOverlayNames[selectedKey] : null;
+    if (compOverlayLabels) {
+        overlayKeys.forEach(function(ok) {
+            const label = compOverlayLabels[ok.display] || compOverlayLabels[ok.raw];
+            if (label) ok.display = label;
+        });
+        logAction('Overlay Key: Per-field master labels applied for [' + selectedKey + ']: '
+            + overlayKeys.map(function(ok){ return '"' + ok.raw + '" → "' + ok.display + '"'; }).join(', '));
     }
 
     if (overlayKeys.length === 0) {
