@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <!-- CSP omitted: file:/// protocol has inconsistent CSP support across browsers.
          SRI integrity hashes on CDN scripts below provide MITM protection instead. -->
-    <title>KPI Graph and Analysis | v3.0.0</title>
+    <title>KPI Graph and Analysis | v3.4.0</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8" integrity="sha384-Cs3dgUx6+jDxxuqHvVH8Onpyj2LF1gKZurLDlhqzuJmUqVYMJ0THTWpxK5Z086Zm" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@3.0.0" integrity="sha384-dwwI6ICEN/0ZQlS5owhUa/6ZzvwUPmjH45bFVCAcjgjTulbHJvlE+TGU3g1k0N3R" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0" integrity="sha384-dwwI6ICEN/0ZQlS5owhUa/6ZzvwUPmjH45bFVCAcjgjTulbHJvlE+TGU3g1k0N3R" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
@@ -227,7 +227,7 @@
 <div class="container">
     <div class="header-main">
         <div>
-            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em;opacity:0.5;">v3.0.0</span></h2>
+            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em;opacity:0.5;">v3.4.0</span></h2>
             <div style="font-size:0.8em;color:#888;margin-top:5px;"><strong>Author:</strong> Shiju | <strong>Email:</strong> tipper.axioms_3j&#64;icloud.com</div>
         </div>
         <div style="display:flex;gap:10px;">
@@ -402,7 +402,7 @@
                 <strong>Ratio Mode:</strong> Each Numerator KPI &#247; Denominator &#215; 100.<br>Formula: <code>(Numerator / Denominator) &#215; 100</code>
             </div>
             <div id="ratioDenomRow" class="hidden"><label>Denominator (base KPI)</label><select id="selDenom"></select></div>
-            <div id="selAWrapper" style="grid-column:span 2;"><label id="selALabel">Metrics</label><select id="selA" multiple></select></div>
+            <div id="selAWrapper" style="grid-column:span 2;"><label id="selALabel">Metrics<small id="selADblClickHint" style="font-weight:normal;color:#888;display:none;"> &middot; double-click to insert into formula</small></label><select id="selA" multiple ondblclick="stdKpiInsertToFormula(event)"></select></div>
             <div id="multiSeriesSection" class="hidden" style="grid-column:span 2;">
                 <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
                     <button type="button" class="btn-mini" style="background:var(--primary);color:white;" onclick="addMultiSeries('direct')">+ Direct Metric</button>
@@ -464,6 +464,8 @@
                     <option value="direct">Direct Value</option>
                     <option value="ratio">Ratio %</option>
                     <option value="formula">Formula (Derived KPI)</option>
+                    <option value="mixed">Mixed (Direct + Formula)</option>
+                    <option value="multi">Multi-Series (Direct + Formulas)</option>
                 </select>
             </div>
             <div style="grid-column:span 2;">
@@ -498,26 +500,30 @@
                 <label style="margin-top:8px;">Result Label</label>
                 <input type="text" id="mcFormulaLabel" placeholder="e.g. Derived Metric">
             </div>
+            <div id="mcMixedDualAxisRow" style="display:none;grid-column:span 2;padding:6px 0 0 0;">
+                <input type="checkbox" id="mcMixedDualAxis" style="width:auto;margin:0;">
+                <label for="mcMixedDualAxis" style="display:inline;margin:0 0 0 6px;cursor:pointer;font-weight:normal;">Dual Y-axis (Direct left, Formula right)</label>
+            </div>
+            <div id="mcMultiSeriesSection" class="hidden" style="grid-column:span 2;">
+                <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;flex-wrap:wrap;">
+                    <button type="button" class="btn-mini" style="background:var(--primary);color:white;" onclick="addMcMultiSeries('direct')">+ Direct Metric</button>
+                    <button type="button" class="btn-mini" style="background:#6f42c1;color:white;" onclick="addMcMultiSeries('formula')">&#402; Formula</button>
+                    <small style="color:#888;">Each row = one line in the chart. Direct = raw KPI (solid). Formula = derived KPI (dashed).</small>
+                </div>
+                <div style="display:flex;gap:6px;padding:0 0 4px 0;font-size:0.75em;color:#aaa;font-weight:600;letter-spacing:0.03em;">
+                    <span style="width:68px;flex-shrink:0;">TYPE</span>
+                    <span style="flex:2;min-width:160px;">KPI / FORMULA EXPRESSION</span>
+                    <span style="flex:1;min-width:110px;">RESULT LABEL</span>
+                    <span style="width:76px;flex-shrink:0;">Y-AXIS</span>
+                    <span style="width:28px;"></span>
+                </div>
+                <div id="mcMultiSeriesList"></div>
+            </div>
             <div style="grid-column:span 2;">
                 <div style="padding:10px 12px;background:rgba(0,123,255,0.05);border-radius:6px;border:1px solid var(--border-color);">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <input type="checkbox" id="mcOverlay" style="width:auto;cursor:pointer;" onchange="toggleOverlayKey()">
-                        <div>
-                            <label style="margin:0;cursor:pointer;" for="mcOverlay">&#128257; Overlay Mode</label>
-                            <div style="font-size:0.78em;color:#888;font-weight:normal;">
-                                Split rows by one or more KPI columns (the Overlay Keys).
-                                Each distinct combination of key values becomes a line group;
-                                for multiple keys, values are joined with " | " (e.g. 116 | A).
-                            </div>
-                        </div>
-                    </div>
-                    <div id="overlayKeyRow" style="display:none;margin-top:10px;">
-                        <label style="margin-bottom:4px;">Overlay Key Column(s) <small style="font-weight:normal;color:#888;">(select one or more columns whose values split rows into groups — selection order = overlay priority)</small></label>
-                        <select id="selOverlayKey" multiple size="3" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:inherit;color:inherit;"></select>
-                    </div>
-                    <div id="overlayExcludeRow" style="display:none;margin-top:8px;">
-                        <label style="margin-bottom:4px;">Exclude Values <small style="font-weight:normal;color:#888;">(comma-separated overlay key values to exclude from chart)</small></label>
-                        <input type="text" id="mcOverlayExclude" placeholder="e.g. 116, N/A, Cell (A) — for multi-key: 116 | A" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:inherit;color:inherit;">
+                    <div id="overlayExcludeRow">
+                        <label style="margin-bottom:4px;">Exclude Overlay Values <small style="font-weight:normal;color:#888;">(comma-separated — omit specific overlay groups from chart; overlay is auto-detected from dataset XXX columns)</small></label>
+                        <input type="text" id="mcOverlayExclude" placeholder="e.g. Call-01, N/A — for multi-key: 192.168.1.1 | 8080" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:4px;background:inherit;color:inherit;">
                     </div>
                 </div>
             </div>
@@ -566,7 +572,7 @@
             <span><strong id="active-file-label"></strong></span>
             <button class="btn-mini" style="background:var(--success);color:white;" onclick="_generateAllFileDashboards().catch(function(e){logAction('Refresh All: Error — '+(e&&e.message?e.message:String(e)));console.error('Refresh All error:',e);_hideGenProgress();})" title="Regenerate charts for all loaded files">&#8635; Refresh All</button>
             <button class="btn-mini" style="background:var(--danger);color:white;" onclick="resetAllZoom()">RESET VIEW (Full Data)</button>
-            <small style="color:#aaa;font-size:0.75em;">Drag to zoom · Ctrl+Drag to pan</small>
+            <small style="color:#aaa;font-size:0.75em;">Scroll to zoom · Drag to select range · Ctrl+Drag to pan</small>
         </div>
         <div id="gen-progress">
           <div id="gen-progress-track"><div id="gen-progress-fill"></div></div>
@@ -626,7 +632,7 @@
         <span><span class="dbg-dot" style="background:#e57cf5;"></span><span style="color:#e57cf5;">Import/Reset</span></span>
         <span><span class="dbg-dot" style="background:#ff6b6b;"></span><span style="color:#ff6b6b;">Anomaly/Warn</span></span>
         <span id="verbose-legend-badge" style="color:#aaa;font-size:0.85em;padding:1px 5px;border:1px solid #555;border-radius:3px;margin-left:2px;">VERBOSE: OFF</span>
-        <span style="margin-left:auto;color:#888;">v3.0.0-DEBUG</span>
+        <span style="margin-left:auto;color:#888;">v3.4.0-DEBUG</span>
     </div>
 </div>
 
@@ -1669,8 +1675,66 @@ function processFilesFromUI() {
 
     // ── Per-file profile matching ────────────────────────────────────────────
     if (masterConfig && !_profileAlreadySelected) {
+        var _isDirSearchMode = !!(document.getElementById('enableDirSearch') && document.getElementById('enableDirSearch').checked);
+        var _isCombineMode = !_isDirSearchMode && !!(document.getElementById('combineFiles') && document.getElementById('combineFiles').checked);
+        var _allFnames = Object.keys(rawFilesStore);
+        // Use prefix grouping when dir-search or combine mode with more than 10 files
+        var _usePrefixGrouping = (_isDirSearchMode || _isCombineMode) && _allFnames.length > 10;
+
+        if (_usePrefixGrouping) {
+            // ── Prefix-grouped profile matching ─────────────────────────────────
+            // Build prefix map: { prefix → [fname, ...] }
+            var _prefixMap = {};
+            _allFnames.forEach(function(fname) {
+                var _bare = fname.includes('/') ? fname.split('/').pop() : fname;
+                var _pfx = (typeof getFilePrefix === 'function' ? getFilePrefix(_bare) : null) || _bare;
+                if (!_prefixMap[_pfx]) _prefixMap[_pfx] = [];
+                _prefixMap[_pfx].push(fname);
+            });
+
+            // For each prefix, auto-match using ONE representative file (first in group)
+            Object.keys(_prefixMap).forEach(function(pfx) {
+                var _group = _prefixMap[pfx];
+                var _repFname = _group[0];
+                var candidates = autoMatchProfile(rawFilesStore[_repFname], _repFname);
+                var _matchResult;
+                if (candidates && candidates.length) {
+                    var strong = candidates.filter(function(c) { return c.score >= 0.80; });
+                    var _seenKeys = new Set();
+                    strong = strong.filter(function(c) {
+                        var key = (c.profile.app || '') + '::' + c.profile.name;
+                        if (_seenKeys.has(key)) return false;
+                        _seenKeys.add(key); return true;
+                    });
+                    var _seenC = new Set();
+                    var _dedupCands = candidates.filter(function(c) {
+                        var key = (c.profile.app || '') + '::' + c.profile.name;
+                        if (_seenC.has(key)) return false; _seenC.add(key); return true;
+                    });
+                    if (strong.length === 1) {
+                        _matchResult = { profile: strong[0].profile, score: strong[0].score, candidates: _dedupCands };
+                        logAction('Config: Auto-matched prefix "' + pfx + '" (' + _group.length + ' files) → "'
+                            + (strong[0].profile.app ? strong[0].profile.app + ': ' : '') + strong[0].profile.name
+                            + '" (' + (strong[0].score * 100).toFixed(0) + '%).');
+                    } else {
+                        _matchResult = { profile: _dedupCands[0].profile, score: _dedupCands[0].score, candidates: _dedupCands, needsReview: true };
+                    }
+                } else {
+                    _matchResult = { profile: null, score: 0, candidates: [], needsReview: true };
+                }
+                // Apply this match result to ALL files in the group
+                _group.forEach(function(fname) {
+                    fileProfileMap[fname] = _matchResult;
+                });
+            });
+
+            _showPrefixProfileSelector(_prefixMap);
+            return;
+        }
+
+        // ── Per-file profile matching (small sets, ≤10 files) ───────────────────
         var allAutoMatched = true;
-        Object.keys(rawFilesStore).forEach(function(fname) {
+        _allFnames.forEach(function(fname) {
             var candidates = autoMatchProfile(rawFilesStore[fname], fname);
             if (candidates && candidates.length) {
                 var strong = candidates.filter(function(c) { return c.score >= 0.80; });
@@ -1685,7 +1749,7 @@ function processFilesFromUI() {
                 });
                 if (strong.length === 1) {
                     fileProfileMap[fname] = { profile: strong[0].profile, score: strong[0].score, candidates: candidates };
-                    logAction('Config: Auto-matched "' + fname + '" \u2192 "' + (strong[0].profile.app ? strong[0].profile.app + ': ' : '') + strong[0].profile.name + '" (' + (strong[0].score * 100).toFixed(0) + '%).');
+                    logAction('Config: Auto-matched "' + fname + '" → "' + (strong[0].profile.app ? strong[0].profile.app + ': ' : '') + strong[0].profile.name + '" (' + (strong[0].score * 100).toFixed(0) + '%).');
                 } else {
                     // Deduplicate candidates list shown in the selector as well
                     var _seenC = new Set();
@@ -1703,7 +1767,7 @@ function processFilesFromUI() {
         });
 
         // Always show the per-file selector so the user can verify or override auto-matched
-        // profiles before parsing. Even when all files scored ≥80%, the auto-match may be wrong
+        // profiles before parsing. Even when all files scored >=80%, the auto-match may be wrong
         // (e.g. vmstat.txt matching an NTR-Statistics profile for format reasons only).
         // The modal pre-selects the best auto-matched profile for each file; the user just
         // clicks "Apply" to accept all, or changes any file's dropdown before clicking.
@@ -1721,8 +1785,22 @@ function processFilesFromUI() {
 
     let headerKeys = [];   // hoisted so MC summary block can read it after the forEach
     // ── Async chunk completion counter ─────────────────────────────────────────
-    let _pendingFiles = Object.keys(rawFilesStore).length;
-    Object.keys(rawFilesStore).forEach((name) => {
+    // Files are processed ONE AT A TIME via a sequential IIFE to avoid blocking the UI
+    // thread. The old forEach processed all files synchronously — for large dir-search
+    // loads (600 files × ~45ms each = 27s) this caused Chrome RESULT_CODE_HUNG (Error 5).
+    const _fkAll = Object.keys(rawFilesStore);
+    let _pendingFiles = _fkAll.length;
+    let _fkIdx = 0;
+    (function _processSingleFile() {
+        if (_fkIdx >= _fkAll.length) return;
+        const name = _fkAll[_fkIdx++];
+        // Update progress label so the user can see which file is being set up
+        const _ppSetup = document.getElementById('parse-progress');
+        const _pplSetup = document.getElementById('parse-progress-label');
+        if (_ppSetup && _fkAll.length > 1) {
+            _ppSetup.style.display = 'block';
+            if (_pplSetup) _pplSetup.textContent = 'Setting up file ' + _fkIdx + ' / ' + _fkAll.length + ': ' + name + '…';
+        }
         // ── Per-file profile settings (format, headers) ──────────────────────
         var fileProfile = (fileProfileMap[name] && fileProfileMap[name].profile) ? fileProfileMap[name].profile : null;
         var mode;
@@ -1816,12 +1894,14 @@ function processFilesFromUI() {
                 + '  preKeyCols=' + JSON.stringify(mcPreKeyDataCols));
         } else {
             // No multiComp profile (unmatched file or flatCsv) — still clear stale MC globals
-            // so prior file's key structure doesn't contaminate this file's parse
+            // so prior file's key structure doesn't contaminate this file's parse.
+            // mcHeaderFileLines is intentionally NOT cleared here: if the user loaded a
+            // header file via "Load Header" (non-profile path), it must survive into the
+            // detectKeyStructure and pre-parse _processMcHeaderLines calls below.
             mcKeyFieldIndices = [];
             mcKeyFieldLabels  = [];
             mcDataStartIndex  = 5;
             mcAnnotatedMode   = false;
-            mcHeaderFileLines = [];
         }
         // Capture whether this profile explicitly declares col 0 as singleTs
         // Used by _chunkMapFn to correctly build timestamps for multiComp files
@@ -1998,6 +2078,82 @@ function processFilesFromUI() {
         } else if (mode === 'multiComp') {
             logDebug('header', '[FILE: ' + name + '] Skipping detectKeyStructure — '
                 + (mcAnnotatedMode ? 'mcAnnotatedMode=true' : 'mcKeyFieldIndices already set: ' + JSON.stringify(mcKeyFieldIndices)));
+        }
+
+        // For non-profile multiComp files with a manually-loaded MC header file: derive
+        // the true key structure from header annotations, then rebuild mcHeaderStore.
+        // detectKeyStructure may have included low-cardinality KPI columns (e.g. cols 6,7)
+        // in the key index set — they look like keys statistically but are data fields.
+        // The header (value) annotations define the actual discriminator columns and
+        // override detectKeyStructure so kpiCols = cols.slice(dsi) preserves original order.
+        if (mode === 'multiComp' && !fileProfile && mcHeaderFileLines.length > 0) {
+            // Compute intersection of explicitly-annotated (non-XXX) positions in cols 3–7
+            var _hdrAnnotatedPos = null;
+            mcHeaderFileLines.forEach(function(hdrLine) {
+                var _hcols = hdrLine.split(',').map(function(c){ return c.trim(); });
+                var _linePos = [];
+                for (var _ci = 3; _ci <= 7; _ci++) {
+                    if (_ci >= _hcols.length) break;
+                    var _p = parseMcHeaderCol(_hcols[_ci]);
+                    if (_p.hasAnnotation && _p.val.toUpperCase() !== 'XXX') _linePos.push(_ci);
+                }
+                if (_hdrAnnotatedPos === null) {
+                    _hdrAnnotatedPos = _linePos.slice();
+                } else {
+                    _hdrAnnotatedPos = _hdrAnnotatedPos.filter(function(p){ return _linePos.indexOf(p) >= 0; });
+                }
+            });
+            if (_hdrAnnotatedPos && _hdrAnnotatedPos.length > 0) {
+                _hdrAnnotatedPos.sort(function(a, b){ return a - b; });
+                mcKeyFieldIndices = _hdrAnnotatedPos.slice();
+                mcDataStartIndex  = mcKeyFieldIndices[mcKeyFieldIndices.length - 1] + 1;
+                var _firstHdrCols = mcHeaderFileLines[0].split(',').map(function(c){ return c.trim(); });
+                mcKeyFieldLabels = mcKeyFieldIndices.map(function(_ki) {
+                    var _kp = parseMcHeaderCol(_firstHdrCols[_ki] || '');
+                    return _kp.label || ('Field ' + (_ki + 1));
+                });
+                logDebug('header', '[FILE: ' + name + '] Header-derived key structure overrides detectKeyStructure: '
+                    + 'keyIndices=' + JSON.stringify(mcKeyFieldIndices)
+                    + '  dsi=' + mcDataStartIndex
+                    + '  labels=[' + mcKeyFieldLabels.join(', ') + ']');
+                // Detect pre-key columns (between timestamp cols and the first key col) annotated
+                // with (XXX) — instance-varying fields that belong in Overlay Keys, not KPI Metrics.
+                // Example: InstanceName(XXX) at col 2 of vpe-header.txt.
+                var _hdrTsCols = 2; // cols 0 (Date) and 1 (Time) are always timestamp
+                var _firstKeyCol = mcKeyFieldIndices[0];
+                var _preKeyXxx = {};
+                mcHeaderFileLines.forEach(function(hdrLineX) {
+                    var _hcolsX = hdrLineX.split(',').map(function(c){ return c.trim(); });
+                    for (var _pci = _hdrTsCols; _pci < _firstKeyCol; _pci++) {
+                        if (_pci >= _hcolsX.length) break;
+                        var _pparsed = parseMcHeaderCol(_hcolsX[_pci]);
+                        if (_pparsed.hasAnnotation && _pparsed.val.toUpperCase() === 'XXX' && _pparsed.label) {
+                            if (!_preKeyXxx[_pci]) _preKeyXxx[_pci] = _pparsed.label;
+                        }
+                    }
+                });
+                var _preKeyCols = Object.keys(_preKeyXxx).map(Number).sort(function(a,b){return a-b;});
+                if (_preKeyCols.length > 0) {
+                    mcPreKeyDataCols   = _preKeyCols;
+                    mcPreKeyDataLabels = _preKeyCols.map(function(ci){ return _preKeyXxx[ci]; });
+                    _preKeyCols.forEach(function(ci) {
+                        var lbl = _preKeyXxx[ci];
+                        var rawToken = _normKpiKey(lbl);
+                        if (!mcOverlayFieldNames.has(lbl))      mcOverlayFieldNames.add(lbl);
+                        if (!mcOverlayFieldNames.has(rawToken)) mcOverlayFieldNames.add(rawToken);
+                        mcOverlayKeyLabelMap[rawToken] = lbl;
+                        logAction('Overlay-only field registered: "' + lbl + '" (pre-key XXX col ' + ci + ' from header file)');
+                    });
+                    logDebug('header', '[FILE: ' + name + '] Pre-key overlay cols detected: '
+                        + JSON.stringify(mcPreKeyDataCols)
+                        + '  labels=[' + mcPreKeyDataLabels.join(', ') + ']');
+                }
+            }
+            _processMcHeaderLines(mcHeaderFileLines, '(pre-parse: ' + name + ')', true);
+            logDebug('header', '[FILE: ' + name + '] Pre-parse mcHeaderStore rebuilt from manual header: '
+                + Object.keys(mcHeaderStore).length + ' entries'
+                + ' (keyIndices=' + JSON.stringify(mcKeyFieldIndices)
+                + '  dsi=' + mcDataStartIndex + ')');
         }
 
         // [DBG-D] Pre-parse state: everything the row mapper will use
@@ -2226,7 +2382,7 @@ function processFilesFromUI() {
                     }
                     return null; // skip this row
                 }
-                compIndexStore[compKey].push({timestamp,tokens});
+                compIndexStore[compKey].push({timestamp,tokens,_fk:name});
                 _fileCompKeys.add(compKey);  // track per-file component ownership
                 if(_isFirstRowForKey){
                     const sampleKeys=Object.keys(tokens);
@@ -2312,7 +2468,7 @@ function processFilesFromUI() {
                     }
                     return null;
                 }
-                compIndexStore[compKey].push({timestamp,tokens});
+                compIndexStore[compKey].push({timestamp,tokens,_fk:name});
                 _fileCompKeys.add(compKey);  // track per-file component ownership
                 if(_isFirstAnnotated){
                     const sampleKeys=Object.keys(tokens);
@@ -2434,14 +2590,27 @@ function processFilesFromUI() {
             + '  parsedRows=' + (data ? data.length : 0)
             + '  compKeys=' + Object.keys(compIndexStore).length
             + '  availableTokens=' + availableTokens.length);
-            // All chunks done for this file — decrement and check if all files finished
-            if (--_pendingFiles <= 0) _onAllFilesComplete();
+            // All chunks done for this file — decrement and trigger next file or finish.
+            // Next file is started HERE (after the last chunk) so that files with more than
+            // chunkSize (1000) rows — e.g. 4000–6000 row KPI files — are fully parsed
+            // before the next file's lines array is allocated. Starting the next file
+            // before _onParseComplete (i.e. before all chunks finish) would interleave
+            // large-file chunk ticks and blow memory with many simultaneous lines[] arrays.
+            if (--_pendingFiles <= 0) {
+                _onAllFilesComplete();
+            } else if (_fkIdx < _fkAll.length) {
+                setTimeout(_processSingleFile, 0); // yield one tick, then start next file
+            }
         }  // end _onParseComplete
 
-        // Start the chunked parse — first chunk processes synchronously on next tick
+        // Start the chunked parse for this file.
+        // For files < chunkSize rows (e.g. 319-row VPE files) this runs synchronously and
+        // calls _onParseComplete() inline, which then schedules the next _processSingleFile.
+        // For files >= chunkSize rows the chunk loop uses setTimeout between chunks, so
+        // _onParseComplete fires asynchronously — still correctly triggers the next file.
         _processChunk();
 
-    });  // end rawFilesStore.forEach
+    })();  // start sequential file processor (replaced rawFilesStore.forEach)
 
     // ── All-files-complete callback — runs after every file's last chunk ──────
     // (called by _onParseComplete when _pendingFiles reaches 0)
@@ -2994,7 +3163,16 @@ async function processDirSearchAndInitialize() {
 
     // Update file status
     document.getElementById('file-status').textContent = Object.keys(rawFilesStore).length + ' file(s) ready.';
-    logAction('Directory Search: ' + loaded + ' of ' + fileData.length + ' file(s) loaded. Keys: [' + newFileNames.join(', ') + ']');
+    logAction('Directory Search: ' + loaded + ' of ' + fileData.length + ' file(s) loaded. Keys: [' + newFileNames.slice(0,10).join(', ') + (newFileNames.length > 10 ? ' …+' + (newFileNames.length-10) + ' more' : '') + ']');
+
+    // Large-file count warning: >100 MC files can take minutes to parse.
+    // The sequential IIFE in processFilesFromUI() keeps the browser responsive
+    // but the user should know this will be slow.
+    if (loaded > 100) {
+        logAction('[WARN] Directory Search: ' + loaded + ' files loaded. Processing will take '
+            + Math.round(loaded * 0.05) + '–' + Math.round(loaded * 0.1) + ' seconds. '
+            + 'Watch the "Parsing file N / ' + loaded + '" progress bar. Use Cancel to abort.');
+    }
 
     // Mark as processed BEFORE calling processFilesFromUI to prevent the guard from re-entering here
     window._dirSearchProcessed = true;
@@ -3210,7 +3388,7 @@ function mergeAllAndSelect() {
 function syncCharts(sourceChart) {
     if(isInternalSync) return; isInternalSync=true;
     const{min,max}=sourceChart.scales.x;
-    chartInstances.forEach(c=>{if(c!==sourceChart) c.zoomScale('x',{min,max},'original');});
+    chartInstances.forEach(c=>{if(c!==sourceChart) c.zoomScale('x',{min,max},'none');});
     isInternalSync=false;
 }
 function resetAllZoom() { logAction('View: Zoom reset.'); isInternalSync=true; chartInstances.forEach(c=>c.resetZoom()); isInternalSync=false; _chartsAreZoomed=false; }
@@ -3306,8 +3484,8 @@ function softReset() {
         var el = document.getElementById(id);
         if (el) el.value = '';
     });
-    var mcOv = document.getElementById('mcOverlay');
-    if (mcOv) { mcOv.checked = false; toggleOverlayKey(); }
+    var mcOvExcl = document.getElementById('mcOverlayExclude');
+    if (mcOvExcl) mcOvExcl.value = '';
     var mcAgg = document.getElementById('mcAggregate');
     if (mcAgg) { mcAgg.checked = false; document.getElementById('aggOptionsRow').style.display = 'none'; }
     var mcPs = document.getElementById('mcPerSec');
@@ -3647,6 +3825,7 @@ function makeChartOptions() {
             },
             zoom:{
                 zoom:{
+                    wheel:{ enabled:true, speed:0.1 },
                     drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},
                     mode:'x',
                     onZoomComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart); logAction('View: Chart zoomed.');}
@@ -3690,7 +3869,7 @@ function makeOverlayChartOptions(ovKeyLabel, kpiLabel) {
                 }
             },
             zoom:{
-            zoom:{drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},mode:'x',onZoomComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart);logAction('View: Chart zoomed.');}},
+            zoom:{wheel:{enabled:true,speed:0.1},drag:{enabled:true, backgroundColor:'rgba(0,123,255,0.15)', borderColor:'rgba(0,123,255,0.8)', borderWidth:1},mode:'x',onZoomComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart);logAction('View: Chart zoomed.');}},
             pan:{enabled:true,mode:'x',modifierKey:'ctrl',onPanComplete:({chart})=>{_chartsAreZoomed=true; syncCharts(chart);logAction('View: Chart panned.');}}
         }},
         scales:{
@@ -3917,9 +4096,26 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                 return;
             }
 
-            // Normalize overlay keys: support both _overlayKeys (array) and legacy _overlayKey (string)
-            const ovKeys = rule._overlayKeys || (rule._overlayKey ? [rule._overlayKey] : []);
-            if ((rule._overlay || ovKeys.length > 0) && ovKeys.length) {
+            // Auto-overlay: if dataset has XXX-annotated cols (mcOverlayFieldNames), use them
+            // even when the rule has no explicit overlay flags — no UI selection required.
+            // Explicit rule._overlayKeys take priority (backward compat with saved profiles).
+            const _autoOvKeys = mcOverlayFieldNames.size > 0 ? [...mcOverlayFieldNames] : [];
+            const ovKeys = (rule._overlayKeys && rule._overlayKeys.length > 0) ? rule._overlayKeys
+                         : (rule._overlayKey ? [rule._overlayKey] : _autoOvKeys);
+            // Only enter overlay mode if at least one selected component's token schema
+            // actually contains one of the overlay keys. Without this guard, a file that
+            // has only comp 1|69 (which lacks 'Dialogic module' etc.) would enter overlay
+            // mode, skip every component via _effOvKeys, and produce zero charts.
+            const _someCompHasOvKey = ovKeys.length > 0 && _eck.some(function(ck) {
+                var _cr = compIndexStore[ck];
+                if (!_cr || !_cr.length) return false;
+                var _mx = _cr.reduce(function(a,b) {
+                    return Object.keys(a.tokens).length >= Object.keys(b.tokens).length ? a : b;
+                }, {tokens:{}});
+                var _ck = Object.keys(_mx.tokens);
+                return ovKeys.some(function(ok) { return _ck.includes(ok); });
+            });
+            if (_someCompHasOvKey) {
                 // ── OVERLAY MODE ──────────────────────────────────────────────────
                 // One chart per selected Type|CompId.
                 // Rows are split by distinct values of one or more Overlay Key columns.
@@ -3930,7 +4126,12 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                 const ptStyles = ['circle','triangle','rect','rectRot','star','cross','crossRot'];
 
                 _eck.forEach((compKey, ci) => {
-                    const rows = compIndexStore[compKey];
+                    const _allCompRows = compIndexStore[compKey];
+                    // In multi-file browse mode, _mcFileKeyFilter isolates rows to the current
+                    // file so overlay groups don't show instances from other loaded files.
+                    const rows = (window._mcFileKeyFilter && _allCompRows)
+                        ? _allCompRows.filter(function(r) { return window._mcFileKeyFilter.has(r._fk); })
+                        : _allCompRows;
                     if (!rows||!rows.length) { logAction("Warning: No data for '"+compKey+"'"); return; }
 
                     const hdr   = mcHeaderStore[compKey];
@@ -3945,6 +4146,15 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         { tokens:{} }
                     );
                     const ovCompKeys = Object.keys(ovMaxRow.tokens);
+                    // Filter overlay keys to only those present in this component's token schema.
+                    // Auto-overlay populates mcOverlayFieldNames globally from ALL XXX columns, but
+                    // a KPI-zone XXX column (e.g. 'Dialogic module', 'Port') only exists in certain
+                    // component types. Without this filter, missing keys produce '?' in group labels.
+                    const _effOvKeys = ovKeys.filter(k => ovCompKeys.includes(k));
+                    if (_effOvKeys.length === 0) {
+                        logAction("MC Overlay: skip '" + compKey + "' — none of [" + ovKeys.join(',') + "] in token schema.");
+                        return; // continue to next compKey
+                    }
                     // Friendly name helper: use buildTokenNameMap for correct mapping,
                     // with fallback to mcOverlayKeyLabelMap for mixed-XXX key columns (e.g. key_2 → StatType)
                     const _ovNameMap = buildTokenNameMap(ovCompKeys, hdr ? hdr.kpiNames : []);
@@ -3954,7 +4164,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     // then fall back to fname() (header-resolved or raw token key).
                     const _compOvLabels = (masterOverlayNames[compKey] && typeof masterOverlayNames[compKey] === 'object')
                         ? masterOverlayNames[compKey] : null;
-                    const ovKeyLabel = ovKeys.map(function(k) {
+                    const ovKeyLabel = _effOvKeys.map(function(k) {
                         const fn = fname(k);
                         return (_compOvLabels && (_compOvLabels[fn] || _compOvLabels[k])) || fn;
                     }).join(' | ');
@@ -3962,9 +4172,9 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     // Diagnostic
                     if(rows.length){
                         const sk=Object.keys(rows[0].tokens);
-                        const miss=[...plotT, ...ovKeys].filter(t=>!sk.includes(t));
+                        const miss=[...plotT, ..._effOvKeys].filter(t=>!sk.includes(t));
                         if(miss.length) logAction("MC Overlay WARN ['"+compKey+"']: keys=["+sk.slice(0,6).join(',')+"] MISSING: "+miss.join(','));
-                        else logAction("MC Overlay ['"+compKey+"']: "+rows.length+" rows, ovKeys=["+ovKeys.join(',')+"], plotT=["+plotT.join(',')+"] ✓");
+                        else logAction("MC Overlay ['"+compKey+"']: "+rows.length+" rows, ovKeys=["+_effOvKeys.join(',')+"], plotT=["+plotT.join(',')+"] ✓");
                     }
 
                     // Distinct timestamps in original order
@@ -3978,7 +4188,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                     // Group rows by overlay-key value(s); last writer wins per timestamp
                     const ovGroups = {};
                     rows.forEach(row => {
-                        const val = ovKeys.map(k => String(row.tokens[k] !== undefined ? row.tokens[k] : '?')).join(' | ');
+                        const val = _effOvKeys.map(k => String(row.tokens[k])).join(' | ');
                         if (!ovGroups[val]) ovGroups[val] = {};
                         ovGroups[val][row.timestamp] = row;
                     });
@@ -4002,7 +4212,79 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         const color   = _ccA(gi, 0.65);
                         const rowByTs = ovGroups[ovVal];
 
-                        if (isFormulaMc && rule.formula) {
+                        if (rule.mode === 'multi' && rule.series) {
+                            // Multi-series overlay: each series entry rendered per overlay group
+                            var _ovMDi = 0, _ovMFi = 0;
+                            rule.series.forEach(function(s, si) {
+                                const sLabel = (s.label || (s.type === 'direct' ? fname(s.token) : s.formula))
+                                             + ' (' + ovKeyLabel + ': ' + ovVal + ')';
+                                if (s.type === 'direct') {
+                                    datasets.push({
+                                        label: sLabel,
+                                        data: tsOrderGapped.map(ts => {
+                                            if (ts === '__gap__') return null;
+                                            const row = rowByTs[ts]; if (!row) return null;
+                                            return _applyPerSec(row.tokens[s.token] !== undefined ? row.tokens[s.token] : null);
+                                        }),
+                                        borderColor: color, borderDash: dashPatterns[_ovMDi++ % dashPatterns.length],
+                                        backgroundColor: color,
+                                        borderWidth: Math.max(1.0, 2.5 - (gi * 0.3)),
+                                        pointRadius: _ptRad + (gi * 0.15), pointHoverRadius: 5,
+                                        pointStyle: ptStyles[gi % ptStyles.length], tension: 0.1, spanGaps: false
+                                    });
+                                } else if (s.type === 'formula' && s.formula) {
+                                    const sToks = s._tokens || extractFormulaTokens(s.formula, rule.tokens);
+                                    datasets.push({
+                                        label: sLabel,
+                                        data: tsOrderGapped.map(ts => {
+                                            if (ts === '__gap__') return null;
+                                            const row = rowByTs[ts]; if (!row) return null;
+                                            var vm = {}; sToks.forEach(t => { vm[t] = row.tokens[t] !== undefined ? Number(row.tokens[t]) : NaN; });
+                                            return _applyPerSec(parseFormulaExpr(s.formula, sToks, vm));
+                                        }),
+                                        borderColor: color, borderDash: [5, 3 + (_ovMFi++ * 2)],
+                                        backgroundColor: color,
+                                        borderWidth: Math.max(1.0, 2.5 - (gi * 0.3)),
+                                        pointRadius: _ptRad, pointHoverRadius: 5,
+                                        pointStyle: ptStyles[gi % ptStyles.length], tension: 0.1, spanGaps: false
+                                    });
+                                }
+                            });
+                        } else if (rule.mode === 'mixed' && rule.formula) {
+                            // Mixed overlay: direct metrics (solid lines) + formula result (dashed) per overlay group
+                            const _ovDirectToks = rule._directTokens || [];
+                            _ovDirectToks.forEach(function(token, ti) {
+                                datasets.push({
+                                    label: fname(token) + ' (' + ovKeyLabel + ': ' + ovVal + ')',
+                                    data: tsOrderGapped.map(ts => {
+                                        if (ts === '__gap__') return null;
+                                        const row = rowByTs[ts]; if (!row) return null;
+                                        return _applyPerSec(row.tokens[token] !== undefined ? row.tokens[token] : null);
+                                    }),
+                                    borderColor: color, borderDash: dashPatterns[ti % dashPatterns.length],
+                                    backgroundColor: color,
+                                    borderWidth: Math.max(1.0, 2.5 - (gi * 0.3)),
+                                    pointRadius: _ptRad + (gi * 0.15), pointHoverRadius: 5,
+                                    pointStyle: ptStyles[gi % ptStyles.length], tension: 0.1, spanGaps: false
+                                });
+                            });
+                            const fLabel = (rule.formulaLabel || rule.formula) + ' (' + ovKeyLabel + ': ' + ovVal + ')';
+                            datasets.push({
+                                label: fLabel,
+                                data: tsOrderGapped.map(ts => {
+                                    if (ts === '__gap__') return null;
+                                    const row = rowByTs[ts]; if (!row) return null;
+                                    var varMap = {};
+                                    rule.tokens.forEach(t => { varMap[t] = row.tokens[t] !== undefined ? Number(row.tokens[t]) : NaN; });
+                                    return _applyPerSec(parseFormulaExpr(rule.formula, rule.tokens, varMap));
+                                }),
+                                borderColor: color, borderDash: [5, 3],
+                                backgroundColor: color,
+                                borderWidth: Math.max(1.5, 2.5 - (gi * 0.3)),
+                                pointRadius: _ptRad, pointHoverRadius: 5,
+                                pointStyle: ptStyles[gi % ptStyles.length], tension: 0.1, spanGaps: false
+                            });
+                        } else if (isFormulaMc && rule.formula) {
                             // Formula mode overlay: one formula result line per overlay group
                             const fLabel = (rule.formulaLabel || rule.formula) + ' (' + ovKeyLabel + ': ' + ovVal + ')';
                             datasets.push({
@@ -4025,7 +4307,7 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                                 spanGaps: false
                             });
                         } else {
-                            // One line per selected KPI metric for this overlay-key group
+                            // Direct / ratio: one line per KPI metric for this overlay group
                             plotT.forEach((token, ti) => {
                                 datasets.push({
                                     label      : fname(token)+' ('+ovKeyLabel+': '+ovVal+')',
@@ -4093,7 +4375,10 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         cross:     '<line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>',
                         crossRot:  '<line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/>'
                     };
-                    const _kpiCountForToggle = (isFormulaMc && rule.formula) ? 1 : plotT.length;
+                    const _kpiCountForToggle = rule.mode === 'multi' && rule.series ? rule.series.length
+                        : rule.mode === 'mixed' && rule.formula ? (rule._directTokens || []).length + 1
+                        : (isFormulaMc && rule.formula) ? 1
+                        : plotT.length;
                     ovValues.forEach((ovVal, gi) => {
                         const chipColor = _ccA(gi, 0.65);
                         const chip = document.createElement('span');
@@ -4449,7 +4734,67 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         else logAction("MC Chart ['"+compKey+"']: "+rows.length+" rows, plotting ["+plotT.join(',')+"] ✓");
                     }
                     let cd;
-                    if (isFormulaMc && rule.formula) {
+                    if (rule.mode === 'multi' && rule.series) {
+                        // ── MC MULTI-SERIES: any mix of direct + formula per component ──
+                        var _mcMSeries = rule.series;
+                        var _mcHasY1 = _mcMSeries.some(function(s){ return s.axis === 'y1'; });
+                        cd = [];
+                        var _mDi = 0, _mFi = 0;
+                        _mcMSeries.forEach(function(s) {
+                            var yId = _mcHasY1 ? (s.axis || 'y') : undefined;
+                            if (s.type === 'direct') {
+                                var col = _cc(_mDi++);
+                                cd.push({
+                                    label: s.label || pcName(s.token),
+                                    data: gappedRows.map(function(d){ return d.tokens === null ? null : (d.tokens[s.token] !== undefined ? _applyPerSec(d.tokens[s.token]) : null); }),
+                                    borderColor: col, borderWidth: 1.5, pointRadius: 0, tension: 0.1, spanGaps: false, yAxisID: yId
+                                });
+                            } else if (s.type === 'formula' && s.formula) {
+                                var fcol = 'hsl(' + (200 + _mFi++ * 55) + ',75%,52%)';
+                                var sToks = s._tokens || extractFormulaTokens(s.formula, rule.tokens);
+                                cd.push({
+                                    label: s.label || s.formula,
+                                    data: gappedRows.map(function(d) {
+                                        if (d.tokens === null) return null;
+                                        var vm = {}; sToks.forEach(function(t){ vm[t] = d.tokens[t] !== undefined ? Number(d.tokens[t]) : NaN; });
+                                        return _applyPerSec(parseFormulaExpr(s.formula, sToks, vm));
+                                    }),
+                                    borderColor: fcol, borderWidth: 2.5, borderDash: [5, 3],
+                                    pointRadius: 0, tension: 0.1, spanGaps: false, yAxisID: yId
+                                });
+                            }
+                        });
+                    } else if (rule.mode === 'mixed' && rule.formula) {
+                        // ── MC MIXED: direct metrics + formula result per component ────
+                        var _mcMixDual = !!rule._mixedDualAxis;
+                        var _mcDirectToks = rule._directTokens || [];
+                        var _mcFLabel = (rule.formulaLabel || rule.formula) + _perSecSuffix;
+                        cd = [];
+                        _mcDirectToks.forEach(function(t, i) {
+                            cd.push({
+                                label: pcName(t) + _perSecSuffix,
+                                data: gappedRows.map(function(d){ return d.tokens === null ? null : (d.tokens[t] !== undefined ? _applyPerSec(d.tokens[t]) : null); }),
+                                borderColor: _cc(i), borderWidth: 1.5, pointRadius: 0, tension: 0.1, spanGaps: false,
+                                yAxisID: _mcMixDual ? 'y' : undefined
+                            });
+                        });
+                        cd.push({
+                            label: _mcFLabel,
+                            data: gappedRows.map(function(d) {
+                                if (d.tokens === null) return null;
+                                var varMap = {}; rule.tokens.forEach(function(t){ varMap[t] = d.tokens[t] !== undefined ? Number(d.tokens[t]) : NaN; });
+                                return _applyPerSec(parseFormulaExpr(rule.formula, rule.tokens, varMap));
+                            }),
+                            borderColor: 'hsl(210,80%,55%)', borderWidth: 2.5, borderDash: [5, 3],
+                            pointRadius: 0, tension: 0.1, spanGaps: false,
+                            yAxisID: _mcMixDual ? 'y1' : undefined
+                        });
+                        // Threshold lines keyed by formula label
+                        (function() {
+                            var _tk = Object.keys(rule.thresholds || {})[0];
+                            if (_tk) { var _ft = {}; _ft[_mcFLabel] = rule.thresholds[_tk]; _makeThresholdLines(_ft, cl.length).forEach(function(tl){ tl.yAxisID = _mcMixDual ? 'y1' : undefined; cd.push(tl); }); }
+                        })();
+                    } else if (isFormulaMc && rule.formula) {
                         const fLabel = (rule.formulaLabel || rule.formula) + _perSecSuffix;
                         cd = [{
                             label: fLabel,
@@ -4486,20 +4831,29 @@ async function generateDashboard(_clearFirst, _ruleSubset, _skipAutoExpand, _pro
                         }));
                     }
                     // Threshold lines: formula uses single label, direct/ratio uses per-token
-                    (function() {
-                        var _thSrc = rule.thresholds;
-                        if (isFormulaMc && rule.formula) {
-                            var _fk = Object.keys(_thSrc || {})[0];
-                            if (_fk) { var _ft = {}; _ft[rule.formulaLabel || rule.formula] = _thSrc[_fk]; _thSrc = _ft; }
-                        }
-                        _makeThresholdLines(_thSrc, cl.length).forEach(function(tl){ cd.push(tl); });
-                    })();
+                    // (multi and mixed handle their own threshold lines above)
+                    if (rule.mode !== 'multi' && rule.mode !== 'mixed') {
+                        (function() {
+                            var _thSrc = rule.thresholds;
+                            if (isFormulaMc && rule.formula) {
+                                var _fk = Object.keys(_thSrc || {})[0];
+                                if (_fk) { var _ft = {}; _ft[rule.formulaLabel || rule.formula] = _thSrc[_fk]; _thSrc = _ft; }
+                            }
+                            _makeThresholdLines(_thSrc, cl.length).forEach(function(tl){ cd.push(tl); });
+                        })();
+                    }
                     const{wrap,canvas}=makeChartWrap(title,'canvas-mc-'+_idPfx+'-'+idx+'-'+ci,container);
                     const _pcGapCfg=makeGapPlugin(pcGapIndices);
                     const _pcOpts=makeChartOptions(); if(_pcGapCfg) _pcOpts.plugins.gapShader=_pcGapCfg;
                     if (isFormulaMc && rule._showSourceMetrics) {
                         _pcOpts.scales.y1 = { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false },
                             title: { display: true, text: 'Source Metrics', font: { size: 11 } } };
+                    } else if (rule.mode === 'mixed' && rule._mixedDualAxis) {
+                        _pcOpts.scales.y  = { type: 'linear', display: true, position: 'left',  title: { display: true, text: 'Direct Values',  font: { size: 11 } } };
+                        _pcOpts.scales.y1 = { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: rule.formulaLabel || 'Formula', font: { size: 11 } } };
+                    } else if (rule.mode === 'multi' && rule.series && rule.series.some(function(s){ return s.axis === 'y1'; })) {
+                        _pcOpts.scales.y1 = { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Right Y', font: { size: 11 } } };
                     }
                     logDebug('chart', '[CHART MC-pc] "' + title + '"  datasets=' + cd.length + '  labels=' + cl.length);
                     // [DBG-D] Warn if any dataset label is a raw KPI_N key
@@ -4806,6 +5160,7 @@ async function _generateAllFileDashboards(_calledFromAuto) {
     // Dir search mode: group parsedFilesStore by base filename so same-named files from
     // different subdirectories are merged into one chart section per file type.
     var _isDirSearch = !!(document.getElementById('enableDirSearch')?.checked);
+    var _isCombine   = !_isDirSearch && !!(document.getElementById('combineFiles') && document.getElementById('combineFiles').checked);
     var _iterGroups; // [{label, relPaths, fp}]
     if (_isDirSearch && fk.length > 0) {
         var _baseGroups = {};
@@ -4848,7 +5203,7 @@ async function _generateAllFileDashboards(_calledFromAuto) {
     window._genAborted = false;
     var _genStartMs = Date.now();
     logAction('Graph: Starting dashboard generation — ' + (fk.length > 0 ? fk.length + ' file(s)' : '') + (hasMcData ? (fk.length ? ' + ' : '') + Object.keys(compIndexStore).length + ' MC component(s)' : '') + ', ' + ruleQueue.length + ' rule(s).');
-    logTrace('_generateAllFileDashboards ENTER — isDirSearch=' + _isDirSearch + '  iterGroups=' + _iterGroups.length + '  [' + _iterGroups.map(function(g){return g.label+'('+g.relPaths.length+'files)';}).join(', ') + ']'
+    logTrace('_generateAllFileDashboards ENTER — isDirSearch=' + _isDirSearch + '  isCombine=' + _isCombine + '  iterGroups=' + _iterGroups.length + '  [' + _iterGroups.map(function(g){return g.label+'('+g.relPaths.length+'files)';}).join(', ') + ']'
         + '  fk=' + fk.length + '  hasMcData=' + hasMcData + '  ruleQueue=' + ruleQueue.length);
     _showGenProgress('Starting…', 0);
     await new Promise(function(r){ setTimeout(r, 0); }); // yield so progress bar paints
@@ -4993,25 +5348,39 @@ async function _generateAllFileDashboards(_calledFromAuto) {
                 var pname = entry.profile.name;
                 var fileRulesForMc = mcRules.filter(function(r) { return r._sourceProfile === pname; });
                 if (!fileRulesForMc.length) return;
-                // In dir search mode, key by base filename so duplicate profiles consolidate
-                var _mcSectionKey = _isDirSearch ? fmapKey.split('/').pop() : fmapKey;
-                if (_mcByFile[_mcSectionKey]) return; // already processed (dir search dedup)
-                // In dir search, compIndexStore is already merged from all files
-                var compKeys = _isDirSearch ? Object.keys(compIndexStore)
+                // Dir search → key by base filename; combine → key by file prefix; else full filename
+                var _mcSectionKey = _isDirSearch ? fmapKey.split('/').pop()
+                    : (_isCombine ? (getFilePrefix(fmapKey) || fmapKey) : fmapKey);
+                // Dir search and combine both read from the full compIndexStore (all rows merged in)
+                var compKeys = (_isDirSearch || _isCombine) ? Object.keys(compIndexStore)
                     : ((parsedFileMeta[fmapKey] && parsedFileMeta[fmapKey].mcComponents && parsedFileMeta[fmapKey].mcComponents.length)
                        ? parsedFileMeta[fmapKey].mcComponents : Object.keys(compIndexStore));
-                _mcByFile[_mcSectionKey] = { rules: fileRulesForMc, compKeys: compKeys };
+                if (_mcByFile[_mcSectionKey]) {
+                    // Second (or later) file maps to same section key: accumulate its relPath so
+                    // the row filter covers all files in this prefix group.
+                    _mcByFile[_mcSectionKey].relPaths.push(fmapKey);
+                    fileRulesForMc.forEach(function(r) { _handledRules.add(r); });
+                    return;
+                }
+                _mcByFile[_mcSectionKey] = { rules: fileRulesForMc, compKeys: compKeys, relPaths: [fmapKey] };
                 fileRulesForMc.forEach(function(r) { _handledRules.add(r); });
             });
 
             // Any unmatched MC rules (manually added, no source profile) go in one block
             var _orphanMcRules = mcRules.filter(function(r) { return !_handledRules.has(r); });
             if (_orphanMcRules.length) {
-                _mcByFile['__manual__'] = { rules: _orphanMcRules, compKeys: Object.keys(compIndexStore) };
+                _mcByFile['__manual__'] = { rules: _orphanMcRules, compKeys: Object.keys(compIndexStore), relPaths: [] };
             }
 
             // Generate a chart section per file (async with per-section yields)
             var _mcKeys = Object.keys(_mcByFile);
+            // Combine mode: if user picked a specific prefix in the group selector, show only that prefix
+            if (_isCombine) {
+                var _selGrp = document.getElementById('prefixGroupSelect') && document.getElementById('prefixGroupSelect').value;
+                if (_selGrp && _selGrp !== '__all__') {
+                    _mcKeys = _mcKeys.filter(function(k) { return k === _selGrp; });
+                }
+            }
             logAction('Graph: Starting MC overlay — ' + _mcKeys.length + ' section(s), ' + mcRules.length + ' rule(s), ' + Object.keys(compIndexStore).length + ' component(s).');
             for (var _mi = 0; _mi < _mcKeys.length; _mi++) {
                 if (window._genAborted) { logAction('Graph: Cancelled before MC section "' + _mcKeys[_mi] + '".'); break; }
@@ -5040,12 +5409,18 @@ async function _generateAllFileDashboards(_calledFromAuto) {
                 _insertDashboardSectionHeader(_secLabel, sectionFname === '__manual__');
                 logTrace('_generateAllFileDashboards: MC[' + (_mi+1) + '/' + _mcKeys.length + '] generateDashboard START — "' + _secLabel + '"  rules=' + sec.rules.length + '  compKeys=' + sec.compKeys.length);
                 var _mcGenStart = Date.now();
+                // For non-dir-search multi-file mode: filter compIndexStore rows to this file only
+                // so overlay groups don't bleed across files (e.g. Call-01 from file A + Call-02
+                // from file B both appearing in file A's chart). Dir search intentionally merges.
+                var _filterFiles = sec.relPaths && sec.relPaths.length ? sec.relPaths : [sectionFname];
+                window._mcFileKeyFilter = _isDirSearch ? null : new Set(_filterFiles);
                 try {
                     await generateDashboard(false, sec.rules, true, _mcProgressStart, _mcProgressEnd);
                 } catch(_mcErr) {
                     logAction('Refresh All MC: Error in section "' + _secLabel + '": ' + _mcErr.message + ' — skipping.');
                     console.error('_generateAllFileDashboards MC error [' + _secLabel + ']:', _mcErr);
                 }
+                window._mcFileKeyFilter = null;
                 logTrace('_generateAllFileDashboards: MC[' + (_mi+1) + '/' + _mcKeys.length + '] generateDashboard DONE — "' + _secLabel + '"  elapsed=' + (Date.now()-_mcGenStart) + 'ms');
                 sec.rules.forEach(function(r) { r._liveCompKeys = null; });
                 _anyGenerated = true;
@@ -5135,7 +5510,7 @@ function addMultiSeries(type) {
         (availableTokens || []).forEach(function(t) { inputHtml += '<option value="' + t + '">' + t + '</option>'; });
         inputHtml += '</select>';
     } else {
-        inputHtml = '<input class="ms-formula-expr ms-formula-input" type="text" placeholder="e.g. free+shared+buffers or (free+buf)/total*100" style="flex:2;min-width:160px;">';
+        inputHtml = '<input class="ms-formula-expr ms-formula-input" type="text" placeholder="e.g. free+shared+buffers or (free+buf)/total*100" style="flex:2;min-width:160px;" onfocus="window._lastFocusedMsInput=this" title="Double-click a metric in the Metrics selector above to insert it here">';
     }
     var labelHtml = '<input class="ms-label ms-input" type="text" placeholder="Label" style="flex:1;min-width:90px;">';
     var axisHtml  = '<select class="ms-axis" title="Y-axis" style="width:76px;flex-shrink:0;"><option value="y">Left Y</option><option value="y1">Right Y</option></select>';
@@ -5143,6 +5518,34 @@ function addMultiSeries(type) {
     row.innerHTML = badge + inputHtml + labelHtml + axisHtml + removeBtn;
     list.appendChild(row);
     _multiSeriesCount++;
+}
+
+function addMcMultiSeries(type) {
+    var list = document.getElementById('mcMultiSeriesList');
+    if (!list) return;
+    var row = document.createElement('div');
+    row.className = 'ms-row';
+    row.dataset.type = type;
+    var badge = '<span class="ms-badge ' + (type === 'direct' ? 'ms-direct-badge">Direct' : 'ms-formula-badge">Formula') + '</span>';
+    var inputHtml;
+    if (type === 'direct') {
+        inputHtml = '<select class="ms-token ms-input" style="flex:1;min-width:110px;">';
+        var kpiSel = document.getElementById('selMcKpi');
+        if (kpiSel) {
+            Array.from(kpiSel.options).forEach(function(o) {
+                inputHtml += '<option value="' + o.value + '">' + (o.textContent || o.value) + '</option>';
+            });
+        }
+        inputHtml += '</select>';
+    } else {
+        inputHtml = '<input class="ms-formula-expr ms-formula-input" type="text" placeholder="Formula expression: e.g. KPI_A + KPI_B / KPI_C" style="flex:2;min-width:160px;" onfocus="window._lastFocusedMsInput=this" title="Double-click a metric in the KPI Metrics selector above to insert it here">';
+    }
+    var labelPlaceholder = type === 'direct' ? 'Display label (optional)' : 'Result label (e.g. Derived KPI2)';
+    var labelHtml = '<input class="ms-label ms-input" type="text" placeholder="' + labelPlaceholder + '" style="flex:1;min-width:110px;">';
+    var axisHtml  = '<select class="ms-axis" title="Y-axis" style="width:76px;flex-shrink:0;"><option value="y">Left Y</option><option value="y1">Right Y</option></select>';
+    var removeBtn = '<button type="button" class="btn-mini" style="background:var(--danger);color:white;flex-shrink:0;" onclick="this.closest(\'.ms-row\').remove()">&#x2715;</button>';
+    row.innerHTML = badge + inputHtml + labelHtml + axisHtml + removeBtn;
+    list.appendChild(row);
 }
 
 // =============================================================================
@@ -5169,6 +5572,13 @@ function toggleAnalysisMode(prefix) {
         var _selAWrap = document.getElementById('selAWrapper');
         if (_selAWrap) _selAWrap.style.display = isMulti ? 'none' : '';
     }
+    // MC-builder-only controls
+    if (prefix === 'mc') {
+        var _mcMsSection = document.getElementById('mcMultiSeriesSection');
+        if (_mcMsSection) _mcMsSection.classList.toggle('hidden', !isMulti);
+        var _mcDualRow = document.getElementById('mcMixedDualAxisRow');
+        if (_mcDualRow) _mcDualRow.style.display = isMixed ? '' : 'none';
+    }
     // Update metrics label
     var lbl = document.getElementById(prefix ? 'selMcKpiLabel' : 'selALabel');
     if (lbl) {
@@ -5177,10 +5587,13 @@ function toggleAnalysisMode(prefix) {
         else if (isMixed) lbl.childNodes[0].textContent = 'Direct Metrics to Plot ';
         else lbl.childNodes[0].textContent = prefix ? 'KPI Metrics ' : 'Metrics';
     }
-    // Show/hide the double-click-to-insert hint (MC formula/mixed modes only)
+    // Show/hide the double-click-to-insert hint (formula/mixed/multi modes)
     if (prefix) {
         var _dblHint = document.getElementById('mcKpiDblClickHint');
-        if (_dblHint) _dblHint.style.display = (isFormula || isMixed) ? '' : 'none';
+        if (_dblHint) _dblHint.style.display = (isFormula || isMixed || isMulti) ? '' : 'none';
+    } else {
+        var _stdHint = document.getElementById('selADblClickHint');
+        if (_stdHint) _stdHint.style.display = (isFormula || isMixed || isMulti) ? '' : 'none';
     }
     // Populate denominator select when ratio is chosen
     if (isRatio) {
@@ -5576,12 +5989,15 @@ function parseMcHeaderCol(raw) {
     // Requires NO whitespace immediately before "(" so that unit notations like
     // "RSRP (dBm)", "Handover Success (%)", "PRB Usage DL (%)" are NOT treated
     // as annotations. Only true annotations like "Type(GSM)", "CompId(XXX)" match.
+    // hasAnnotation=true when the column has an explicit (value) marker; false for
+    // plain column names — used by _processMcHeaderLines to treat unannotated key
+    // positions as wildcards when matching header entries to data compKeys.
     const m = raw.match(/^(.+[^\s])\(([^)]+)\)$/);
-    if (m) return { label: m[1].trim(), val: m[2].trim() };
+    if (m) return { label: m[1].trim(), val: m[2].trim(), hasAnnotation: true };
     // Handle bare "(value)" with no label — e.g. "(0)" → val="0"
     const m2 = raw.match(/^\(([^)]+)\)$/);
-    if (m2) return { label: null, val: m2[1].trim() };
-    return { label: null, val: raw.trim() };
+    if (m2) return { label: null, val: m2[1].trim(), hasAnnotation: true };
+    return { label: null, val: raw.trim(), hasAnnotation: false };
 }
 
 function loadMcHeaderFile(input) {
@@ -5593,7 +6009,84 @@ function loadMcHeaderFile(input) {
         const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l && !l.startsWith('#'));
         if (!lines.length) { logAction('Header file: empty — ignored.'); return; }
         mcHeaderFileLines = lines.slice();  // store for profile saving
-        _processMcHeaderLines(lines, fname);
+
+        // Derive correct key structure from header annotations before processing.
+        // detectKeyStructure may have set mcKeyFieldIndices to include low-cardinality
+        // KPI columns (e.g. [3,4,5,6,7]) — the header (value) annotations define the
+        // actual discriminator columns. Override so _processMcHeaderLines builds correct
+        // compKeys and keyInfos even when the header is loaded after the initial parse.
+        var _lhAnnotatedPos = null;
+        lines.forEach(function(hdrLine) {
+            var _lhcols = hdrLine.split(',').map(function(c){ return c.trim(); });
+            var _lhPos = [];
+            for (var _lci = 3; _lci <= 7; _lci++) {
+                if (_lci >= _lhcols.length) break;
+                var _lp = parseMcHeaderCol(_lhcols[_lci]);
+                if (_lp.hasAnnotation && _lp.val.toUpperCase() !== 'XXX') _lhPos.push(_lci);
+            }
+            if (_lhAnnotatedPos === null) {
+                _lhAnnotatedPos = _lhPos.slice();
+            } else {
+                _lhAnnotatedPos = _lhAnnotatedPos.filter(function(p){ return _lhPos.indexOf(p) >= 0; });
+            }
+        });
+        if (_lhAnnotatedPos && _lhAnnotatedPos.length > 0) {
+            _lhAnnotatedPos.sort(function(a, b){ return a - b; });
+            mcKeyFieldIndices = _lhAnnotatedPos.slice();
+            mcDataStartIndex  = mcKeyFieldIndices[mcKeyFieldIndices.length - 1] + 1;
+            var _lhFirstCols = lines[0].split(',').map(function(c){ return c.trim(); });
+            mcKeyFieldLabels = mcKeyFieldIndices.map(function(_ki) {
+                var _lkp = parseMcHeaderCol(_lhFirstCols[_ki] || '');
+                return _lkp.label || ('Field ' + (_ki + 1));
+            });
+            logDebug('header', '[loadMcHeaderFile] Header-derived key structure: '
+                + 'keyIndices=' + JSON.stringify(mcKeyFieldIndices)
+                + '  dsi=' + mcDataStartIndex
+                + '  labels=[' + mcKeyFieldLabels.join(', ') + ']');
+            // Register pre-key (XXX) columns as Overlay Keys
+            var _lhTsCols = 2;
+            var _lhFirstKey = mcKeyFieldIndices[0];
+            var _lhPreXxx = {};
+            lines.forEach(function(hdrLineX) {
+                var _lhX = hdrLineX.split(',').map(function(c){ return c.trim(); });
+                for (var _lpci = _lhTsCols; _lpci < _lhFirstKey; _lpci++) {
+                    if (_lpci >= _lhX.length) break;
+                    var _lpp = parseMcHeaderCol(_lhX[_lpci]);
+                    if (_lpp.hasAnnotation && _lpp.val.toUpperCase() === 'XXX' && _lpp.label) {
+                        if (!_lhPreXxx[_lpci]) _lhPreXxx[_lpci] = _lpp.label;
+                    }
+                }
+            });
+            var _lhPreCols = Object.keys(_lhPreXxx).map(Number).sort(function(a,b){return a-b;});
+            if (_lhPreCols.length > 0) {
+                mcPreKeyDataCols   = _lhPreCols;
+                mcPreKeyDataLabels = _lhPreCols.map(function(ci){ return _lhPreXxx[ci]; });
+                _lhPreCols.forEach(function(ci) {
+                    var lbl = _lhPreXxx[ci];
+                    var rawToken = _normKpiKey(lbl);
+                    if (!mcOverlayFieldNames.has(lbl))      mcOverlayFieldNames.add(lbl);
+                    if (!mcOverlayFieldNames.has(rawToken)) mcOverlayFieldNames.add(rawToken);
+                    mcOverlayKeyLabelMap[rawToken] = lbl;
+                    logAction('Overlay-only field registered: "' + lbl + '" (pre-key XXX col ' + ci + ' from header file)');
+                });
+                logDebug('header', '[loadMcHeaderFile] Pre-key overlay cols: '
+                    + JSON.stringify(mcPreKeyDataCols)
+                    + '  labels=[' + mcPreKeyDataLabels.join(', ') + ']');
+            }
+        }
+
+        // If data is already parsed, trigger a full re-parse so compIndexStore is rebuilt
+        // with the correct (header-derived) key structure. processFilesFromUI will call
+        // Change 6 which re-derives mcKeyFieldIndices from mcHeaderFileLines.
+        // Without re-parse, compIndexStore has stale 5-part keys (from detectKeyStructure)
+        // that can't be matched by the 3-key header, making populateMcSelects show no labels.
+        if (Object.keys(rawFilesStore).length > 0) {
+            logAction('Header file loaded — re-parsing with header-derived key structure...');
+            processFilesFromUI();
+        } else {
+            // No data yet: build mcHeaderStore from header-only so it's ready when data arrives.
+            _processMcHeaderLines(lines, fname);
+        }
     }).catch(err => logAction('Header file error: ' + err.message));
 }
 
@@ -5609,6 +6102,23 @@ function loadMcHeaderFile(input) {
 function _resolveKpiNamesForRow(compKey, dataColCount, _storeOverride) {
     var _store = _storeOverride || (window.mcHeaderStore ? window.mcHeaderStore : (typeof mcHeaderStore !== 'undefined' ? mcHeaderStore : {}));
     var entry = _store[compKey];
+    if (!entry) {
+        // Prefix fallback: find entries stored under an annotated prefix key (isPrefix=true).
+        // This handles the pre-parse case where the header has fewer annotated key fields than
+        // the data compKey parts (e.g. header annotates "0|123|1", data compKey is "0|123|1|0|0").
+        // Pick the most-specific (longest) matching prefix to avoid false matches.
+        var _bestKey = null, _bestLen = 0;
+        var _skeys = Object.keys(_store);
+        for (var _si = 0; _si < _skeys.length; _si++) {
+            var _sk = _skeys[_si];
+            if (!_store[_sk].isPrefix) continue;
+            if ((compKey === _sk || compKey.startsWith(_sk + '|')) && _sk.length > _bestLen) {
+                _bestLen = _sk.length;
+                _bestKey = _sk;
+            }
+        }
+        if (_bestKey) entry = _store[_bestKey];
+    }
     if (!entry) return null;
     var variants = entry.variants;
     if (!variants || variants.length === 0) {
@@ -5671,8 +6181,20 @@ function _processMcHeaderLines(lines, sourceName, forceAll, noReset) {
             var kpiCols  = cols.slice(_dsi).filter(function(n){ return n !== ''; }).map(function(n) {
                 var _p = parseMcHeaderCol(n); return _p.label || n;
             });
-            var hasWildcard = keyInfos.some(function(ki){ return ki.val.toUpperCase() === 'XXX'; });
-            return { cols: cols, keyInfos: keyInfos, kpiCols: kpiCols, hasWildcard: hasWildcard };
+            // hasWildcard: true when any key position has an explicit XXX annotation OR
+            // has no annotation at all (plain column name = data field misclassified as key
+            // by detectKeyStructure — should be treated as a wildcard so the header entry
+            // matches any value at that position in the data compKey).
+            var hasWildcard = keyInfos.some(function(ki){
+                return ki.val.toUpperCase() === 'XXX' || !ki.hasAnnotation;
+            });
+            // annotatedKey: compKey prefix built from ONLY the explicitly annotated,
+            // non-XXX key positions. Used as the store key for prefix/wildcard entries.
+            var annotatedKey = keyInfos
+                .filter(function(ki){ return ki.hasAnnotation && ki.val.toUpperCase() !== 'XXX'; })
+                .map(function(ki){ return ki.val; })
+                .join('|');
+            return { cols: cols, keyInfos: keyInfos, kpiCols: kpiCols, hasWildcard: hasWildcard, annotatedKey: annotatedKey };
         }
         // Helper: build header store entry
         function _buildHeaderEntry(keyInfos, kpiCols) {
@@ -5712,7 +6234,34 @@ function _processMcHeaderLines(lines, sourceName, forceAll, noReset) {
             // Only exact matches in pass 1.
             // forceAll=true: bypass compIndexStore check (pre-parse: store all patterns so
             // _resolveKpiNamesForRow can name KPI columns correctly during parsing).
-            if (parsed.hasWildcard) return;
+            if (parsed.hasWildcard) {
+                // forceAll=true (pre-parse): compIndexStore is empty so Pass 2 cannot match.
+                // Store wildcard entries under their annotated prefix key (e.g. "0|123|1")
+                // with isPrefix=true so _resolveKpiNamesForRow can find them via prefix
+                // lookup during chunk parsing.
+                if (forceAll && parsed.annotatedKey) {
+                    var _ak = parsed.annotatedKey;
+                    var _akEntry = _buildHeaderEntry(parsed.keyInfos, parsed.kpiCols);
+                    _akEntry.kpiCount = parsed.kpiCols.length;
+                    _akEntry.isPrefix = true;
+                    if (mcHeaderStore[_ak]) {
+                        if (!mcHeaderStore[_ak].variants) {
+                            var _akExist = mcHeaderStore[_ak];
+                            _akExist.variants = [{kpiCount: _akExist.kpiCount || _akExist.kpiNames.length, kpiNames: _akExist.kpiNames.slice()}];
+                        }
+                        var _akAlready = mcHeaderStore[_ak].variants.some(function(v){ return v.kpiCount === parsed.kpiCols.length; });
+                        if (!_akAlready) {
+                            mcHeaderStore[_ak].variants.push({kpiCount: parsed.kpiCols.length, kpiNames: parsed.kpiCols.slice()});
+                            matched++;
+                        }
+                    } else {
+                        _akEntry.variants = [{kpiCount: parsed.kpiCols.length, kpiNames: parsed.kpiCols.slice()}];
+                        mcHeaderStore[_ak] = _akEntry;
+                        matched++;
+                    }
+                }
+                return;
+            }
             var compKey = parsed.keyInfos.map(function(ki){ return ki.val; }).join('|');
             if (forceAll || compIndexStore[compKey] !== undefined) {
                 var newEntry = _buildHeaderEntry(parsed.keyInfos, parsed.kpiCols);
@@ -5748,13 +6297,19 @@ function _processMcHeaderLines(lines, sourceName, forceAll, noReset) {
                 if (mcHeaderStore[ck]) return;  // already mapped by exact match or earlier wildcard
                 var keyParts = ck.split('|');
                 var matches = parsed.keyInfos.every(function(ki, idx) {
-                    if (ki.val.toUpperCase() === 'XXX') return true;
+                    // Treat explicit XXX annotations AND unannotated positions as wildcards.
+                    // Unannotated positions occur when detectKeyStructure finds more key columns
+                    // than the header file annotates (e.g. vpe-header cols 6,7 are plain KPI
+                    // names, not key discriminators) — any data value at that position matches.
+                    if (ki.val.toUpperCase() === 'XXX' || !ki.hasAnnotation) return true;
                     return ki.val === keyParts[idx];
                 });
                 if (matches) {
-                    // Substitute wildcard values with actual data key parts for display
+                    // Substitute wildcard values with actual data key parts for display.
+                    // hasAnnotation MUST be preserved so populateMcSelects can filter out
+                    // unannotated positions (KPI data cols misclassified as key fields).
                     var resolvedInfos = parsed.keyInfos.map(function(ki, idx) {
-                        return { label: ki.label, val: (ki.val.toUpperCase() === 'XXX') ? keyParts[idx] : ki.val };
+                        return { label: ki.label, val: (ki.val.toUpperCase() === 'XXX') ? keyParts[idx] : ki.val, hasAnnotation: ki.hasAnnotation };
                     });
                     var wildcardEntry = _buildHeaderEntry(resolvedInfos, parsed.kpiCols);
                     wildcardEntry.kpiCount = parsed.kpiCols.length;
@@ -6571,6 +7126,25 @@ function _applyMcHeaderFromProfile(profile) {
                     logAction('Config: Inferred pre-key data cols from mcHeaderFile: ['
                         + mcPreKeyDataCols.map(function(ci){ return ci + '=' + (_hdrCols[ci]||'?'); }).join(', ') + ']');
                 }
+                // InstanceName(XXX) goes to instanceIdIndices, NOT preKeyIndices — the annotation
+                // marks it as variable, not a static key. But the row parser stores overlay token
+                // values only via mcPreKeyDataCols. Fall back to any instanceId col sitting between
+                // the timestamp columns and the first effective key col so overlay tokens are stored.
+                if (!mcPreKeyDataCols.length && _annotated.instanceIdIndices.length) {
+                    var _fkc = _effectiveKeyIndices.length ? _effectiveKeyIndices[0] : _annotated.dataStartIndex;
+                    var _instPreCols = _annotated.instanceIdIndices.filter(function(ci) {
+                        return ci >= _mcTsCols && ci < _fkc;
+                    });
+                    if (_instPreCols.length) {
+                        mcPreKeyDataCols   = _instPreCols;
+                        mcPreKeyDataLabels = _instPreCols.map(function(ci) {
+                            return (_annotated.cleanHeaders[ci] || _hdrCols[ci] || ('Col_' + ci))
+                                .replace(/\(XXX\)$/i, '').trim();
+                        });
+                        logAction('Config: instanceId pre-key cols added to mcPreKeyDataCols: ['
+                            + mcPreKeyDataCols.map(function(ci){ return ci + '=' + (_hdrCols[ci]||'?'); }).join(', ') + ']');
+                    }
+                }
                 logAction('Config: Pre-set key structure from profile header: keyIndices=['
                     + mcKeyFieldIndices.join(',') + '] labels=[' + mcKeyFieldLabels.join(',')
                     + '] dataStart=' + mcDataStartIndex);
@@ -7197,6 +7771,124 @@ function _showPerFileProfileSelector() {
     logAction('Config: Showing per-file profile selector for ' + fileNames.length + ' file(s).');
 }
 
+function _showPrefixProfileSelector(prefixMap) {
+    var modal = document.getElementById('profile-modal');
+    var list  = document.getElementById('profile-modal-list');
+    list.innerHTML = '';
+
+    var subtitle = document.querySelector('#profile-modal-box .modal-subtitle');
+    if (subtitle) {
+        subtitle.textContent = 'Files are grouped by filename prefix. Select a profile for each group — it will be applied to all files in that group.';
+    }
+    var heading = document.querySelector('#profile-modal-box h3');
+    if (heading) heading.innerHTML = 'Prefix Group &#x2194; Profile Assignment';
+
+    var allProfiles = (masterConfig && masterConfig.profiles) ? masterConfig.profiles : [];
+    var prefixes = Object.keys(prefixMap);
+
+    prefixes.forEach(function(pfx) {
+        var _group = prefixMap[pfx];
+        var _repFname = _group[0];
+        var entry = fileProfileMap[_repFname] || { profile: null, score: 0, candidates: [] };
+
+        var row = document.createElement('div');
+        row.className = 'pf-file-row';
+
+        var nameDiv = document.createElement('div');
+        nameDiv.className = 'pf-fname';
+        var countSpan = document.createElement('span');
+        countSpan.style.cssText = 'font-size:0.8em;color:#888;margin-left:8px;';
+        countSpan.textContent = '(' + _group.length + ' file' + (_group.length > 1 ? 's' : '') + ')';
+        nameDiv.textContent = pfx;
+        nameDiv.appendChild(countSpan);
+        if (entry.profile && entry.score >= 0.80 && !entry.needsReview) {
+            var badge = document.createElement('span');
+            badge.className = 'pf-auto-badge';
+            badge.textContent = '✓ auto';
+            nameDiv.appendChild(badge);
+        }
+
+        var sel = document.createElement('select');
+        sel.dataset.pfPrefix = pfx;
+
+        var optNone = document.createElement('option');
+        optNone.value = '__none__';
+        optNone.textContent = '(No profile — manual setup)';
+        sel.appendChild(optNone);
+
+        var candidateScores = {};
+        (entry.candidates || []).forEach(function(c) {
+            candidateScores[(c.profile.app || '') + '::' + c.profile.name] = c.score;
+        });
+
+        var _rawText = rawFilesStore[_repFname] || '';
+        var _firstLine = _rawText.split(/\r?\n/)[0] || '';
+        var _fileHeaders = _firstLine.split(',').map(function(h){ return h.trim().toLowerCase(); });
+
+        allProfiles.forEach(function(p, pi) {
+            var key = (p.app || '') + '::' + p.name;
+            var scorePct = candidateScores[key] !== undefined ? (candidateScores[key] * 100).toFixed(0) + '%' : '';
+            var _optMismatch = _computeMissingTokens(p, _fileHeaders, _rawText);
+            var _mismatchWarning = _optMismatch.hasMissing ? ' ⚠ token mismatch' : '';
+            var opt = document.createElement('option');
+            opt.value = String(pi);
+            opt.textContent = (p.app ? p.app + ': ' : '') + p.name + (scorePct ? ' (' + scorePct + ')' : '') + ' [' + (p.format || 'auto') + ']' + _mismatchWarning;
+            if (_mismatchWarning) opt.style.color = '#cc7700';
+            if (entry.profile && p.name === entry.profile.name && (p.app || '') === (entry.profile.app || '')) {
+                opt.selected = true;
+            }
+            sel.appendChild(opt);
+        });
+
+        if (!entry.profile) { sel.value = '__none__'; }
+
+        row.appendChild(nameDiv);
+        row.appendChild(sel);
+        list.appendChild(row);
+    });
+
+    // Wire Apply button — expand prefix selections to all files in each group
+    document.getElementById('profile-btn-apply').onclick = function() {
+        var selects = list.querySelectorAll('select[data-pf-prefix]');
+        fileProfileMap = {};
+        selects.forEach(function(sel) {
+            var pfx = sel.dataset.pfPrefix;
+            var _group = prefixMap[pfx] || [];
+            var pfEntry;
+            if (sel.value === '__none__') {
+                pfEntry = { profile: null, score: 0, candidates: [] };
+            } else {
+                var pi = parseInt(sel.value);
+                var p = allProfiles[pi];
+                pfEntry = { profile: p, score: 1.0, candidates: [] };
+            }
+            _group.forEach(function(fname) {
+                fileProfileMap[fname] = pfEntry;
+            });
+        });
+        _profileAlreadySelected = true;
+        ruleQueue = ruleQueue.filter(function(r) { return !r._sourceProfile; });
+        _applyFileProfiles();
+        modal.classList.remove('active');
+        logAction('Config: User confirmed prefix-group profile assignments (' + prefixes.length + ' groups, ' + Object.keys(fileProfileMap).length + ' files).');
+        processFilesFromUI();
+    };
+
+    document.getElementById('profile-btn-skip').onclick = function() {
+        fileProfileMap = {};
+        Object.keys(rawFilesStore).forEach(function(f) {
+            fileProfileMap[f] = { profile: null, score: 0, candidates: [] };
+        });
+        _profileAlreadySelected = true;
+        modal.classList.remove('active');
+        logAction('Config: User skipped all prefix-group profile assignments — manual setup.');
+        processFilesFromUI();
+    };
+
+    modal.classList.add('active');
+    logAction('Config: Showing prefix-group profile selector for ' + prefixes.length + ' group(s) (' + Object.keys(rawFilesStore).length + ' total files).');
+}
+
 // Apply friendlyNames from matched profile as inline MC Header mapping
 function applyFriendlyNames() {
     if (!matchedProfile || !matchedProfile._friendlyNames) return;
@@ -7289,7 +7981,27 @@ function reverseMapProfileRuleTokens() {
 // Uses _liveCompKeys (set at generation time) when available; falls back to compKeys.
 // Never mutates the rule — preserves __auto__ in rule.compKeys for safe export/profile save.
 function _effCompKeys(rule) {
-    return rule._liveCompKeys || rule.compKeys || [];
+    if (rule._liveCompKeys) return rule._liveCompKeys;
+    var stored = rule.compKeys || [];
+    if (!stored.length) return [];
+    // Fast path: all stored keys exist verbatim in compIndexStore
+    if (stored.every(function(k) { return !!compIndexStore[k]; })) return stored;
+    // Prefix-match path: stored keys may have fewer pipe-segments than current compIndexStore keys
+    // (e.g. stored "0|123|2" matches current "0|123|2|4189|0")
+    var allKeys = Object.keys(compIndexStore);
+    var result = [];
+    var seen = {};
+    stored.forEach(function(k) {
+        if (compIndexStore[k]) {
+            if (!seen[k]) { seen[k] = true; result.push(k); }
+        } else {
+            var prefix = k + '|';
+            allKeys.forEach(function(ak) {
+                if (ak.indexOf(prefix) === 0 && !seen[ak]) { seen[ak] = true; result.push(ak); }
+            });
+        }
+    });
+    return result.length ? result : stored;
 }
 
 // Resolve __auto__ wildcard into _liveCompKeys on every MC rule before generation.
@@ -7378,8 +8090,13 @@ function populateMcSelects() {
         const o   = document.createElement('option');
         o.value   = key;
         if (hdr && hdr.keyInfos && hdr.keyInfos.length) {
-            // Use all key field labels from header for display
-            o.textContent = hdr.keyInfos.map(function(ki2, i2) {
+            // Show only annotated, non-XXX key fields \u2014 unannotated positions are KPI data columns
+            // misclassified as key discriminators by detectKeyStructure; they must not appear in Component Group.
+            var _annotatedInfos = hdr.keyInfos.filter(function(ki2) {
+                return ki2.hasAnnotation && ki2.val.toUpperCase() !== 'XXX';
+            });
+            var _displayInfos = _annotatedInfos.length > 0 ? _annotatedInfos : hdr.keyInfos;
+            o.textContent = _displayInfos.map(function(ki2, i2) {
                 var label = ki2.label || kLabels[i2] || ('Key' + (i2 + 1));
                 return label + ': ' + ki2.val;
             }).join(' \u2014 ') + '  (' + compIndexStore[key].length + ' rows)';
@@ -7510,8 +8227,6 @@ function refreshMcKpiSelector() {
     } else {
         srcLabel.textContent = '(load a header file to name these columns)';
     }
-    // If overlay mode is active, sync the key dropdown to the updated KPI list
-    if (document.getElementById('mcOverlay').checked) populateOverlayKeySelect();
     // Also populate the MC denominator select for ratio mode
     var denomSel = document.getElementById('selMcDenom');
     if (denomSel) {
@@ -7529,28 +8244,24 @@ function refreshMcKpiSelector() {
 // Double-click a KPI metric option → insert its name at the cursor in the formula bar.
 // Works in formula and mixed modes. In other modes the double-click is a no-op so the
 // user can still double-click to select a single item without accidental side effects.
-function mcKpiInsertToFormula(evt) {
-    var mode = document.getElementById('mcMode').value;
-    if (mode !== 'formula' && mode !== 'mixed') return;
-    // Resolve the double-clicked option (the option under the pointer, or the first selection).
-    var sel = document.getElementById('selMcKpi');
-    var name = null;
-    if (evt && evt.target && evt.target.tagName === 'OPTION') {
-        name = evt.target.value;
-    } else {
-        // Fallback: use the most-recently selected option
-        var opts = Array.from(sel.selectedOptions);
-        if (opts.length) name = opts[opts.length - 1].value;
+// Shared cursor-aware insert helper used by both builders.
+// fallbackId: id of the central formula input to use when no inline ms row is focused.
+// For multi mode pass null — only inline rows are valid targets.
+function _insertKpiIntoTarget(name, fallbackId) {
+    var inp = null;
+    if (window._lastFocusedMsInput && document.body.contains(window._lastFocusedMsInput)) {
+        inp = window._lastFocusedMsInput;
+    } else if (fallbackId) {
+        inp = document.getElementById(fallbackId);
     }
-    if (!name) return;
-    var inp = document.getElementById('mcFormulaExpr');
-    if (!inp) return;
-    var start  = (inp.selectionStart !== undefined) ? inp.selectionStart : inp.value.length;
-    var end    = (inp.selectionEnd   !== undefined) ? inp.selectionEnd   : inp.value.length;
+    if (!inp || !name) {
+        if (!inp) logAction('Formula insert: click inside a Formula row first, then double-click a metric.');
+        return;
+    }
+    var start  = inp.selectionStart !== undefined ? inp.selectionStart : inp.value.length;
+    var end    = inp.selectionEnd   !== undefined ? inp.selectionEnd   : inp.value.length;
     var before = inp.value.slice(0, start);
     var after  = inp.value.slice(end);
-    // Auto-space: add a space before/after if the surrounding context isn't already a
-    // whitespace or an operator character, so the formula stays readable.
     var prefix = (before.length && !/[\s(+\-*\/]$/.test(before)) ? ' ' : '';
     var suffix = (after.length  && !/^[\s)+\-*\/]/.test(after))  ? ' ' : '';
     inp.value = before + prefix + name + suffix + after;
@@ -7560,13 +8271,38 @@ function mcKpiInsertToFormula(evt) {
     logAction('Formula: inserted "' + name + '" at position ' + start + '.');
 }
 
-function toggleOverlayKey() {
-    const on = document.getElementById('mcOverlay').checked;
-    document.getElementById('overlayKeyRow').style.display = on ? 'block' : 'none';
-    document.getElementById('overlayExcludeRow').style.display = on ? 'block' : 'none';
-    if (!on) document.getElementById('mcOverlayExclude').value = '';
-    if (on) populateOverlayKeySelect();
+function stdKpiInsertToFormula(evt) {
+    var mode = document.getElementById('analysisMode').value;
+    if (mode !== 'formula' && mode !== 'mixed' && mode !== 'multi') return;
+    var sel = document.getElementById('selA');
+    var name = null;
+    if (evt && evt.target && evt.target.tagName === 'OPTION') {
+        name = evt.target.value;
+    } else {
+        var opts = Array.from(sel.selectedOptions);
+        if (opts.length) name = opts[opts.length - 1].value;
+    }
+    if (!name) return;
+    // multi mode: only insert into a focused inline row (no central formula field)
+    _insertKpiIntoTarget(name, mode === 'multi' ? null : 'formulaExpr');
 }
+
+function mcKpiInsertToFormula(evt) {
+    var mode = document.getElementById('mcMode').value;
+    if (mode !== 'formula' && mode !== 'mixed' && mode !== 'multi') return;
+    var sel = document.getElementById('selMcKpi');
+    var name = null;
+    if (evt && evt.target && evt.target.tagName === 'OPTION') {
+        name = evt.target.value;
+    } else {
+        var opts = Array.from(sel.selectedOptions);
+        if (opts.length) name = opts[opts.length - 1].value;
+    }
+    if (!name) return;
+    // multi mode: only insert into a focused inline row (no central formula field)
+    _insertKpiIntoTarget(name, mode === 'multi' ? null : 'mcFormulaExpr');
+}
+
 function toggleGroupOverlay() {
     // Group Overlay and Aggregate are mutually exclusive
     var go = document.getElementById('mcGroupOverlay');
@@ -7578,83 +8314,6 @@ function toggleGroupOverlay() {
         }
     }
 }
-function populateOverlayKeySelect() {
-    const src = document.getElementById('selMcKpi');
-    const sc  = document.getElementById('selComp');
-    const dst = document.getElementById('selOverlayKey');
-    const prevSet = new Set(Array.from(dst.selectedOptions).map(o => o.value));
-    dst.innerHTML = '';
-
-    // Determine which tokens are overlay-only for the selected component
-    const selectedKey = sc.selectedOptions.length > 0 ? sc.selectedOptions[0].value
-                      : sc.options.length > 0 ? sc.options[0].value : null;
-    const compRows = (selectedKey && compIndexStore[selectedKey]) || [];
-    const maxRow   = compRows.reduce(
-        (a, b) => Object.keys(a.tokens).length >= Object.keys(b.tokens).length ? a : b,
-        { tokens: {} }
-    );
-    const allTokenKeys = Object.keys(maxRow.tokens);
-
-    // Build overlay-field list from mcOverlayFieldNames (header-driven, authoritative)
-    const overlayKeys = [];
-
-    if (mcOverlayFieldNames.size > 0) {
-        // Header loaded: show exactly the registered XXX fields that exist in this component's tokens
-        allTokenKeys.forEach(function(rawKey) {
-            // Resolve display name: prefer header-driven mapping, then key-label map (mixed-XXX key positions), then raw key
-            const displayName = (mcHeaderStore[selectedKey] ? (function(){ const nm = buildTokenNameMap([rawKey], mcHeaderStore[selectedKey].kpiNames || []); return nm[rawKey] || mcOverlayKeyLabelMap[rawKey] || rawKey; })() : (mcOverlayKeyLabelMap[rawKey] || rawKey));
-            if (mcOverlayFieldNames.has(rawKey) || mcOverlayFieldNames.has(displayName)) {
-                overlayKeys.push({ raw: rawKey, display: displayName });
-            }
-        });
-        // Also include any registered overlay names not yet in tokens (future-proofing)
-        mcOverlayFieldNames.forEach(function(name) {
-            if (!overlayKeys.some(function(ok){ return ok.raw === name || ok.display === name; })) {
-                // Check if it's literally a token key in this component
-                if (allTokenKeys.includes(name)) overlayKeys.push({ raw: name, display: name });
-            }
-        });
-    } else {
-        // No header loaded — heuristic: string-valued tokens are overlay candidates
-        allTokenKeys.forEach(function(rawKey) {
-            const sampleVal = compRows.slice(0,10).map(function(r){ return r.tokens[rawKey]; }).find(function(v){ return v !== undefined; });
-            if (sampleVal !== undefined && typeof sampleVal === 'string' && isNaN(Number(sampleVal))) {
-                overlayKeys.push({ raw: rawKey, display: rawKey });
-            }
-        });
-    }
-
-    // Apply per-field display labels from master config overlayNames (profile-level).
-    // masterOverlayNames[compKey] = { fieldName: displayLabel } — look up each option by
-    // its raw key or current display name and replace with the mapped label when found.
-    const compOverlayLabels = (masterOverlayNames[selectedKey] && typeof masterOverlayNames[selectedKey] === 'object')
-        ? masterOverlayNames[selectedKey] : null;
-    if (compOverlayLabels) {
-        overlayKeys.forEach(function(ok) {
-            const label = compOverlayLabels[ok.display] || compOverlayLabels[ok.raw];
-            if (label) ok.display = label;
-        });
-        logAction('Overlay Key: Per-field master labels applied for [' + selectedKey + ']: '
-            + overlayKeys.map(function(ok){ return '"' + ok.raw + '" → "' + ok.display + '"'; }).join(', '));
-    }
-
-    if (overlayKeys.length === 0) {
-        const placeholder = document.createElement('option');
-        placeholder.disabled = true;
-        placeholder.textContent = '(no XXX overlay fields found — load a header file)';
-        dst.appendChild(placeholder);
-        logAction('Overlay Key: No XXX overlay fields found for [' + (selectedKey||'?') + ']. Load a header file with Name(XXX) annotations.');
-    } else {
-        overlayKeys.forEach(function(ok) {
-            const o = document.createElement('option');
-            o.value = ok.raw; o.textContent = ok.display;
-            if (prevSet.has(ok.raw)) o.selected = true;
-            dst.appendChild(o);
-        });
-        if (!dst.selectedOptions.length && dst.options.length) dst.options[0].selected = true;
-        logAction('Overlay Key: ' + overlayKeys.length + ' overlay field(s) available for [' + (selectedKey||'?') + ']: [' + overlayKeys.map(function(ok){ return ok.display; }).join(', ') + ']');
-    }
-}
 function addMcRule() {
     const _scOpts = document.getElementById('selComp').options;
     const _allSelected = _scOpts.length > 0 && Array.from(_scOpts).every(o => o.selected);
@@ -7664,8 +8323,6 @@ function addMcRule() {
     const hd=document.getElementById('mcHeader').value.trim()||'Component KPIs';
     const md=document.getElementById('mcMode').value;
     const rn=document.getElementById('mcDisplayName').value.trim();
-    const ov=document.getElementById('mcOverlay').checked;
-    const okArr=ov ? Array.from(document.getElementById('selOverlayKey').selectedOptions).map(o=>o.value) : [];
     if(!ck.length){logAction('Warning: Select at least one Type-CompId.'); return;}
     // Handle formula and ratio token logic
     var finalTokens = kp;
@@ -7684,24 +8341,75 @@ function addMcRule() {
         if (!mcDenom) { logAction('Warning: Select a denominator KPI.'); return; }
         if (!kp.length) { logAction('Warning: Select at least one numerator KPI.'); return; }
         finalTokens = [mcDenom].concat(kp.filter(function(t){ return t !== mcDenom; }));
+    } else if (md === 'multi') {
+        var _mcMsList = document.getElementById('mcMultiSeriesList');
+        if (!_mcMsList || !_mcMsList.children.length) { logAction('Warning: Add at least one series entry.'); return; }
+        var _ck0m = (ck[0] === '__auto__') ? Object.keys(compIndexStore)[0] : ck[0];
+        var _allMcKpisM = [];
+        try { var _fc0 = compIndexStore[_ck0m]; if (_fc0 && _fc0.length) _allMcKpisM = Object.keys(_fc0[0].tokens); } catch(e){}
+        var _mcSerToks = [], _serOk = true;
+        var _mcSeriesRows = Array.from(_mcMsList.children);
+        var _mcSeriesData = [];
+        _mcSeriesRows.forEach(function(srow) {
+            if (!_serOk) return;
+            var sType = srow.dataset.type;
+            var label = ((srow.querySelector('.ms-label') || {}).value || '').trim();
+            var axis  = (srow.querySelector('.ms-axis')  || {}).value || 'y';
+            if (sType === 'direct') {
+                var tok = (srow.querySelector('.ms-token') || {}).value || '';
+                if (!tok) { logAction('Warning: Each Direct series must have a KPI selected.'); _serOk = false; return; }
+                _mcSeriesData.push({ type: 'direct', token: tok, label: label || tok, axis: axis });
+                if (_mcSerToks.indexOf(tok) < 0) _mcSerToks.push(tok);
+            } else {
+                var expr = (((srow.querySelector('.ms-formula-expr') || {}).value) || '').trim();
+                if (!expr) { logAction('Warning: Each Formula series must have an expression.'); _serOk = false; return; }
+                var sToks = extractFormulaTokens(expr, _allMcKpisM.length ? _allMcKpisM : kp);
+                if (!sToks.length) { logAction('Warning: Formula references no known KPIs: ' + expr); _serOk = false; return; }
+                var _tv = {}; sToks.forEach(function(t){ _tv[t] = 1; });
+                if (parseFormulaExpr(expr, sToks, _tv) === null) { logAction('Warning: Formula syntax error: ' + expr); _serOk = false; return; }
+                _mcSeriesData.push({ type: 'formula', formula: expr, _tokens: sToks, label: label || expr, axis: axis });
+                sToks.forEach(function(t){ if (_mcSerToks.indexOf(t) < 0) _mcSerToks.push(t); });
+            }
+        });
+        if (!_serOk || !_mcSeriesData.length) return;
+        finalTokens = _mcSerToks;
+    } else if (md === 'mixed') {
+        var mcMixedExpr = document.getElementById('mcFormulaExpr').value.trim();
+        if (!mcMixedExpr) { logAction('Warning: Enter a formula expression for Mixed mode.'); return; }
+        if (!kp.length) { logAction('Warning: Select at least one Direct Metric for Mixed mode.'); return; }
+        var _ck0x = (ck[0] === '__auto__') ? Object.keys(compIndexStore)[0] : ck[0];
+        var _allMcKpisX = [];
+        try { var _fc0x = compIndexStore[_ck0x]; if (_fc0x && _fc0x.length) _allMcKpisX = Object.keys(_fc0x[0].tokens); } catch(e){}
+        var mixedFormToks = extractFormulaTokens(mcMixedExpr, _allMcKpisX.length ? _allMcKpisX : kp);
+        if (!mixedFormToks.length) { logAction('Warning: Formula references no known KPIs.'); return; }
+        var _tvx = {}; mixedFormToks.forEach(function(t){ _tvx[t] = 1; });
+        if (parseFormulaExpr(mcMixedExpr, mixedFormToks, _tvx) === null) { logAction('Warning: Formula syntax error.'); return; }
+        var _allMixedMc = mixedFormToks.concat(kp);
+        finalTokens = _allMixedMc.filter(function(t, i){ return _allMixedMc.indexOf(t) === i; });
     } else {
         if(!kp.length){logAction('Warning: Select at least one KPI metric.'); return;}
     }
-    if(ov&&!okArr.length){logAction('Warning: Select at least one Overlay Key column.'); return;}
-    const exRaw = ov ? (document.getElementById('mcOverlayExclude').value || '') : '';
+    const exRaw = document.getElementById('mcOverlayExclude').value || '';
     const excludeVals = exRaw.split(',').map(s => s.trim()).filter(Boolean);
     const dn={}; if(rn) ck.forEach(k=>{dn[k]=rn;});
     const agg=document.getElementById('mcAggregate').checked;
     const aggMode=document.getElementById('mcAggMode').value;
     const perSec=document.getElementById('mcPerSec').checked;
-    // Group Overlay: only active when neither Overlay Mode nor Aggregate is checked
-    const groupOv = !ov && !agg && !!(document.getElementById('mcGroupOverlay') && document.getElementById('mcGroupOverlay').checked);
-    const rule={header:hd,mode:md,tokens:finalTokens,compKeys:ck,displayNames:dn,_mc:true,_overlay:ov,_overlayKey:okArr[0]||'',_overlayKeys:okArr,_excludeOverlay:excludeVals,_aggregate:agg,_aggMode:aggMode,_perSec:perSec,_groupOverlay:groupOv};
+    const groupOv = !agg && !!(document.getElementById('mcGroupOverlay') && document.getElementById('mcGroupOverlay').checked);
+    const rule={header:hd,mode:md,tokens:finalTokens,compKeys:ck,displayNames:dn,_mc:true,_excludeOverlay:excludeVals,_aggregate:agg,_aggMode:aggMode,_perSec:perSec,_groupOverlay:groupOv};
     if (md === 'formula') {
         rule.formula = document.getElementById('mcFormulaExpr').value.trim();
         rule.formulaLabel = document.getElementById('mcFormulaLabel').value.trim() || 'Derived';
+    } else if (md === 'multi') {
+        rule.series = _mcSeriesData;
+    } else if (md === 'mixed') {
+        rule.formula = document.getElementById('mcFormulaExpr').value.trim();
+        rule.formulaLabel = document.getElementById('mcFormulaLabel').value.trim() || 'Derived';
+        rule._directTokens = kp.slice();
+        var _dualElMc = document.getElementById('mcMixedDualAxis');
+        if (_dualElMc && _dualElMc.checked) rule._mixedDualAxis = true;
     }
-    // Capture threshold values (keyed by formula label for formula mode, per token otherwise)
+    // Capture threshold values (keyed by formula label for formula/mixed mode, per token otherwise)
     var _mcTw = document.getElementById('mcThreshWarn');
     var _mcTc = document.getElementById('mcThreshCritical');
     var _mcTwv = (_mcTw && _mcTw.value.trim() !== '') ? parseFloat(_mcTw.value) : null;
@@ -7711,7 +8419,7 @@ function addMcRule() {
         var _mcEntry = {};
         if (_mcTwv !== null) _mcEntry.warn = _mcTwv;
         if (_mcTcv !== null) _mcEntry.critical = _mcTcv;
-        if (md === 'formula') {
+        if (md === 'formula' || md === 'mixed') {
             _mcThresholds[rule.formulaLabel || rule.formula || 'formula'] = _mcEntry;
         } else {
             finalTokens.forEach(function(t) { _mcThresholds[t] = _mcEntry; });
@@ -7736,18 +8444,16 @@ function cancelMcEdit() {
     Array.from(document.getElementById('selComp').options).forEach(o=>o.selected=false);
     Array.from(document.getElementById('selMcKpi').options).forEach(o=>o.selected=false);
     document.getElementById('mcEditBanner').classList.remove('active');
-    document.getElementById('mcOverlay').checked=false;
-    document.getElementById('overlayKeyRow').style.display='none';
-    document.getElementById('overlayExcludeRow').style.display='none';
     document.getElementById('mcOverlayExclude').value='';
-    document.getElementById('selOverlayKey').innerHTML='';
     document.getElementById('mcAggregate').checked=false;
     document.getElementById('aggOptionsRow').style.display='none';
     document.getElementById('mcAggMode').value='sum';
     document.getElementById('mcPerSec').checked=false;
-    // Reset formula and threshold fields
+    // Reset formula, multi-series, and threshold fields
     document.getElementById('mcFormulaExpr').value='';
     document.getElementById('mcFormulaLabel').value='';
+    var _mcMsl = document.getElementById('mcMultiSeriesList'); if (_mcMsl) _mcMsl.innerHTML = '';
+    var _mcMixD = document.getElementById('mcMixedDualAxis'); if (_mcMixD) _mcMixD.checked = false;
     var _ctw=document.getElementById('mcThreshWarn'); if(_ctw) _ctw.value='';
     var _ctc=document.getElementById('mcThreshCritical'); if(_ctc) _ctc.value='';
     toggleAnalysisMode('mc');
@@ -7765,22 +8471,8 @@ function editMcRule(idx) {
     Array.from(document.getElementById('selMcKpi').options).forEach(o=>{o.selected=r.tokens.includes(o.value);});
     const fk=r.compKeys[0];
     document.getElementById('mcDisplayName').value=(fk&&r.displayNames&&r.displayNames[fk])||'';
-    document.getElementById('mcOverlay').checked=!!r._overlay;
-    if(r._overlay){
-        document.getElementById('overlayKeyRow').style.display='block';
-        document.getElementById('overlayExcludeRow').style.display='block';
-        populateOverlayKeySelect();
-        const editKeys = r._overlayKeys || (r._overlayKey ? [r._overlayKey] : []);
-        Array.from(document.getElementById('selOverlayKey').options).forEach(o => {
-            o.selected = editKeys.includes(o.value);
-        });
-        document.getElementById('mcOverlayExclude').value=
-            (r._excludeOverlay && r._excludeOverlay.length) ? r._excludeOverlay.join(', ') : '';
-    } else {
-        document.getElementById('overlayKeyRow').style.display='none';
-        document.getElementById('overlayExcludeRow').style.display='none';
-        document.getElementById('mcOverlayExclude').value='';
-    }
+    document.getElementById('mcOverlayExclude').value =
+        (r._excludeOverlay && r._excludeOverlay.length) ? r._excludeOverlay.join(', ') : '';
     document.getElementById('mcAggregate').checked=!!r._aggregate;
     document.getElementById('aggOptionsRow').style.display=r._aggregate?'inline-block':'none';
     document.getElementById('mcAggMode').value=r._aggMode||'sum';
@@ -7846,7 +8538,10 @@ function renderMcQueue() {
         const modeBadge = r.mode==='ratio'?' %':r.mode==='formula'?' f(x)':'';
         const _isAutoAll = r.compKeys && r.compKeys.length === 1 && r.compKeys[0] === '__auto__';
         const _compCountLabel = _isAutoAll ? '\u2605 all' : (r.compKeys?.length??0)+' comp';
-        const _modeSuffix = r._overlay ? (' overlay['+keyDisplay+']'+exCount) : r._groupOverlay ? ' grp-overlay' : '';
+        const _hasExplicitOvKeys = r._overlayKeys && r._overlayKeys.length > 0;
+        const _modeSuffix = _hasExplicitOvKeys ? (' overlay['+keyDisplay+']'+exCount)
+            : mcOverlayFieldNames.size > 0 ? (' auto-overlay' + exCount)
+            : r._groupOverlay ? ' grp-overlay' : '';
         span.textContent=r.header+'  (MC'+_modeSuffix+' \u00b7 '+_compCountLabel+' \u00b7 '+tokenDisplay.length+' KPI'+modeBadge+')';
         const bg=document.createElement('div'); bg.style.cssText='display:flex;gap:4px;flex-shrink:0;';
         // Move Up/Down buttons — always visible when 2+ MC rules, disabled at boundaries
@@ -8030,7 +8725,13 @@ function _showSaveProfileModal(format, hasHdr, manualH, newRules) {
         if (hasHdr) profile.headers.hasHeader = true;
         if (manualH) profile.headers.columns = manualH;
         // MC-specific header metadata: key field labels and KPI column names
-        if (format === 'multiComp') {
+        // Also trigger when format is 'auto' but MC key fields were detected (auto-detected MC files)
+        var _isMcSave = (format === 'multiComp') || (format === 'auto' && mcKeyFieldIndices.length > 0);
+        if (_isMcSave) {
+            // Normalize format so future reloads activate the MC path
+            profile.format = 'multiComp';
+        }
+        if (_isMcSave) {
             profile.headers.hasHeader = profile.headers.hasHeader || false;
             if (mcKeyFieldIndices.length) {
                 profile.headers.keyLabels = {};
@@ -8883,7 +9584,7 @@ function prefillMcKeyColDropdown() {
 // BOOT
 // =============================================================================
 window.onload = () => {
-    logAction('System: Tool v3.0.0-DEBUG loaded.');
+    logAction('System: Tool v3.4.0-DEBUG loaded.');
     logAction('Verbose logging: ' + (VERBOSE_LOGGING ? 'ON — detailed trace active. Filter: ⋯ Verbose' : 'OFF — set VERBOSE_LOGGING=true in source to enable'));
     // Update legend badge
     var _vBadge = document.getElementById('verbose-legend-badge');
@@ -8951,8 +9652,6 @@ window.onload = () => {
         const sel = Array.from(_selMcKpi.selectedOptions).map(o => o.value).join(', ');
         logAction('MC Metrics: ' + sel);
     });
-    const _mcOverlay = document.getElementById('mcOverlay');
-    if (_mcOverlay) _mcOverlay.addEventListener('change', () => logAction('MC: Overlay mode ' + (_mcOverlay.checked ? 'enabled' : 'disabled') + '.'));
     const _mcDN = document.getElementById('mcDisplayName');
     if (_mcDN) _mcDN.addEventListener('change', () => logAction('MC: Display name set to ' + (_mcDN.value || '(none)')));
     const _mcExclude = document.getElementById('mcOverlayExclude');
