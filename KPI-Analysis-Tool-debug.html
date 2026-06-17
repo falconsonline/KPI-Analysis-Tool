@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- CSP omitted: file:/// protocol has inconsistent CSP support across browsers.
          SRI integrity hashes on CDN scripts below provide MITM protection instead. -->
-    <title>KPI Graph and Analysis | v3.4.0</title>
+    <title>KPI Graph and Analysis | v4.0.0</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8" integrity="sha384-Cs3dgUx6+jDxxuqHvVH8Onpyj2LF1gKZurLDlhqzuJmUqVYMJ0THTWpxK5Z086Zm" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0" integrity="sha384-dwwI6ICEN/0ZQlS5owhUa/6ZzvwUPmjH45bFVCAcjgjTulbHJvlE+TGU3g1k0N3R" crossorigin="anonymous"></script>
@@ -227,7 +227,7 @@
 <div class="container">
     <div class="header-main">
         <div>
-            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em;opacity:0.5;">v3.4.0</span></h2>
+            <h2 style="margin:0;">KPI Graph and Analysis <span style="font-size:0.6em;opacity:0.5;">v4.0.0</span></h2>
             <div style="font-size:0.8em;color:#888;margin-top:5px;"><strong>Author:</strong> Shiju | <strong>Email:</strong> tipper.axioms_3j&#64;icloud.com</div>
         </div>
         <div style="display:flex;gap:10px;">
@@ -726,7 +726,7 @@
         <span><span class="dbg-dot" style="background:#e57cf5;"></span><span style="color:#e57cf5;">Import/Reset</span></span>
         <span><span class="dbg-dot" style="background:#ff6b6b;"></span><span style="color:#ff6b6b;">Anomaly/Warn</span></span>
         <span id="verbose-legend-badge" style="color:#aaa;font-size:0.85em;padding:1px 5px;border:1px solid #555;border-radius:3px;margin-left:2px;">VERBOSE: OFF</span>
-        <span style="margin-left:auto;color:#888;">v3.4.0-DEBUG</span>
+        <span style="margin-left:auto;color:#888;">v4.0.0-DEBUG</span>
     </div>
 </div>
 
@@ -11243,7 +11243,7 @@ function prefillMcKeyColDropdown() {
 // BOOT
 // =============================================================================
 window.onload = () => {
-    logAction('System: Tool v3.4.0-DEBUG loaded.');
+    logAction('System: Tool v4.0.0-DEBUG loaded.');
     logAction('Verbose logging: ' + (VERBOSE_LOGGING ? 'ON — detailed trace active. Filter: ⋯ Verbose' : 'OFF — set VERBOSE_LOGGING=true in source to enable'));
     // Update legend badge
     var _vBadge = document.getElementById('verbose-legend-badge');
